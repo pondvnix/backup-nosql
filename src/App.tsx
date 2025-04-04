@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,29 +10,33 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import AboutPage from "./pages/AboutPage";
 import ManagementPage from "./pages/ManagementPage";
 import NotFound from "./pages/NotFound";
+import { MetaTags } from './components/MetaTags';
 
 const App = () => {
   // Create a QueryClient instance within the component
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <ToasterProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/management" element={<ManagementPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </ToasterProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <>
+      <MetaTags />
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <ToasterProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/leaderboard" element={<LeaderboardPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/management" element={<ManagementPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </ToasterProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </>
   );
 };
 
