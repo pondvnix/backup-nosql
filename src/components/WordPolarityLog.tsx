@@ -78,7 +78,7 @@ const WordPolarityLog = ({ words }: WordPolarityLogProps) => {
     }
   };
 
-  // Get score text based on polarity - Exactly matching the Management page
+  // Get score text based on polarity - Updated scoring system
   const getScoreText = (polarity: string): string => {
     switch (polarity) {
       case 'positive':

@@ -27,25 +27,24 @@ const WordSuggestions = ({
   const [selectedWord, setSelectedWord] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [wordDatabase, setWordDatabase] = useState<WordEntry[]>([]);
-  const [usedWords, setUsedWords] = useState<string[]>([]);
   const [usedTemplates, setUsedTemplates] = useState<string[]>([]);
   const [hasUsedToday, setHasUsedToday] = useState(false);
   const { toast } = useToast();
 
-  // Load the word database from local storage and track used words
+  // Load the word database from local storage and track used templates
   useEffect(() => {
     loadWordDatabase();
-    loadUsedWords();
+    loadUsedTemplates();
     
     // Listen for changes to the word database
     const handleDatabaseUpdate = () => {
       loadWordDatabase();
-      loadUsedWords(); // Reload used words when database is updated
+      loadUsedTemplates(); // Reload used templates when database is updated
     };
     
     // Listen for new words added to the billboard
     const handleBillboardUpdate = () => {
-      loadUsedWords();
+      loadUsedTemplates();
     };
     
     window.addEventListener('word-database-updated', handleDatabaseUpdate);
@@ -59,24 +58,20 @@ const WordSuggestions = ({
     };
   }, []);
 
-  // Load used words and templates from billboard
-  const loadUsedWords = () => {
+  // Load used templates from billboard
+  const loadUsedTemplates = () => {
     try {
       const storedSentences = localStorage.getItem('motivation-sentences');
       if (storedSentences) {
         const sentences = JSON.parse(storedSentences);
         if (Array.isArray(sentences)) {
-          // Extract words used in the billboard
-          const billboardWords = sentences.map((item: any) => item.word || "");
-          setUsedWords(billboardWords.filter(Boolean));
-          
           // Extract templates used in the billboard
           const billboardTemplates = sentences.map((item: any) => item.sentence || "");
           setUsedTemplates(billboardTemplates.filter(Boolean));
         }
       }
     } catch (e) {
-      console.error("Error loading used words:", e);
+      console.error("Error loading used templates:", e);
     }
   };
 
@@ -88,13 +83,8 @@ const WordSuggestions = ({
     const storedData = localStorage.getItem("word-polarity-database");
     const database = storedData ? JSON.parse(storedData) : [];
     
-    // Filter to words that have templates and avoid used templates and used words
+    // Filter to words that have templates and avoid used templates
     const wordsWithTemplates = database.filter((entry: WordEntry) => {
-      // Skip words that have already been used in sentences
-      if (usedWords.includes(entry.word)) {
-        return false;
-      }
-      
       // Check if the word has templates
       if (!entry.templates || entry.templates.length === 0) {
         return false;
@@ -102,7 +92,7 @@ const WordSuggestions = ({
       
       // Check if ALL of the word's templates have been used already
       const allTemplatesUsed = entry.templates.every(template => 
-        usedTemplates.includes(template)
+        usedTemplates.includes(template.replace(/\$\{[^}]*\}/g, entry.word))
       );
       
       // Include the word only if it has at least one unused template
@@ -122,7 +112,7 @@ const WordSuggestions = ({
     }, 300);
   };
 
-  // Generate suggestions only when the component mounts
+  // Generate suggestions only when the component mounts or templates change
   useEffect(() => {
     loadInitialSuggestions();
     
@@ -136,7 +126,7 @@ const WordSuggestions = ({
     return () => {
       window.removeEventListener('word-database-updated', handleDatabaseUpdate);
     };
-  }, [usedWords]);
+  }, [usedTemplates]);
 
   // Load the word database from localStorage
   const loadWordDatabase = () => {
@@ -163,19 +153,23 @@ const WordSuggestions = ({
     // Get templates for this word if available, otherwise use default templates
     if (wordEntry.templates && wordEntry.templates.length > 0) {
       // Use custom templates for this specific word, prioritizing unused ones
-      const unusedTemplates = wordEntry.templates.filter(template => 
+      const processedTemplates = wordEntry.templates.map(template => 
+        template.replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word)
+      );
+      
+      const unusedTemplates = processedTemplates.filter(template => 
         !usedTemplates.includes(template)
       );
       
       // If we have unused templates, use one of those
       if (unusedTemplates.length > 0) {
         const randomIndex = Math.floor(Math.random() * unusedTemplates.length);
-        return unusedTemplates[randomIndex].replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+        return unusedTemplates[randomIndex];
       }
       
       // If all templates are used, pick a random one anyway
-      const randomIndex = Math.floor(Math.random() * wordEntry.templates.length);
-      return wordEntry.templates[randomIndex].replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+      const randomIndex = Math.floor(Math.random() * processedTemplates.length);
+      return processedTemplates[randomIndex];
     }
     
     // Default templates based on polarity
@@ -204,8 +198,8 @@ const WordSuggestions = ({
     ];
     
     const templates = wordEntry.polarity === "positive" ? positiveTemplates : 
-                       wordEntry.polarity === "neutral" ? neutralTemplates : 
-                       negativeTemplates;
+                      wordEntry.polarity === "neutral" ? neutralTemplates : 
+                      negativeTemplates;
     
     // Find unused templates if possible
     const unusedTemplates = templates.filter(template => !usedTemplates.includes(template));
@@ -281,7 +275,7 @@ const WordSuggestions = ({
       window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
       
       // Update the used words list
-      setUsedWords(prev => [...prev, selectedWord]);
+      // setUsedWords(prev => [...prev, selectedWord]);
       
       // Mark as used for today
       localStorage.setItem('last-word-used-date', new Date().toISOString());

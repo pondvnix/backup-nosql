@@ -114,11 +114,18 @@ const LeaderboardPage = () => {
       
       words.forEach((word: any) => {
         const { polarity, score } = getWordPolarity(word.text);
-        if (polarity === 'positive') positiveWords++;
-        else if (polarity === 'neutral') neutralWords++;
-        else if (polarity === 'negative') negativeWords++;
-        
-        totalScore += score;
+        if (polarity === 'positive') {
+          positiveWords++;
+          totalScore += 2;
+        } 
+        else if (polarity === 'neutral') {
+          neutralWords++;
+          totalScore += 1;
+        } 
+        else if (polarity === 'negative') {
+          negativeWords++;
+          totalScore += -1;
+        }
         
         const wordDate = new Date(word.timestamp).toISOString().split('T')[0];
         if (last7Days.includes(wordDate)) {
