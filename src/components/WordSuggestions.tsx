@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -89,8 +88,13 @@ const WordSuggestions = ({
     const storedData = localStorage.getItem("word-polarity-database");
     const database = storedData ? JSON.parse(storedData) : [];
     
-    // Filter to words that have templates and avoid used templates
+    // Filter to words that have templates and avoid used templates and used words
     const wordsWithTemplates = database.filter((entry: WordEntry) => {
+      // Skip words that have already been used in sentences
+      if (usedWords.includes(entry.word)) {
+        return false;
+      }
+      
       // Check if the word has templates
       if (!entry.templates || entry.templates.length === 0) {
         return false;
@@ -132,7 +136,7 @@ const WordSuggestions = ({
     return () => {
       window.removeEventListener('word-database-updated', handleDatabaseUpdate);
     };
-  }, []);
+  }, [usedWords]);
 
   // Load the word database from localStorage
   const loadWordDatabase = () => {
@@ -215,36 +219,6 @@ const WordSuggestions = ({
     const randomIndex = Math.floor(Math.random() * templates.length);
     return templates[randomIndex];
   };
-
-  // Check if user has used their daily quota
-  // useEffect(() => {
-  //   const checkDailyUsage = () => {
-  //     const lastUsed = localStorage.getItem('last-word-used-date');
-  //     if (lastUsed) {
-  //       const lastUsedDate = new Date(lastUsed);
-  //       const today = new Date();
-        
-  //       // Reset if it's a new day (comparing dates in Thailand timezone)
-  //       const lastUsedTH = new Date(lastUsedDate.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
-  //       const todayTH = new Date(today.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
-        
-  //       if (lastUsedTH.getDate() === todayTH.getDate() &&
-  //           lastUsedTH.getMonth() === todayTH.getMonth() &&
-  //           lastUsedTH.getFullYear() === todayTH.getFullYear()) {
-  //         setHasUsedToday(true);
-  //       } else {
-  //         setHasUsedToday(false);
-  //       }
-  //     }
-  //   };
-
-  //   checkDailyUsage();
-    
-  //   // Check every minute for date changes
-  //   const interval = setInterval(checkDailyUsage, 60000);
-    
-  //   return () => clearInterval(interval);
-  // }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -378,7 +352,7 @@ const WordSuggestions = ({
             })
           ) : (
             <div className="text-center p-4 text-muted-foreground">
-              ไม่มีคำแนะนำในขณะนี้ กรุณาเพิ่มคำในหน้าจัดการคำก่อน
+              {isRefreshing ? 'กำลังโหลด...' : 'ไม่พบคำแนะนำที่ยังไม่ได้ใช้ กรุณาเพิ่มคำใหม่ในหน้าจัดการคำ'}
             </div>
           )}
         </RadioGroup>

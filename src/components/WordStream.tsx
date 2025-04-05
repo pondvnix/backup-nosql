@@ -190,8 +190,8 @@ const WordStream = () => {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="space-y-6 md:col-span-2">
+      <div className="grid grid-cols-1 gap-6">
+        <div className="space-y-6">
           <h3 className="text-xl font-semibold">ประโยคกำลังใจปัจจุบัน</h3>
           
           <MotivationalSentence 
@@ -221,7 +221,7 @@ const WordStream = () => {
           </div>
         </div>
         
-        <div>
+        <div className="w-full">
           <Leaderboard refreshTrigger={refreshTrigger} />
         </div>
       </div>
