@@ -128,7 +128,7 @@ const WordPolarityLog = ({ words }: WordPolarityLogProps) => {
             <th className="px-4 py-2 text-left">คำ</th>
             <th className="px-4 py-2 text-left">ผู้ร่วมสร้าง</th>
             <th className="px-4 py-2 text-left">เวลา</th>
-            <th className="px-4 py-2 text-left">ความรู้สึก</th>
+            <th className="px-4 py-2 text-left">ประเภท</th>
             <th className="px-4 py-2 text-left">คะแนน</th>
           </tr>
         </thead>
