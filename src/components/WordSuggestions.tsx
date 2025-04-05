@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -33,18 +34,22 @@ const WordSuggestions = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [wordDatabase, setWordDatabase] = useState<WordEntry[]>([]);
   const [usedTemplates, setUsedTemplates] = useState<string[]>([]);
+  const [hasUsedToday, setHasUsedToday] = useState(false);
   const { toast } = useToast();
 
+  // Load the word database from local storage and track used templates
   useEffect(() => {
     loadWordDatabase();
     loadUsedTemplates();
     checkIfUsedToday();
     
+    // Listen for changes to the word database
     const handleDatabaseUpdate = () => {
       loadWordDatabase();
-      loadUsedTemplates();
+      loadUsedTemplates(); // Reload used templates when database is updated
     };
     
+    // Listen for new words added to the billboard
     const handleBillboardUpdate = () => {
       loadUsedTemplates();
     };
@@ -66,6 +71,7 @@ const WordSuggestions = ({
       const lastDate = new Date(lastUsedDate);
       const today = new Date();
       
+      // Check if last used date is today
       if (
         lastDate.getDate() === today.getDate() &&
         lastDate.getMonth() === today.getMonth() &&
@@ -76,12 +82,14 @@ const WordSuggestions = ({
     }
   };
 
+  // Load used templates from billboard
   const loadUsedTemplates = () => {
     try {
       const storedSentences = localStorage.getItem('motivation-sentences');
       if (storedSentences) {
         const sentences = JSON.parse(storedSentences);
         if (Array.isArray(sentences)) {
+          // Extract templates used in the billboard
           const billboardTemplates = sentences.map((item: any) => item.sentence || "");
           setUsedTemplates(billboardTemplates.filter(Boolean));
         }
@@ -91,22 +99,28 @@ const WordSuggestions = ({
     }
   };
 
+  // Generate suggestions and handle word loading
   const loadInitialSuggestions = () => {
     setIsRefreshing(true);
     
+    // Get all words from database
     const storedData = localStorage.getItem("word-polarity-database");
     const database = storedData ? JSON.parse(storedData) : [];
     
+    // Get word-template pairs that haven't been used
     const availableWordTemplates: WordSuggestion[] = [];
     
     database.forEach((entry: WordEntry) => {
+      // Skip words without templates
       if (!entry.templates || entry.templates.length === 0) {
         return;
       }
       
+      // Check each template for this word
       entry.templates.forEach((template, index) => {
         const processedTemplate = template.replace(/\$\{[^}]*\}/g, entry.word);
         
+        // If this specific template hasn't been used, add it as an option
         if (!usedTemplates.includes(processedTemplate)) {
           availableWordTemplates.push({
             word: entry.word,
@@ -116,6 +130,7 @@ const WordSuggestions = ({
       });
     });
     
+    // Randomly select up to 5 word-template pairs
     const randomSuggestions = availableWordTemplates
       .sort(() => 0.5 - Math.random())
       .slice(0, 5);
@@ -127,9 +142,11 @@ const WordSuggestions = ({
     }, 300);
   };
 
+  // Generate suggestions only when the component mounts or templates change
   useEffect(() => {
     loadInitialSuggestions();
     
+    // Listen for database updates
     const handleDatabaseUpdate = () => {
       loadInitialSuggestions();
     };
@@ -141,6 +158,7 @@ const WordSuggestions = ({
     };
   }, [usedTemplates]);
 
+  // Load the word database from localStorage
   const loadWordDatabase = () => {
     try {
       const storedData = localStorage.getItem("word-polarity-database");
@@ -152,29 +170,45 @@ const WordSuggestions = ({
     }
   };
 
+  // Generate an encouraging sentence with the selected word
   const generateEncouragingSentence = (suggestion: WordSuggestion): string => {
     const { word, templateIndex } = suggestion;
     
+    // Find the word entry in the database
     const wordEntry = wordDatabase.find(entry => entry.word === word);
     
     if (!wordEntry || !wordEntry.templates || templateIndex >= wordEntry.templates.length) {
+      // Fallback sentence if word not found in database or template index is invalid
       return `${word}คือสิ่งที่ทำให้ชีวิตมีความหมาย`;
     }
     
+    // Use the specific template for this word
     const template = wordEntry.templates[templateIndex];
     return template.replace(/\$\{[^}]*\}/g, word);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (hasUsedToday) {
+      toast({
+        title: "ขออภัย",
+        description: "คุณได้ใช้โควต้าการสร้างประโยคกำลังใจวันนี้แล้ว กรุณารอจนถึงวันพรุ่งนี้",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (selectedSuggestion) {
+      // Add the selected word to the stream
       onSelectWord(selectedSuggestion.word);
       
+      // Generate encouraging sentence
       const sentence = generateEncouragingSentence(selectedSuggestion);
       
+      // Get contributor name from localStorage or default to "ไม่ระบุชื่อ"
       const contributor = localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
       
+      // Add new entry rather than replacing
       let existingEntries = [];
       try {
         const storedSentences = localStorage.getItem('motivation-sentences');
@@ -186,6 +220,7 @@ const WordSuggestions = ({
         console.error("Error parsing stored sentences:", error);
       }
       
+      // Add new entry at the beginning
       const updatedEntries = [
         {
           word: selectedSuggestion.word,
@@ -196,8 +231,10 @@ const WordSuggestions = ({
         ...existingEntries
       ];
       
+      // Store the updated entries
       localStorage.setItem('motivation-sentences', JSON.stringify(updatedEntries));
       
+      // Create and dispatch a custom event for motivational sentence
       const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
         detail: { 
           sentence,
@@ -207,8 +244,10 @@ const WordSuggestions = ({
       });
       window.dispatchEvent(sentenceEvent);
       
+      // Also dispatch billboard updated event
       window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
       
+      // Mark as used for today
       localStorage.setItem('last-word-used-date', new Date().toISOString());
       setHasUsedToday(true);
 
@@ -218,6 +257,7 @@ const WordSuggestions = ({
           <div className="mt-2">
             <p>คำ "<span className="text-[#F97316] font-semibold">{selectedSuggestion.word}</span>" ได้ถูกเพิ่มเข้าสู่ประโยคกำลังใจแล้ว</p>
             <p className="mt-1 font-medium">"{sentence}"</p>
+            <p className="mt-2 text-sm text-muted-foreground">คุณสามารถสร้างประโยคกำลังใจได้อีกครั้งในวันพรุ่งนี้</p>
           </div>
         ),
       });
@@ -226,6 +266,7 @@ const WordSuggestions = ({
 
   const getSelectedSuggestionValue = () => {
     if (!selectedSuggestion) return "";
+    // Create a unique ID for each suggestion by combining word and template index
     return `${selectedSuggestion.word}-${selectedSuggestion.templateIndex}`;
   };
 
@@ -297,11 +338,16 @@ const WordSuggestions = ({
 
         <Button
           type="submit"
-          disabled={!selectedSuggestion}
+          disabled={!selectedSuggestion || hasUsedToday}
           className="w-full transition-all duration-300 hover:scale-105"
         >
-          ใช้คำนี้
+          {hasUsedToday ? 'คุณได้ใช้โควต้าวันนี้แล้ว' : 'ใช้คำนี้'}
         </Button>
+        {hasUsedToday && (
+          <p className="text-sm text-center text-muted-foreground">
+            คุณสามารถสร้างประโยคกำลังใจได้อีกครั้งในวันพรุ่งนี้
+          </p>
+        )}
       </form>
     </div>
   );
