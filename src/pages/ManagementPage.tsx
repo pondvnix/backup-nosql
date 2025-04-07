@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Header from "@/components/Header";
 import MobileFooter from "@/components/MobileFooter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,8 +12,9 @@ import MotivationQuoteTable from "@/components/MotivationQuoteTable";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import ClearDataButtons from "@/components/ClearDataButtons";
-import { normalizeScoreAndPolarity } from "@/utils/sentimentConsistency";
-import { Edit, Trash2 } from "lucide-react";
+import { normalizeScoreAndPolarity, highlightWordInTemplate } from "@/utils/sentimentConsistency";
+import { Edit, Trash2, Plus } from "lucide-react";
+import { generateUniqueWord } from "@/utils/wordModeration";
 
 interface Word {
   word: string;
@@ -53,6 +54,7 @@ const ManagementPage = () => {
   const [templateToEdit, setTemplateToEdit] = useState<Template | null>(null);
   const [editedTemplate, setEditedTemplate] = useState('');
   const { toast } = useToast();
+  const editTemplateRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     try {
@@ -135,8 +137,10 @@ const ManagementPage = () => {
     if (newPolarity === 'positive') wordScore = 1;
     else if (newPolarity === 'negative') wordScore = -1;
     
+    const uniqueWord = generateUniqueWord(newWord, words);
+    
     const newWordObj: Word = {
-      word: newWord,
+      word: uniqueWord,
       polarity: newPolarity,
       score: wordScore,
       templates: []
@@ -148,7 +152,7 @@ const ManagementPage = () => {
     
     toast({
       title: 'เพิ่มคำสำเร็จ',
-      description: `คำว่า "${newWord}" ถูกเพิ่มเรียบร้อยแล้ว`,
+      description: `คำว่า "${uniqueWord}" ถูกเพิ่มเรียบร้อยแล้ว`,
     });
     
     setNewWord('');
@@ -430,13 +434,26 @@ const ManagementPage = () => {
     }
   };
 
-  const highlightWordInTemplate = (template: string, word: string) => {
-    if (!template.includes(`\${${word}}`)) return template;
+  const handleInsertWordInTemplate = () => {
+    if (!templateToEdit || !editTemplateRef.current) return;
     
-    return template.replace(
-      `\${${word}}`, 
-      `<span class="text-[#F97316] font-semibold">${word}</span>`
-    );
+    const textarea = editTemplateRef.current;
+    const word = templateToEdit.word;
+    
+    const startPos = textarea.selectionStart;
+    const endPos = textarea.selectionEnd;
+    const textBefore = textarea.value.substring(0, startPos);
+    const textAfter = textarea.value.substring(endPos);
+    
+    const newValue = `${textBefore}\${${word}}${textAfter}`;
+    setEditedTemplate(newValue);
+    
+    setTimeout(() => {
+      const newCursorPos = startPos + `\${${word}}`.length;
+      textarea.selectionStart = newCursorPos;
+      textarea.selectionEnd = newCursorPos;
+      textarea.focus();
+    }, 0);
   };
 
   return (
@@ -561,16 +578,28 @@ const ManagementPage = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-template">
-                        แม่แบบประโยค <span className="text-sm text-muted-foreground">(ใช้ ${'{'}templateToEdit.word{'}'} เพื่อแทนที่คำในประโยค)</span>
+                      <Label htmlFor="edit-template" className="flex justify-between items-center">
+                        <span>แม่แบบประโยค</span>
+                        <Button 
+                          type="button" 
+                          size="sm" 
+                          onClick={handleInsertWordInTemplate}
+                          className="px-2 py-1 h-auto"
+                        >
+                          <Plus className="h-3 w-3 mr-1" /> เพิ่มคำ ({templateToEdit.word})
+                        </Button>
                       </Label>
                       <Textarea
                         id="edit-template"
+                        ref={editTemplateRef}
                         value={editedTemplate}
                         onChange={(e) => setEditedTemplate(e.target.value)}
                         placeholder={`ตัวอย่าง: การมี\${${templateToEdit.word}} ในชีวิตทำให้เรารู้สึกดีขึ้น`}
                         rows={3}
                       />
+                      <p className="text-xs text-muted-foreground">
+                        * ต้องมีคำ <span className="text-[#F97316] font-semibold">{templateToEdit.word}</span> ในรูปแบบ ${'{'}templateToEdit.word{'}'} อยู่ในแม่แบบ
+                      </p>
                     </div>
                     
                     <div className="flex justify-end gap-2 mt-4">

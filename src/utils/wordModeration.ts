@@ -1,5 +1,3 @@
-
-
 // List of possible inappropriate words to filter (this is a simple example)
 // In a production environment, this should be on the server side
 const forbiddenWords = [
@@ -38,6 +36,40 @@ export const isWordAppropriate = (word: string): boolean => {
   return !forbiddenWords.some(forbidden => 
     lowercaseWord === forbidden || lowercaseWord.includes(forbidden)
   );
+};
+
+/**
+ * Generates a unique word by adding a suffix if the word already exists
+ * @param word The base word to check
+ * @param existingWords Array of existing words to check against
+ * @returns A unique word with suffix if needed (e.g., "love-1", "love-2")
+ */
+export const generateUniqueWord = (word: string, existingWords: {word: string}[]): string => {
+  // If word doesn't exist yet, return it as is
+  if (!existingWords.some(existing => existing.word === word)) {
+    return word;
+  }
+  
+  // Find all instances of this word with suffixes
+  const wordRegex = new RegExp(`^${word}(-\\d+)?$`);
+  const matchingWords = existingWords
+    .map(existing => existing.word)
+    .filter(existingWord => wordRegex.test(existingWord));
+  
+  // Find the highest suffix number
+  let highestSuffix = 0;
+  matchingWords.forEach(matchingWord => {
+    const suffixMatch = matchingWord.match(/-(\d+)$/);
+    if (suffixMatch) {
+      const suffixNum = parseInt(suffixMatch[1], 10);
+      if (suffixNum > highestSuffix) {
+        highestSuffix = suffixNum;
+      }
+    }
+  });
+  
+  // Return word with next suffix number
+  return `${word}-${highestSuffix + 1}`;
 };
 
 export const validateWordInput = (
@@ -97,4 +129,3 @@ export const getContributorStats = (): Record<string, number> => {
     return {};
   }
 };
-

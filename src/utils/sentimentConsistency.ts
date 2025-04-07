@@ -1,4 +1,3 @@
-
 export interface SentimentItem {
   word?: string;
   sentence?: string;
@@ -81,4 +80,42 @@ export const getPolarityText = (item: SentimentItem): string => {
   if (normalized.score! > 0) return 'เชิงบวก';
   if (normalized.score! < 0) return 'เชิงลบ';
   return 'กลาง';
+};
+
+/**
+ * Highlights a word in a template string with a orange color
+ * @param template The template string containing ${word} placeholder
+ * @param word The word to highlight
+ * @returns HTML string with the word highlighted in orange
+ */
+export const highlightWordInTemplate = (template: string, word: string): string => {
+  if (!template.includes(`\${${word}}`)) return template;
+  
+  return template.replace(
+    `\${${word}}`, 
+    `<span class="text-[#F97316] font-semibold">${word}</span>`
+  );
+};
+
+/**
+ * Inserts the word placeholder at cursor position in a textarea
+ * @param textarea The textarea element
+ * @param word The word to insert as placeholder
+ */
+export const insertWordPlaceholder = (textarea: HTMLTextAreaElement, word: string): void => {
+  const startPos = textarea.selectionStart;
+  const endPos = textarea.selectionEnd;
+  const textBefore = textarea.value.substring(0, startPos);
+  const textAfter = textarea.value.substring(endPos);
+  
+  // Insert the word placeholder at cursor position
+  textarea.value = `${textBefore}\${${word}}${textAfter}`;
+  
+  // Set cursor position after the inserted placeholder
+  const newCursorPos = startPos + `\${${word}}`.length;
+  textarea.selectionStart = newCursorPos;
+  textarea.selectionEnd = newCursorPos;
+  
+  // Focus the textarea
+  textarea.focus();
 };
