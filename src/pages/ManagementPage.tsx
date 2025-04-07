@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,6 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
   Plus, Trash, Edit, ChevronDown, ChevronUp, 
   Smile, Meh, Frown, Check, AlertTriangle, RefreshCcw,
@@ -45,7 +45,6 @@ interface WordEntry {
 const ManagementPage = () => {
   const { toast } = useToast();
   const [word, setWord] = useState("");
-  const [templateSentiment, setTemplateSentiment] = useState<TemplateSentiment>('positive');
   const [allWords, setAllWords] = useState<WordEntry[]>([]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [currentEditWord, setCurrentEditWord] = useState<WordEntry | null>(null);
@@ -81,25 +80,20 @@ const ManagementPage = () => {
 
   const addWord = () => {
     if (word.trim()) {
-      // Create a default template with the selected sentiment
-      const sentimentPrefix = 
-        templateSentiment === 'positive' ? '${บวก}' :
-        templateSentiment === 'negative' ? '${ลบ}' :
-        '${กลาง}';
-      
+      // Create a default template with positive sentiment
       const defaultTemplate: Template = {
         template: `${word.trim()} คือสิ่งสำคัญในชีวิต`,
-        sentiment: templateSentiment
+        sentiment: 'positive'
       };
       
       // Add word with default template
-      addWordToDatabase(word.trim(), templateSentiment, 0, [defaultTemplate]);
+      addWordToDatabase(word.trim(), 'positive', 1, [defaultTemplate]);
       
       setWord("");
       
       const updatedWords = [...allWords, { 
         word: word.trim(), 
-        templates: [sentimentPrefix + defaultTemplate.template]
+        templates: ['${บวก}' + defaultTemplate.template]
       }];
       
       setAllWords(updatedWords);
@@ -133,13 +127,8 @@ const ManagementPage = () => {
         return `${sentimentPrefix}${t.template}`;
       });
       setTemplateText(templateLines.join(',\n'));
-      
-      if (templates.length > 0) {
-        setTemplateSentiment(templates[0].sentiment);
-      }
     } else {
       setTemplateText('');
-      setTemplateSentiment('positive');
     }
   };
 
@@ -349,7 +338,7 @@ const ManagementPage = () => {
             <div className="border rounded-md p-4 bg-secondary/30">
               <h3 className="font-medium mb-3">เพิ่มคำใหม่</h3>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr_1fr] gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
                   <div>
                     <Label htmlFor="word">คำ</Label>
                     <Input
@@ -358,48 +347,6 @@ const ManagementPage = () => {
                       value={word}
                       onChange={(e) => setWord(e.target.value)}
                     />
-                  </div>
-                  <div>
-                    <Label htmlFor="template-sentiment">ความรู้สึกแม่แบบประโยค</Label>
-                    <ToggleGroup 
-                      type="single" 
-                      value={templateSentiment} 
-                      onValueChange={(value) => {
-                        if (value) setTemplateSentiment(value as TemplateSentiment);
-                      }}
-                      className="border rounded-md justify-start p-1"
-                    >
-                      <ToggleGroupItem 
-                        value="positive" 
-                        className={cn(
-                          "flex items-center gap-1",
-                          templateSentiment === 'positive' && "bg-green-50 text-green-700"
-                        )}
-                      >
-                        <Smile className="h-4 w-4" />
-                        <span>บวก</span>
-                      </ToggleGroupItem>
-                      <ToggleGroupItem 
-                        value="neutral"
-                        className={cn(
-                          "flex items-center gap-1",
-                          templateSentiment === 'neutral' && "bg-blue-50 text-blue-700"
-                        )}
-                      >
-                        <Meh className="h-4 w-4" />
-                        <span>กลาง</span>
-                      </ToggleGroupItem>
-                      <ToggleGroupItem 
-                        value="negative"
-                        className={cn(
-                          "flex items-center gap-1",
-                          templateSentiment === 'negative' && "bg-red-50 text-red-700"
-                        )}
-                      >
-                        <Frown className="h-4 w-4" />
-                        <span>ลบ</span>
-                      </ToggleGroupItem>
-                    </ToggleGroup>
                   </div>
                   <div className="flex items-end">
                     <Button onClick={addWord} className="w-full flex gap-2">
@@ -552,44 +499,6 @@ const ManagementPage = () => {
             {currentEditWord && (
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label>ความรู้สึกแม่แบบประโยคเริ่มต้น</Label>
-                  <RadioGroup 
-                    value={templateSentiment}
-                    onValueChange={(value) => setTemplateSentiment(value as TemplateSentiment)}
-                    className="flex space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="positive" id="sentiment-positive" />
-                      <Label htmlFor="sentiment-positive" className="flex items-center text-green-700">
-                        <Smile className="h-4 w-4 mr-1" />
-                        <span>บวก</span>
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="neutral" id="sentiment-neutral" />
-                      <Label htmlFor="sentiment-neutral" className="flex items-center text-blue-700">
-                        <Meh className="h-4 w-4 mr-1" />
-                        <span>กลาง</span>
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="negative" id="sentiment-negative" />
-                      <Label htmlFor="sentiment-negative" className="flex items-center text-red-700">
-                        <Frown className="h-4 w-4 mr-1" />
-                        <span>ลบ</span>
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                  <p className="text-xs text-muted-foreground">ความรู้สึกนี้จะถูกใช้กับแม่แบบประโยคใหม่ที่ไม่มีการเพิ่ม ${"{"}บวก{"}"}, ${"{"}กลาง{"}"}, หรือ ${"{"}ลบ{"}"} ไว้</p>
-                </div>
-                
-                <div className="grid gap-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="templates">
-                      แม่แบบประโยค (คั่นด้วย , หรือขึ้นบรรทัดใหม่)
-                    </Label>
-                  </div>
-                  
                   <div className="flex flex-wrap gap-2 mb-2">
                     <Button
                       variant="outline"
@@ -632,30 +541,38 @@ const ManagementPage = () => {
                     </Button>
                   </div>
                   
-                  <Textarea 
-                    id="templates" 
-                    placeholder={`ตัวอย่าง:\n\${บวก}${currentEditWord.word}ทำให้ชีวิตสดใส,\n\${กลาง}การมี${currentEditWord.word}ทำให้เรามีกำลังใจ,\n\${ลบ}ขาดซึ่ง${currentEditWord.word}ทำให้ท้อแท้`}
-                    value={templateText}
-                    onChange={handleTextareaChange}
-                    rows={6}
-                    ref={(ref) => setTextareaRef(ref)}
-                    className={cn(
-                      "font-mono text-sm",
-                      hasTemplateError && "border-red-500 focus-visible:ring-red-500"
-                    )}
-                  />
-                  
-                  {hasTemplateError && (
-                    <div className="text-red-500 text-sm flex items-center gap-2 mt-1">
-                      <AlertCircle className="h-4 w-4" />
-                      {templateErrorMessage}
+                  <div className="grid gap-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="templates">
+                        แม่แบบประโยค (คั่นด้วย , หรือขึ้นบรรทัดใหม่)
+                      </Label>
                     </div>
-                  )}
                   
-                  <div className="text-xs text-muted-foreground flex flex-col gap-1">
-                    <span>ใช้ ${"{"}คำ{"}"} สำหรับแทรกคำอัตโนมัติ เช่น ${"{" + (currentEditWord?.word || "คำ") + "}"} จะถูกแทนที่ด้วย {currentEditWord?.word || "คำ"}</span>
-                    <span>ใช้ ${"{"}บวก{"}"}, ${"{"}กลาง{"}"}, ${"{"}ลบ{"}"} เพื่อกำหนดความรู้สึกให้กับแม่แบบประโยค</span>
-                    <span>ใช้เครื่องหมายคอมม่า (,) หรือการขึ้นบรรทัดใหม่เพื่อแยกแม่แบบประโยคหลายประโยค</span>
+                    <Textarea 
+                      id="templates" 
+                      placeholder={`ตัวอย่าง:\n\${บวก}${currentEditWord.word}ทำให้ชีวิตสดใส,\n\${กลาง}การมี${currentEditWord.word}ทำให้เรามีกำลังใจ,\n\${ลบ}ขาดซึ่ง${currentEditWord.word}ทำให้ท้อแท้`}
+                      value={templateText}
+                      onChange={handleTextareaChange}
+                      rows={6}
+                      ref={(ref) => setTextareaRef(ref)}
+                      className={cn(
+                        "font-mono text-sm",
+                        hasTemplateError && "border-red-500 focus-visible:ring-red-500"
+                      )}
+                    />
+                  
+                    {hasTemplateError && (
+                      <div className="text-red-500 text-sm flex items-center gap-2 mt-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {templateErrorMessage}
+                      </div>
+                    )}
+                  
+                    <div className="text-xs text-muted-foreground flex flex-col gap-1">
+                      <span>ใช้ ${"{"}คำ{"}"} สำหรับแทรกคำอัตโนมัติ เช่น ${"{" + (currentEditWord?.word || "คำ") + "}"} จะถูกแทนที่ด้วย {currentEditWord?.word || "คำ"}</span>
+                      <span>ใช้ ${"{"}บวก{"}"}, ${"{"}กลาง{"}"}, ${"{"}ลบ{"}"} เพื่อกำหนดความรู้สึกให้กับแม่แบบประโยค</span>
+                      <span>ใช้เครื่องหมายคอมม่า (,) หรือการขึ้นบรรทัดใหม่เพื่อแยกแม่แบบประโยคหลายประโยค</span>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -41,12 +41,17 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     
-    // Analyze sentiment based on template or text
+    // Analyze sentiment based on template or text if not already provided
     const analyzedQuotes = sortedQuotes.map(quote => {
+      // If polarity and score are already provided, use them
+      if (quote.polarity && typeof quote.score !== 'undefined') {
+        return quote;
+      }
+      
       let sentiment: 'positive' | 'neutral' | 'negative';
       let score: number;
       
-      // ถ้ามีแม่แบบ ใช้ความรู้สึกจากแม่แบบ
+      // If template exists, use sentiment from template
       if (quote.template) {
         const analysis = analyzeSentimentFromSentence("", quote.template);
         sentiment = analysis.sentiment;
@@ -108,31 +113,46 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     });
   };
   
-  // Get sentiment icon based on score
+  // Get sentiment icon based on polarity
   const getSentimentIcon = (quote: Quote) => {
-    const score = quote.score !== undefined ? quote.score : 0;
+    const polarity = quote.polarity || 'neutral';
     
-    if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
-    if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
-    return <Meh className="h-4 w-4 text-blue-500" />;
+    switch (polarity) {
+      case 'positive':
+        return <Smile className="h-4 w-4 text-green-500" />;
+      case 'negative':
+        return <Frown className="h-4 w-4 text-red-500" />;
+      default:
+        return <Meh className="h-4 w-4 text-blue-500" />;
+    }
   };
   
-  // Get polarity text based on score
+  // Get polarity text based on polarity
   const getPolarityText = (quote: Quote): string => {
-    const score = quote.score !== undefined ? quote.score : 0;
+    const polarity = quote.polarity || 'neutral';
     
-    if (score > 0) return 'เชิงบวก';
-    if (score < 0) return 'เชิงลบ';
-    return 'กลาง';
+    switch (polarity) {
+      case 'positive':
+        return 'เชิงบวก';
+      case 'negative':
+        return 'เชิงลบ';
+      default:
+        return 'กลาง';
+    }
   };
   
-  // Get badge variant based on score
+  // Get badge variant based on polarity
   const getBadgeVariant = (quote: Quote) => {
-    const score = quote.score !== undefined ? quote.score : 0;
+    const polarity = quote.polarity || 'neutral';
     
-    if (score > 0) return 'success';
-    if (score < 0) return 'destructive';
-    return 'secondary';
+    switch (polarity) {
+      case 'positive':
+        return 'success';
+      case 'negative':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
   };
   
   // Highlight word in sentence
@@ -180,7 +200,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell>{quote.score}</TableCell>
+                    <TableCell>{quote.score || 0}</TableCell>
                     {showAllUsers && (
                       <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
                     )}
