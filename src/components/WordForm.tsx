@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,23 +29,19 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
   const [usedWords, setUsedWords] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // Retrieve contributor from localStorage if available and load used words
   useEffect(() => {
     const savedContributor = localStorage.getItem("contributor-name");
     if (savedContributor) {
       setContributor(savedContributor);
     }
     
-    // Load word database
     loadWordDatabase();
     loadUsedWords();
     
-    // Listen for database updates
     const handleDatabaseUpdate = () => {
       loadWordDatabase();
     };
     
-    // Listen for new words added to the billboard
     const handleBillboardUpdate = () => {
       loadUsedWords();
     };
@@ -60,13 +55,11 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
     };
   }, []);
 
-  // Load used words from billboard
   const loadUsedWords = () => {
     try {
       const storedSentences = localStorage.getItem('motivation-sentences');
       if (storedSentences) {
         const sentences = JSON.parse(storedSentences);
-        // Extract words used in the billboard
         const billboardWords = sentences.map((item: any) => item.word || "");
         setUsedWords(billboardWords.filter(Boolean));
       }
@@ -75,7 +68,6 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
     }
   };
 
-  // Load the word database from localStorage
   const loadWordDatabase = () => {
     try {
       const storedData = localStorage.getItem("word-polarity-database");
@@ -93,7 +85,6 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
     const trimmedWord = word.trim();
     const trimmedContributor = contributor.trim() || "ไม่ระบุชื่อ";
 
-    // Check if the word has been used in the billboard
     if (usedWords.includes(trimmedWord)) {
       toast({
         title: "คำนี้ถูกใช้ไปแล้ว",
@@ -113,17 +104,13 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
       return;
     }
 
-    // Save contributor name to localStorage
     localStorage.setItem("contributor-name", trimmedContributor);
     
-    // Check if the word exists in the database and generate a sentence if it does
     const wordEntry = wordDatabase.find(entry => entry.word === trimmedWord);
     
     if (wordEntry) {
-      // Generate sentence based on the word entry
       const sentence = generateEncouragingSentence(trimmedWord, wordEntry);
       
-      // Store only the latest sentence in localStorage for the billboard
       localStorage.setItem('motivation-sentences', JSON.stringify([{
         word: trimmedWord,
         sentence: sentence,
@@ -131,7 +118,6 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
         timestamp: new Date()
       }]));
       
-      // Create and dispatch a custom event for motivational sentence
       const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
         detail: { 
           sentence,
@@ -141,10 +127,8 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
       });
       window.dispatchEvent(sentenceEvent);
       
-      // Update the used words list
       setUsedWords(prev => [...prev, trimmedWord]);
       
-      // Show toast with the encouraging sentence
       toast({
         title: "เพิ่มคำสำเร็จ!",
         description: (
@@ -160,16 +144,12 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
     setWord("");
   };
 
-  // Generate encouraging sentence based on word and its entry in database
   const generateEncouragingSentence = (word: string, wordEntry: WordEntry): string => {
-    // Get templates for this word if available, otherwise use default templates
     if (wordEntry.templates && wordEntry.templates.length > 0) {
-      // Use custom templates for this specific word
       const randomIndex = Math.floor(Math.random() * wordEntry.templates.length);
       return wordEntry.templates[randomIndex].replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
     }
     
-    // Default templates based on polarity
     const positiveTemplates = [
       `การมี${word}ในชีวิตทำให้เรารู้สึกดีขึ้น`,
       `${word}คือสิ่งที่เราทุกคนต้องการ`,
@@ -190,29 +170,24 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
       `แม้จะมี${word} แต่เราจะผ่านมันไปได้`,
       `${word}เป็นบทเรียนที่ทำให้เราเติบโต`,
       `อย่าให้${word}มาหยุดความฝันของเรา`,
-      `${word}จะกลายเป็นแรงผลักดันให้เราไปต่อ`,
-      `เราจะเปลี่ยน${word}ให้เป็นพลัง`,
+      `${word}จะกลายเป็นแรงผลักดันให้���ราไปต่อ`,
+      `${word}เราจะเปลี่ยน${word}ให้เป็นพลัง`,
     ];
     
     const templates = wordEntry.polarity === "positive" ? positiveTemplates : 
                        wordEntry.polarity === "neutral" ? neutralTemplates : 
                        negativeTemplates;
     
-    // Randomly select a template
     const randomIndex = Math.floor(Math.random() * templates.length);
     return templates[randomIndex];
   };
 
   const handleSelectSuggestion = (selectedWord: string) => {
-    // Use current contributor name or default to "ไม่ระบุชื่อ" if empty
     const contributorName = contributor.trim() || "ไม่ระบุชื่อ";
-    // Save contributor name to localStorage
     localStorage.setItem("contributor-name", contributorName);
-    // Update the word and immediately submit
     onAddWord(selectedWord, contributorName);
   };
 
-  // Determine if a word is available (not in billboard)
   const isWordAvailable = (wordText: string) => {
     return !usedWords.includes(wordText);
   };

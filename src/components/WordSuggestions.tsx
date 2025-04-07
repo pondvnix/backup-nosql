@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect } from "react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { UniqueValueSelector } from "@/components/ui/unique-value-selector";
 
 interface WordSuggestionsProps {
   existingWords: string[];
@@ -19,40 +18,31 @@ interface WordEntry {
   score?: number;
 }
 
-interface WordSuggestion {
-  word: string;
-  templateIndex: number; // Track which template would be used
-  uniqueId: string; // Add a unique ID for each suggestion
-}
-
 const WordSuggestions = ({
   existingWords,
   onSelectWord,
   disableAutoRefresh = false
 }: WordSuggestionsProps) => {
-  const [suggestions, setSuggestions] = useState<WordSuggestion[]>([]);
-  const [selectedSuggestion, setSelectedSuggestion] = useState<WordSuggestion | null>(null);
+  const [selectedWord, setSelectedWord] = useState<string | undefined>(undefined);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [wordDatabase, setWordDatabase] = useState<WordEntry[]>([]);
-  const [usedTemplates, setUsedTemplates] = useState<string[]>([]);
-  const [hasUsedToday, setHasUsedToday] = useState(false); // Ensure this is defined
+  const [usedWords, setUsedWords] = useState<string[]>([]);
   const { toast } = useToast();
 
-  // Load the word database from local storage and track used templates
+  // Load the word database from localStorage and track used templates
   useEffect(() => {
     loadWordDatabase();
-    loadUsedTemplates();
-    checkIfUsedToday();
+    loadUsedWords();
     
     // Listen for changes to the word database
     const handleDatabaseUpdate = () => {
       loadWordDatabase();
-      loadUsedTemplates(); // Reload used templates when database is updated
+      loadUsedWords();
     };
     
     // Listen for new words added to the billboard
     const handleBillboardUpdate = () => {
-      loadUsedTemplates();
+      loadUsedWords();
     };
     
     window.addEventListener('word-database-updated', handleDatabaseUpdate);
@@ -66,106 +56,22 @@ const WordSuggestions = ({
     };
   }, []);
 
-  const checkIfUsedToday = () => {
-    const lastUsedDate = localStorage.getItem('last-word-used-date');
-    if (lastUsedDate) {
-      const lastDate = new Date(lastUsedDate);
-      const today = new Date();
-      
-      // Check if last used date is today
-      if (
-        lastDate.getDate() === today.getDate() &&
-        lastDate.getMonth() === today.getMonth() &&
-        lastDate.getFullYear() === today.getFullYear()
-      ) {
-        setHasUsedToday(false); // Disable quota restriction as requested
-      } else {
-        setHasUsedToday(false); // Always set to false to disable quota
-      }
-    } else {
-      setHasUsedToday(false); // Always set to false if no date found
-    }
-  };
-
-  // Load used templates from billboard
-  const loadUsedTemplates = () => {
+  // Load used words from billboard
+  const loadUsedWords = () => {
     try {
       const storedSentences = localStorage.getItem('motivation-sentences');
       if (storedSentences) {
         const sentences = JSON.parse(storedSentences);
         if (Array.isArray(sentences)) {
-          // Extract templates used in the billboard
-          const billboardTemplates = sentences.map((item: any) => item.sentence || "");
-          setUsedTemplates(billboardTemplates.filter(Boolean));
+          // Extract words used in the billboard
+          const billboardWords = sentences.map((item: any) => item.word || "");
+          setUsedWords(billboardWords.filter(Boolean));
         }
       }
     } catch (e) {
-      console.error("Error loading used templates:", e);
+      console.error("Error loading used words:", e);
     }
   };
-
-  // Generate suggestions and handle word loading
-  const loadInitialSuggestions = () => {
-    setIsRefreshing(true);
-    
-    // Get all words from database
-    const storedData = localStorage.getItem("word-polarity-database");
-    const database = storedData ? JSON.parse(storedData) : [];
-    
-    // Get word-template pairs that haven't been used
-    const availableWordTemplates: WordSuggestion[] = [];
-    
-    database.forEach((entry: WordEntry) => {
-      // Skip words without templates
-      if (!entry.templates || entry.templates.length === 0) {
-        return;
-      }
-      
-      // Check each template for this word
-      entry.templates.forEach((template, index) => {
-        const processedTemplate = template.replace(/\$\{[^}]*\}/g, entry.word);
-        
-        // If this specific template hasn't been used, add it as an option
-        if (!usedTemplates.includes(processedTemplate)) {
-          // Create a truly unique ID by combining word, template index, and timestamp
-          const uniqueId = `${entry.word}-${index}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-          
-          availableWordTemplates.push({
-            word: entry.word,
-            templateIndex: index,
-            uniqueId
-          });
-        }
-      });
-    });
-    
-    // Randomly select up to 5 word-template pairs
-    const randomSuggestions = availableWordTemplates
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 5);
-    
-    setTimeout(() => {
-      setSuggestions(randomSuggestions);
-      setSelectedSuggestion(null);
-      setIsRefreshing(false);
-    }, 300);
-  };
-
-  // Generate suggestions only when the component mounts or templates change
-  useEffect(() => {
-    loadInitialSuggestions();
-    
-    // Listen for database updates
-    const handleDatabaseUpdate = () => {
-      loadInitialSuggestions();
-    };
-    
-    window.addEventListener('word-database-updated', handleDatabaseUpdate);
-    
-    return () => {
-      window.removeEventListener('word-database-updated', handleDatabaseUpdate);
-    };
-  }, [usedTemplates]);
 
   // Load the word database from localStorage
   const loadWordDatabase = () => {
@@ -179,33 +85,19 @@ const WordSuggestions = ({
     }
   };
 
-  // Generate an encouraging sentence with the selected word
-  const generateEncouragingSentence = (suggestion: WordSuggestion): string => {
-    const { word, templateIndex } = suggestion;
-    
-    // Find the word entry in the database
-    const wordEntry = wordDatabase.find(entry => entry.word === word);
-    
-    if (!wordEntry || !wordEntry.templates || templateIndex >= wordEntry.templates.length) {
-      // Fallback sentence if word not found in database or template index is invalid
-      return `${word}คือสิ่งที่ทำให้ชีวิตมีความหมาย`;
-    }
-    
-    // Use the specific template for this word
-    const template = wordEntry.templates[templateIndex];
-    return template.replace(/\$\{[^}]*\}/g, word);
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Removed the hasUsedToday check as requested
     
-    if (selectedSuggestion) {
-      // Add the selected word to the stream
-      onSelectWord(selectedSuggestion.word);
+    if (selectedWord) {
+      // Find the word entry in the database
+      const wordEntry = wordDatabase.find(entry => entry.word === selectedWord);
+      if (!wordEntry) {
+        console.error("Selected word not found in database");
+        return;
+      }
       
       // Generate encouraging sentence
-      const sentence = generateEncouragingSentence(selectedSuggestion);
+      const sentence = generateEncouragingSentence(selectedWord, wordEntry);
       
       // Get contributor name from localStorage or default to "ไม่ระบุชื่อ"
       const contributor = localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
@@ -225,7 +117,7 @@ const WordSuggestions = ({
       // Add new entry at the beginning
       const updatedEntries = [
         {
-          word: selectedSuggestion.word,
+          word: selectedWord,
           sentence: sentence,
           contributor: contributor,
           timestamp: new Date()
@@ -240,7 +132,7 @@ const WordSuggestions = ({
       const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
         detail: { 
           sentence,
-          word: selectedSuggestion.word,
+          word: selectedWord,
           contributor
         }
       });
@@ -249,55 +141,109 @@ const WordSuggestions = ({
       // Also dispatch billboard updated event
       window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
       
-      // Set the last used date but don't update the hasUsedToday state
+      // Set the last used date
       localStorage.setItem('last-word-used-date', new Date().toISOString());
-      // Removed setHasUsedToday(true) as requested
+      
+      onSelectWord(selectedWord);
       
       toast({
         title: "เพิ่มคำสำเร็จ!",
         description: (
           <div className="mt-2">
-            <p>คำ "<span className="text-[#F97316] font-semibold">{selectedSuggestion.word}</span>" ได้ถูกเพิ่มเข้าสู่ประโยคกำลังใจแล้ว</p>
+            <p>คำ "<span className="text-[#F97316] font-semibold">{selectedWord}</span>" ได้ถูกเพิ่มเข้าสู่ประโยคกำลังใจแล้ว</p>
             <p className="mt-1 font-medium">"{sentence}"</p>
             <p className="mt-2 text-sm text-muted-foreground">คุณสามารถสร้างประโยคกำลังใจได้ทุกเมื่อ</p>
           </div>
         ),
       });
+      
+      // Reset selection after submitting
+      setSelectedWord(undefined);
     }
   };
 
-  const getSelectedSuggestionValue = () => {
-    if (!selectedSuggestion) return "";
-    // Use the uniqueId as the value for the radio group
-    return selectedSuggestion.uniqueId;
-  };
-
-  const handleSuggestionChange = (value: string) => {
-    // Find the suggestion by its uniqueId
-    const suggestion = suggestions.find(s => s.uniqueId === value);
-    if (suggestion) {
-      setSelectedSuggestion(suggestion);
+  // Generate encouraging sentence based on word and its entry in database
+  const generateEncouragingSentence = (word: string, wordEntry: WordEntry): string => {
+    // Get templates for this word if available
+    if (wordEntry.templates && wordEntry.templates.length > 0) {
+      // Use the first template for this specific word (or random if multiple)
+      const templateIndex = Math.floor(Math.random() * wordEntry.templates.length);
+      // Replace any ${word} placeholders with the actual word
+      return wordEntry.templates[templateIndex].replace(/\$\{[^}]*\}/g, word);
     }
+    
+    // Default templates based on polarity
+    const positiveTemplates = [
+      `การมี${word}ในชีวิตทำให้เรารู้สึกดีขึ้น`,
+      `${word}คือสิ่งที่เราทุกคนต้องการ`,
+      `${word}จะทำให้เราเข้มแข็งขึ้น`,
+      `อย่าลืมที่จะ${word}ทุกวัน`,
+      `${word}คือพลังใจที่เราสร้างได้`,
+    ];
+    
+    const neutralTemplates = [
+      `${word}เป็นส่วนหนึ่งของชีวิตที่เราต้องเรียนรู้`,
+      `${word}และความพยายามจะนำไปสู่ความสำเร็จ`,
+      `${word}จะทำให้เราเข้าใจตัวเองมากขึ้น`,
+      `ทุกคนมี${word}ในแบบของตัวเอง`,
+      `${word}เป็นสิ่งที่ทำให้ชีวิตมีความหมาย`,
+    ];
+    
+    const negativeTemplates = [
+      `แม้จะมี${word} แต่เราจะผ่านมันไปได้`,
+      `${word}เป็นบทเรียนที่ทำให้เราเติบโต`,
+      `อย่าให้${word}มาหยุดความฝันของเรา`,
+      `${word}จะกลายเป็นแรงผลักดันให้เราไปต่อ`,
+      `เราจะเปลี่ยน${word}ให้เป็นพลัง`,
+    ];
+    
+    const templates = wordEntry.polarity === "positive" ? positiveTemplates : 
+                      wordEntry.polarity === "neutral" ? neutralTemplates : 
+                      negativeTemplates;
+    
+    // Randomly select a template
+    const randomIndex = Math.floor(Math.random() * templates.length);
+    return templates[randomIndex];
   };
 
-  const getTemplatePreview = (word: string, templateIndex: number): string => {
+  // Get template preview for the UniqueValueSelector
+  const getTemplatePreview = (word: string): string => {
     // Find the word entry in the database
     const wordEntry = wordDatabase.find(entry => entry.word === word);
     
-    if (!wordEntry || !wordEntry.templates || templateIndex >= wordEntry.templates.length) {
+    if (!wordEntry || !wordEntry.templates || wordEntry.templates.length === 0) {
       return word;
     }
     
-    // Get the template and replace placeholders with the word
-    const template = wordEntry.templates[templateIndex];
+    // Get the first template and replace placeholders with the word
+    const template = wordEntry.templates[0];
     const preview = template.replace(/\$\{[^}]*\}/g, word);
     
-    // Truncate if too long
-    if (preview.length > 40) {
-      return preview.substring(0, 37) + '...';
-    }
-    
     return preview;
+  };
+
+  // Filter words from the database - limit to 6 and remove those already used
+  const getAvailableWords = () => {
+    // Start with all words from the database
+    const allWords = wordDatabase.map(entry => ({
+      value: entry.word,
+      text: entry.word,
+    }));
+    
+    // Filter out words without templates
+    const wordsWithTemplates = allWords.filter(word => {
+      const entry = wordDatabase.find(w => w.word === word.value);
+      return entry && entry.templates && entry.templates.length > 0;
+    });
+    
+    // Sort randomly and limit to 6 items
+    return wordsWithTemplates
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 6);
+  };
+
+  const handleWordSelect = (option: {value: string, text: string} | undefined) => {
+    setSelectedWord(option?.value);
   };
 
   return (
@@ -307,7 +253,13 @@ const WordSuggestions = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={loadInitialSuggestions}
+          onClick={() => {
+            setIsRefreshing(true);
+            // Force re-rendering to get new words
+            setTimeout(() => {
+              setIsRefreshing(false);
+            }, 300);
+          }}
           type="button"
           disabled={isRefreshing}
           className="group transition-all duration-300 hover:bg-primary hover:text-white"
@@ -318,48 +270,24 @@ const WordSuggestions = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <RadioGroup
-          value={getSelectedSuggestionValue()}
-          onValueChange={handleSuggestionChange}
-          className="space-y-2"
-        >
-          {suggestions.length > 0 ? (
-            suggestions.map((suggestion, index) => (
-              <div 
-                key={suggestion.uniqueId} 
-                className="flex items-center space-x-2 p-2 rounded-md transition-all duration-300 hover:bg-muted cursor-pointer"
-                style={{ 
-                  animationDelay: `${index * 100}ms`,
-                  animation: isRefreshing ? "none" : "fadeIn 0.5s ease-out forwards" 
-                }}
-                onClick={() => handleSuggestionChange(suggestion.uniqueId)}
-              >
-                <RadioGroupItem 
-                  value={suggestion.uniqueId} 
-                  id={`word-${suggestion.uniqueId}`} 
-                  className="transition-all duration-300"
-                />
-                <Label 
-                  htmlFor={`word-${suggestion.uniqueId}`} 
-                  className="font-medium cursor-pointer w-full flex flex-col"
-                >
-                  <span className="text-[#F97316] font-semibold">{suggestion.word}</span>
-                  <span className="text-xs text-muted-foreground mt-1">
-                    {getTemplatePreview(suggestion.word, suggestion.templateIndex)}
-                  </span>
-                </Label>
-              </div>
-            ))
-          ) : (
-            <div className="text-center p-4 text-muted-foreground">
-              {isRefreshing ? 'กำลังโหลด...' : 'ไม่พบคำแนะนำที่ยังไม่ได้ใช้ กรุณาเพิ่มคำใหม่ในหน้าจัดการคำ'}
-            </div>
-          )}
-        </RadioGroup>
+        {wordDatabase.length > 0 ? (
+          <UniqueValueSelector
+            title="เลือกคำจากคลัง"
+            options={getAvailableWords()}
+            selected={selectedWord ? { value: selectedWord, text: selectedWord } : undefined}
+            onSelect={handleWordSelect}
+            usedValues={usedWords}
+            className="animation-fade-in"
+          />
+        ) : (
+          <div className="text-center p-4 text-muted-foreground">
+            {isRefreshing ? 'กำลังโหลด...' : 'ไม่พบคำในคลัง กรุณาเพิ่มคำใหม่ในหน้าจัดการคำ'}
+          </div>
+        )}
 
         <Button
           type="submit"
-          disabled={!selectedSuggestion}
+          disabled={!selectedWord}
           className="w-full transition-all duration-300 hover:scale-105"
         >
           ใช้คำนี้
