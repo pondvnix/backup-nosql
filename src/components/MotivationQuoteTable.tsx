@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -34,8 +33,22 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
     
     // ตรวจสอบและกำหนดค่า score ที่ถูกต้องตามมาตรฐาน
     const normalizedQuotes = filteredQuotes.map(quote => {
-      // ถ้ามีค่า score อยู่แล้ว ให้ใช้ค่านั้น
-      if (quote.score !== undefined) return quote;
+      // ถ้ามีค่า score อยู่แล้ว ให้ตรวจสอบว่าสอดคล้องกับ polarity หรือไม่
+      if (quote.score !== undefined) {
+        // ถ้ามี polarity ให้ตรวจสอบความสอดคล้อง
+        if (quote.polarity) {
+          const expectedScore = 
+            quote.polarity === 'positive' ? 1 : 
+            quote.polarity === 'negative' ? -1 : 0;
+          
+          // ถ้า score ไม่สอดคล้องกับ polarity ให้ใช้ค่าตามมาตรฐานแทน
+          if (quote.score !== expectedScore) {
+            return { ...quote, score: expectedScore };
+          }
+        }
+        
+        return quote;
+      }
       
       // ถ้าไม่มี score แต่มี polarity ให้กำหนดค่า score ตามมาตรฐาน
       if (quote.polarity) {

@@ -6,9 +6,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Leaderboard from "@/components/Leaderboard";
 import StatsDashboard from "@/components/StatsDashboard";
 import MoodReport from "@/components/MoodReport";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-import { Smile, Meh, Frown } from "lucide-react";
 import MotivationQuoteTable from "@/components/MotivationQuoteTable";
 
 interface MotivationalSentence {
@@ -47,8 +44,22 @@ const LeaderboardPage = () => {
   // ตรวจสอบและกำหนดค่า score ตามมาตรฐาน (positive=1, neutral=0, negative=-1)
   const normalizeScoreByPolarity = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     return sentences.map(sentence => {
-      // ถ้ามีค่า score อยู่แล้ว ให้ใช้ค่านั้น
-      if (sentence.score !== undefined) return sentence;
+      // ถ้ามีค่า score อยู่แล้ว ให้ใช้ค่านั้น แต่ต้องตรวจสอบว่าสอดคล้องกับ polarity หรือไม่
+      if (sentence.score !== undefined) {
+        // ตรวจสอบความสอดคล้องกับ polarity ถ้ามี
+        if (sentence.polarity) {
+          const expectedScore = 
+            sentence.polarity === 'positive' ? 1 : 
+            sentence.polarity === 'negative' ? -1 : 0;
+          
+          // ถ้า score ไม่สอดคล้องกับ polarity ให้ใช้ค่าตามมาตรฐานแทน
+          if (sentence.score !== expectedScore) {
+            return { ...sentence, score: expectedScore };
+          }
+        }
+        
+        return sentence;
+      }
       
       // ถ้าไม่มี score แต่มี polarity ให้กำหนดค่า score ตามมาตรฐาน
       if (sentence.polarity) {
@@ -116,18 +127,31 @@ const LeaderboardPage = () => {
   // Convert MotivationalSentence to the Quote format expected by MotivationQuoteTable
   const convertSentencesToQuotes = (sentences: MotivationalSentence[]) => {
     return sentences.map(sentence => {
-      // ตรวจสอบว่ามีค่า score หรือไม่ ถ้าไม่มีให้ใช้ค่า polarity มากำหนด
-      const score = sentence.score !== undefined ? sentence.score : 
-                  sentence.polarity === 'positive' ? 1 :
-                  sentence.polarity === 'negative' ? -1 : 0;
+      // กำหนดค่า score ตามมาตรฐาน
+      let score = 0;
+      
+      // ถ้ามี score ให้ใช้ค่านั้น หากไม่มีให้คำนวณจาก polarity
+      if (sentence.score !== undefined) {
+        score = sentence.score;
+      } else if (sentence.polarity) {
+        score = sentence.polarity === 'positive' ? 1 :
+                sentence.polarity === 'negative' ? -1 : 0;
+      }
+      
+      // กำหนดค่า polarity ให้สอดคล้องกับ score
+      let polarity: 'positive' | 'neutral' | 'negative' = 'neutral';
+      if (score > 0) {
+        polarity = 'positive';
+      } else if (score < 0) {
+        polarity = 'negative';
+      }
       
       return {
         text: sentence.sentence,
         date: new Date(sentence.timestamp),
         userId: sentence.contributor || "",
         word: sentence.word,
-        // ตรวจสอบว่ามีค่า polarity หรือไม่ ถ้าไม่มีให้ใช้ค่า score มากำหนด
-        polarity: sentence.polarity || (score > 0 ? 'positive' : score < 0 ? 'negative' : 'neutral'),
+        polarity: polarity,
         score: score
       };
     });
