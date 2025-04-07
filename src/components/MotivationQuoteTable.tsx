@@ -8,6 +8,8 @@ interface Quote {
   date: Date;
   userId: string;
   word?: string;
+  polarity?: 'positive' | 'neutral' | 'negative';
+  score?: number;
 }
 
 interface MotivationQuoteTableProps {
@@ -103,6 +105,18 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
     });
   };
   
+  // Function to get score based on polarity
+  const getScoreFromPolarity = (polarity?: string): number => {
+    switch (polarity) {
+      case 'positive':
+        return 1;
+      case 'negative':
+        return -1;
+      default:
+        return 0; // neutral
+    }
+  };
+  
   return (
     <div className="space-y-4">
       {uniqueQuotes.length > 0 ? (
@@ -114,18 +128,35 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
                   <TableHead>ผู้ให้กำลังใจ</TableHead>
                   <TableHead>คำ</TableHead>
                   <TableHead>ประโยคกำลังใจ</TableHead>
+                  <TableHead>คะแนน</TableHead>
                   <TableHead>วันที่เวลา (GMT+7)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentQuotes.map((quote, index) => (
-                  <TableRow key={`${quote.word}-${quote.text}-${index}`}>
-                    <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
-                    <TableCell className="font-medium text-primary">{quote.word || '-'}</TableCell>
-                    <TableCell>{highlightWord(quote.text, quote.word)}</TableCell>
-                    <TableCell className="text-xs whitespace-nowrap">{formatDate(quote.date)}</TableCell>
-                  </TableRow>
-                ))}
+                {currentQuotes.map((quote) => {
+                  // ใช้ score จากข้อมูล หรือคำนวณจาก polarity ถ้าไม่มี
+                  const score = quote.score !== undefined 
+                    ? quote.score 
+                    : getScoreFromPolarity(quote.polarity);
+                  
+                  return (
+                    <TableRow key={`${quote.word}-${quote.text}-${new Date(quote.date).getTime()}`}>
+                      <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
+                      <TableCell className="font-medium text-primary">{quote.word || '-'}</TableCell>
+                      <TableCell>{highlightWord(quote.text, quote.word)}</TableCell>
+                      <TableCell className={`font-medium ${
+                        score > 0 
+                          ? 'text-green-600' 
+                          : score === 0 
+                            ? 'text-blue-600' 
+                            : 'text-red-600'
+                      }`}>
+                        {score}
+                      </TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">{formatDate(quote.date)}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

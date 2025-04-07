@@ -26,7 +26,7 @@ const LeaderboardPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
-  // กรองข้อมูลซ้ำซ้อน - ปรับปรุงเพื่อให้กรองได้ดีขึ้น
+  // ปรับปรุงวิธีการกรองข้อมูลซ้ำซ้อนโดยใช้ Map เพื่อเก็บข้อมูลล่าสุดของแต่ละประโยค
   const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     const uniqueMap = new Map();
     
@@ -34,10 +34,9 @@ const LeaderboardPage = () => {
       // สร้าง unique key จากข้อมูลหลัก
       const uniqueKey = `${sentence.word}-${sentence.sentence}`;
       
-      // ถ้ายังไม่มีใน map หรือเป็นข้อมูลใหม่กว่า (timestamp มากกว่า) ให้เก็บไว้
+      // เก็บข้อมูลล่าสุดของแต่ละประโยค (ตามวันที่)
       if (!uniqueMap.has(uniqueKey) || 
-          new Date(sentence.timestamp).getTime() > 
-          new Date(uniqueMap.get(uniqueKey).timestamp).getTime()) {
+          new Date(sentence.timestamp).getTime() > new Date(uniqueMap.get(uniqueKey).timestamp).getTime()) {
         uniqueMap.set(uniqueKey, sentence);
       }
     });
@@ -134,6 +133,18 @@ const LeaderboardPage = () => {
     });
   };
   
+  // Function to get score based on polarity
+  const getScoreFromPolarity = (polarity?: string): number => {
+    switch (polarity) {
+      case 'positive':
+        return 1;
+      case 'negative':
+        return -1;
+      default:
+        return 0; // neutral
+    }
+  };
+  
   // Pagination logic
   const totalPages = Math.ceil(sentences.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -199,27 +210,34 @@ const LeaderboardPage = () => {
                     </TableHeader>
                     <TableBody>
                       {currentSentences.length > 0 ? (
-                        currentSentences.map((sentence, index) => (
-                          <TableRow 
-                            // ใช้ uniqueKey แทนที่จะใช้ index เพื่อป้องกันการแสดงซ้ำ
-                            key={`${sentence.word}-${sentence.sentence}-${sentence.contributor}-${index}`}
-                          >
-                            <TableCell>{getPolarityIcon(sentence.polarity)}</TableCell>
-                            <TableCell className="font-medium text-primary">{sentence.word || '-'}</TableCell>
-                            <TableCell>{highlightWord(sentence.sentence, sentence.word)}</TableCell>
-                            <TableCell>{sentence.contributor || 'ไม่ระบุชื่อ'}</TableCell>
-                            <TableCell className={`font-medium ${
-                              (sentence.score && sentence.score > 0) 
-                                ? 'text-green-600' 
-                                : (sentence.score === 0) 
-                                  ? 'text-blue-600' 
-                                  : 'text-red-600'
-                            }`}>
-                              {sentence.score !== undefined ? sentence.score : 0}
-                            </TableCell>
-                            <TableCell className="text-xs whitespace-nowrap">{formatDate(sentence.timestamp)}</TableCell>
-                          </TableRow>
-                        ))
+                        currentSentences.map((sentence, index) => {
+                          // ใช้ score จากข้อมูล หรือคำนวณจาก polarity ถ้าไม่มี
+                          const score = sentence.score !== undefined 
+                            ? sentence.score 
+                            : getScoreFromPolarity(sentence.polarity);
+                          
+                          return (
+                            <TableRow 
+                              // ใช้ค่าที่เป็นเอกลักษณ์เป็น key เพื่อป้องกันการแสดงซ้ำ
+                              key={`${sentence.word}-${sentence.sentence}-${new Date(sentence.timestamp).getTime()}`}
+                            >
+                              <TableCell>{getPolarityIcon(sentence.polarity)}</TableCell>
+                              <TableCell className="font-medium text-primary">{sentence.word || '-'}</TableCell>
+                              <TableCell>{highlightWord(sentence.sentence, sentence.word)}</TableCell>
+                              <TableCell>{sentence.contributor || 'ไม่ระบุชื่อ'}</TableCell>
+                              <TableCell className={`font-medium ${
+                                score > 0 
+                                  ? 'text-green-600' 
+                                  : score === 0 
+                                    ? 'text-blue-600' 
+                                    : 'text-red-600'
+                              }`}>
+                                {score}
+                              </TableCell>
+                              <TableCell className="text-xs whitespace-nowrap">{formatDate(sentence.timestamp)}</TableCell>
+                            </TableRow>
+                          );
+                        })
                       ) : (
                         <TableRow>
                           <TableCell colSpan={6} className="text-center py-4">ไม่พบข้อมูลประโยคกำลังใจ</TableCell>
