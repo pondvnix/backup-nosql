@@ -100,9 +100,18 @@ export const generatePositiveWordSuggestions = (
 };
 
 // Helper function to get word polarity
-export const getWordPolarity = (word: string): WordPolarity => {
+export const getWordPolarity = (word: string): { 
+  word: string;
+  polarity: 'positive' | 'neutral' | 'negative';
+  score: number;
+  templates?: string[];
+  database: WordPolarity[]; 
+} => {
   const foundWord = wordPolarityDatabase.find(w => w.word === word);
-  return foundWord || { word, polarity: 'neutral', score: 1 };
+  return {
+    ...(foundWord || { word, polarity: 'neutral', score: 1 }),
+    database: wordPolarityDatabase
+  };
 };
 
 // Calculate Energy Score for a sentence

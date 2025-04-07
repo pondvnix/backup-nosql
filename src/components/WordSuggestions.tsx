@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,7 +45,8 @@ const WordSuggestions = ({
       
       // If no words in database, use default polarity database from utils
       if (wordDatabase.length === 0) {
-        wordDatabase = getWordPolarity("").database || [];
+        const response = getWordPolarity("");
+        wordDatabase = response.database || [];
       }
       
       // Filter out words that are already in existingWords
