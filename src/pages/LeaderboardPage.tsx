@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Leaderboard from "@/components/Leaderboard";
 import StatsDashboard from "@/components/StatsDashboard";
 import MoodReport from "@/components/MoodReport";
-import MotivationQuoteTable from "@/components/MotivationQuoteTable";
 
 interface MotivationalSentence {
   word: string;
@@ -133,55 +132,17 @@ const LeaderboardPage = () => {
     };
   }, []);
 
-  const convertSentencesToQuotes = (sentences: MotivationalSentence[]) => {
-    return sentences.map(sentence => {
-      // ใช้ค่า score จากข้อมูลที่มีการปรับมาตรฐานแล้ว
-      const score = sentence.score !== undefined ? sentence.score : 0;
-      
-      // กำหนด polarity ตาม score เพื่อความสอดคล้อง
-      let polarity: 'positive' | 'neutral' | 'negative';
-      if (score > 0) {
-        polarity = 'positive';
-      } else if (score < 0) {
-        polarity = 'negative';
-      } else {
-        polarity = 'neutral';
-      }
-      
-      return {
-        text: sentence.sentence,
-        date: new Date(sentence.timestamp),
-        userId: sentence.contributor || "",
-        word: sentence.word,
-        polarity: polarity,
-        score: score
-      };
-    });
-  };
-
   return (
     <Layout>
       <div className="container mx-auto py-8">
         <h1 className="text-3xl font-bold mb-6 text-center">อันดับและสถิติ</h1>
         
-        <Tabs defaultValue="datatable" className="w-full">
-          <TabsList className="grid grid-cols-4 mb-6">
-            <TabsTrigger value="datatable">ตารางข้อมูล</TabsTrigger>
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid grid-cols-3 mb-6">
             <TabsTrigger value="overview">ภาพรวม</TabsTrigger>
             <TabsTrigger value="stats">รายงานละเอียด</TabsTrigger>
             <TabsTrigger value="moods">บันทึกตามความรู้สึก</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="datatable" className="space-y-6 animate-fade-in">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-center">ตารางประโยคกำลังใจ</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MotivationQuoteTable quotes={convertSentencesToQuotes(sentences)} showAllUsers={true} />
-              </CardContent>
-            </Card>
-          </TabsContent>
           
           <TabsContent value="overview" className="space-y-6 animate-fade-in">
             <Leaderboard 

@@ -13,8 +13,6 @@ import Leaderboard from "@/components/Leaderboard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { analyzeSentence } from "@/utils/sentenceAnalysis";
-import MotivationQuoteTable from "@/components/MotivationQuoteTable";
-import WordPolarityLog from "@/components/WordPolarityLog";
 
 const Index = () => {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
@@ -68,47 +66,6 @@ const Index = () => {
     }
   }, [selectedWords]);
 
-  // Fetch motivational sentences for the table
-  const fetchSentences = () => {
-    try {
-      const storedSentences = localStorage.getItem('motivation-sentences');
-      if (storedSentences) {
-        const parsedSentences = JSON.parse(storedSentences);
-        
-        // Normalize scores for consistency
-        return parsedSentences.map((sentence: any) => {
-          // If score exists, use it; otherwise derive from polarity
-          const score = sentence.score !== undefined ? sentence.score :
-                        sentence.polarity === 'positive' ? 1 :
-                        sentence.polarity === 'negative' ? -1 : 0;
-          
-          // Ensure polarity matches score
-          let polarity: 'positive' | 'neutral' | 'negative';
-          if (score > 0) {
-            polarity = 'positive';
-          } else if (score < 0) {
-            polarity = 'negative';
-          } else {
-            polarity = 'neutral';
-          }
-                  
-          return {
-            text: sentence.sentence,
-            date: new Date(sentence.timestamp),
-            userId: sentence.contributor,
-            word: sentence.word,
-            polarity: polarity,
-            score: score
-          };
-        });
-      }
-      return [];
-    } catch (error) {
-      console.error("Error fetching sentences:", error);
-      return [];
-    }
-  };
-
   const handleAddWord = (word: string, contributor: string, template?: string) => {
     setIsLoading(true);
     
@@ -140,23 +97,6 @@ const Index = () => {
       setIsLoading(false);
     }
   };
-
-  // Fetch words for WordPolarityLog
-  const fetchWords = () => {
-    try {
-      const storedWords = localStorage.getItem('encouragement-words');
-      if (storedWords) {
-        return JSON.parse(storedWords);
-      }
-      return [];
-    } catch (error) {
-      console.error("Error fetching words:", error);
-      return [];
-    }
-  };
-
-  const words = fetchWords();
-  const sentences = fetchSentences();
 
   return (
     <div className="min-h-screen bg-gray-50 pb-16 md:pb-0">
@@ -243,30 +183,6 @@ const Index = () => {
                 <Leaderboard refreshTrigger={refreshTrigger} />
               </div>
             </div>
-          </div>
-          
-          <div className="space-y-6">
-            <Card className="mb-8 hover:shadow-lg transition-all duration-300 animate-fade-in">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <span>บันทึกคำตามความรู้สึก</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <WordPolarityLog words={words} />
-              </CardContent>
-            </Card>
-
-            <Card className="mb-8 hover:shadow-lg transition-all duration-300 animate-fade-in">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <span>ประวัติประโยคกำลังใจทั้งหมด</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MotivationQuoteTable quotes={sentences} showAllUsers={true} />
-              </CardContent>
-            </Card>
           </div>
         </div>
       </Container>

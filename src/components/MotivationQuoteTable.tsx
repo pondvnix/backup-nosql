@@ -81,6 +81,14 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     });
   };
   
+  // Clean template text by removing sentiment markers
+  const cleanTemplateText = (text: string): string => {
+    return text
+      .replace(/\$\{บวก\}/g, '')
+      .replace(/\$\{กลาง\}/g, '')
+      .replace(/\$\{ลบ\}/g, '');
+  };
+  
   // Get sentiment from template
   const getSentimentFromTemplate = (template?: string): 'positive' | 'neutral' | 'negative' => {
     if (!template) return 'neutral';
@@ -143,9 +151,12 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   
   // Highlight word in sentence
   const highlightWord = (sentence: string, word?: string): React.ReactNode => {
-    if (!sentence || !word) return sentence;
+    if (!sentence || !word) return cleanTemplateText(sentence);
     
-    const parts = sentence.split(new RegExp(`(${word})`, 'gi'));
+    // First clean the sentence from template markers
+    const cleanedSentence = cleanTemplateText(sentence);
+    
+    const parts = cleanedSentence.split(new RegExp(`(${word})`, 'gi'));
     
     return parts.map((part, index) => {
       if (part.toLowerCase() === word.toLowerCase()) {
@@ -196,7 +207,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
                       </TableCell>
                     )}
                     <TableCell className="font-medium">
-                      {quote.word ? highlightWord(quote.text, quote.word) : quote.text}
+                      {quote.word ? highlightWord(quote.text, quote.word) : cleanTemplateText(quote.text)}
                     </TableCell>
                     {showAllUsers && (
                       <TableCell className="text-xs">{formatDate(quote.date)}</TableCell>

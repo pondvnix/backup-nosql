@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getContributorStats } from "@/utils/wordModeration";
@@ -71,10 +72,21 @@ const analyzeSentencesByTemplate = (sentences: MotivationalSentence[]): Motivati
   });
 };
 
+// Clean text by removing sentiment markers
+const cleanText = (text: string): string => {
+  return text
+    .replace(/\$\{บวก\}/g, '')
+    .replace(/\$\{กลาง\}/g, '')
+    .replace(/\$\{ลบ\}/g, '');
+};
+
 const highlightWord = (sentence: string, word: string): React.ReactNode => {
-  if (!sentence || !word) return sentence;
+  if (!sentence || !word) return cleanText(sentence);
   
-  const parts = sentence.split(new RegExp(`(${word})`, 'gi'));
+  // First clean the sentence from template markers
+  const cleanedSentence = cleanText(sentence);
+  
+  const parts = cleanedSentence.split(new RegExp(`(${word})`, 'gi'));
   
   return parts.map((part, index) => {
     if (part.toLowerCase() === word.toLowerCase()) {
@@ -173,10 +185,13 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
       else if (score < 0) negativeSentences++;
       else neutralSentences++;
       
-      if (sentence.sentence && sentence.sentence.length > longestSentence.length) {
+      // Clean the sentence before measuring length
+      const cleanedSentence = cleanText(sentence.sentence);
+      
+      if (cleanedSentence && cleanedSentence.length > longestSentence.length) {
         longestSentence = {
-          text: sentence.sentence,
-          length: sentence.sentence.length,
+          text: cleanedSentence,
+          length: cleanedSentence.length,
           contributor: sentence.contributor || 'Anonymous'
         };
       }
