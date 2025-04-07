@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { RefreshCw, PlusCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge"; 
+import { RefreshCw, PlusCircle, Smile, Meh, Frown } from "lucide-react";
 import { getWordPolarity } from "@/utils/sentenceAnalysis";
+import { extractSentimentFromTemplate } from "@/utils/sentimentConsistency";
+import { cn } from "@/lib/utils";
 
 interface WordSuggestionsProps {
   existingWords?: string[];
@@ -19,6 +22,7 @@ interface WordTemplateOption {
   polarity: 'positive' | 'neutral' | 'negative';
   template?: string;
   displayText: string;
+  sentiment?: 'positive' | 'neutral' | 'negative'; // Template sentiment
 }
 
 const WordSuggestions = ({
@@ -129,16 +133,21 @@ const WordSuggestions = ({
             return;
           }
           
+          // Extract sentiment from template
+          const { sentiment } = extractSentimentFromTemplate(template);
+          
           // Create a preview of the template by replacing ${word} with the actual word
           const templatePreview = template
             .replace(new RegExp(`\\$\\{${wordItem.word}\\}`, 'g'), wordItem.word)
+            .replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '') // Remove sentiment markers
             .substring(0, 35) + (template.length > 35 ? '...' : '');
           
           options.push({
             word: wordItem.word,
             polarity: wordItem.polarity,
             template: template,
-            displayText: `${wordItem.word} - ${templatePreview}`
+            displayText: `${wordItem.word} - ${templatePreview}`,
+            sentiment: sentiment
           });
         });
       } else if (!showMultipleTemplates) {
@@ -200,10 +209,9 @@ const WordSuggestions = ({
         // Generate the actual sentence for this word and template
         let sentenceText = "";
         if (selectedItem.template) {
-          sentenceText = selectedItem.template.replace(
-            new RegExp(`\\$\\{${selectedItem.word}\\}`, 'g'), 
-            selectedItem.word
-          );
+          sentenceText = selectedItem.template
+            .replace(new RegExp(`\\$\\{${selectedItem.word}\\}`, 'g'), selectedItem.word)
+            .replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, ''); // Remove sentiment markers for display
         }
         
         // Get contributor name from localStorage
@@ -225,7 +233,8 @@ const WordSuggestions = ({
             sentence: sentenceText, 
             word: selectedItem.word,
             contributor: contributor,
-            template: selectedItem.template
+            template: selectedItem.template,
+            sentiment: selectedItem.sentiment
           }
         });
         window.dispatchEvent(sentenceEvent);
@@ -242,12 +251,20 @@ const WordSuggestions = ({
   const storeSentenceInDatabase = (word: string, sentence: string, contributor: string, template?: string) => {
     if (!sentence) return;
     
+    // Extract sentiment from template if available
+    let sentiment;
+    if (template) {
+      const sentimentInfo = extractSentimentFromTemplate(template);
+      sentiment = sentimentInfo.sentiment;
+    }
+    
     const newEntry = {
       sentence,
       word,
       contributor: contributor || 'ไม่ระบุชื่อ',
       timestamp: new Date(),
-      template
+      template,
+      sentiment
     };
     
     let existingEntries = [];
@@ -293,6 +310,20 @@ const WordSuggestions = ({
         return 'กลาง';
     }
   };
+  
+  // Get sentiment icon based on sentiment value
+  const getSentimentIcon = (sentiment?: 'positive' | 'neutral' | 'negative') => {
+    switch (sentiment) {
+      case 'positive':
+        return <Smile className="h-3 w-3 mr-1" />;
+      case 'negative':
+        return <Frown className="h-3 w-3 mr-1" />;
+      case 'neutral':
+        return <Meh className="h-3 w-3 mr-1" />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <Card className="w-full">
@@ -320,6 +351,10 @@ const WordSuggestions = ({
             >
               {wordTemplateOptions.map((option) => {
                 const optionId = `${option.word}_${option.template || 'default'}`;
+                // Determine badge variant based on sentiment
+                const badgeVariant = option.sentiment === 'positive' ? 'success' : 
+                                    option.sentiment === 'negative' ? 'destructive' : 'secondary';
+                
                 return (
                   <div 
                     key={optionId}
@@ -337,9 +372,18 @@ const WordSuggestions = ({
                       <span className="font-medium">
                         {option.displayText}
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded-full border ${getPolarityClass(option.polarity)}`}>
-                        {getPolarityText(option.polarity)}
-                      </span>
+                      <div className="flex gap-1">
+                        {option.sentiment && (
+                          <Badge variant={badgeVariant} className="flex items-center text-xs">
+                            {getSentimentIcon(option.sentiment)}
+                            {option.sentiment === 'positive' ? 'บวก' : 
+                             option.sentiment === 'negative' ? 'ลบ' : 'กลาง'}
+                          </Badge>
+                        )}
+                        <span className={`text-xs px-2 py-1 rounded-full border ${getPolarityClass(option.polarity)}`}>
+                          คำ{getPolarityText(option.polarity)}
+                        </span>
+                      </div>
                     </Label>
                   </div>
                 );

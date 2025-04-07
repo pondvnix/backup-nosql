@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { wordPolarityDatabase } from "@/utils/sentenceAnalysis";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Smile, Meh, Frown } from "lucide-react";
+import { extractSentimentFromTemplate } from "@/utils/sentimentConsistency";
 
 interface MotivationalSentenceProps {
   selectedWords: string[];
@@ -19,6 +21,7 @@ const MotivationalSentence = ({
   sentence = ""
 }: MotivationalSentenceProps) => {
   const [displaySentence, setDisplaySentence] = useState<string>("");
+  const [sentimentType, setSentimentType] = useState<'positive' | 'neutral' | 'negative'>('positive');
   const [generatedSentences, setGeneratedSentences] = useState<{word: string, sentence: string, contributor?: string, template?: string}[]>([]);
   const [showSentence, setShowSentence] = useState(shouldDisplay);
   const [usedWordTemplates, setUsedWordTemplates] = useState<Set<string>>(new Set());
@@ -97,6 +100,11 @@ const MotivationalSentence = ({
         setDisplaySentence(event.detail.sentence);
         setShowSentence(true);
         
+        // Track the sentiment type if available
+        if (event.detail.sentiment) {
+          setSentimentType(event.detail.sentiment);
+        }
+        
         // Track the used word-template combination
         if (event.detail.word && event.detail.template) {
           setUsedWordTemplates(prev => {
@@ -155,11 +163,23 @@ const MotivationalSentence = ({
       // If there are unused templates, pick one randomly
       if (unusedTemplates.length > 0) {
         const randomIndex = Math.floor(Math.random() * unusedTemplates.length);
-        return unusedTemplates[randomIndex].replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+        const selectedTemplate = unusedTemplates[randomIndex];
+        
+        // Extract sentiment from the template
+        const { sentiment } = extractSentimentFromTemplate(selectedTemplate);
+        setSentimentType(sentiment);
+        
+        return selectedTemplate.replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '')
+          .replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
       }
       
       // If all templates are used, fall back to the first template
-      return wordEntry.templates[0].replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+      const firstTemplate = wordEntry.templates[0];
+      const { sentiment } = extractSentimentFromTemplate(firstTemplate);
+      setSentimentType(sentiment);
+      
+      return firstTemplate.replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '')
+        .replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
     }
     
     // Default templates based on polarity
@@ -248,7 +268,12 @@ const MotivationalSentence = ({
       
       if (template) {
         // Use the provided template to generate the sentence
-        sentence = template.replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+        // Extract sentiment from the template
+        const { sentiment, text } = extractSentimentFromTemplate(template);
+        setSentimentType(sentiment);
+        
+        // Replace word placeholder with actual word
+        sentence = text.replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
       } else {
         // Get the sentence from the generated sentences or generate a new one
         const sentenceEntry = generatedSentences.find(s => s.word === word);
@@ -261,13 +286,14 @@ const MotivationalSentence = ({
       // Get contributor name from localStorage or use provided value or default
       const contributorName = contributor || localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
       
-      // Dispatch event so other components can listen - include contributor info
+      // Dispatch event so other components can listen - include contributor and sentiment info
       const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
         detail: { 
           sentence: sentence, 
           word,
           contributor: contributorName,
-          template
+          template,
+          sentiment: sentimentType
         }
       });
       window.dispatchEvent(sentenceEvent);
@@ -282,7 +308,35 @@ const MotivationalSentence = ({
       // Clean up
       delete (window as any).showMotivationalSentence;
     };
-  }, [generatedSentences, toast]);
+  }, [generatedSentences, toast, sentimentType]);
+
+  // Get sentiment icon based on sentiment type
+  const getSentimentIcon = () => {
+    switch (sentimentType) {
+      case 'positive':
+        return <Smile className="h-4 w-4 text-green-500" />;
+      case 'negative':
+        return <Frown className="h-4 w-4 text-red-500" />;
+      case 'neutral':
+        return <Meh className="h-4 w-4 text-blue-500" />;
+      default:
+        return null;
+    }
+  };
+
+  // Get badge variant based on sentiment type
+  const getSentimentBadgeVariant = () => {
+    switch (sentimentType) {
+      case 'positive':
+        return 'success';
+      case 'negative':
+        return 'destructive';
+      case 'neutral':
+        return 'secondary';
+      default:
+        return 'secondary';
+    }
+  };
 
   return (
     <Card className="mb-4 hover:shadow-md transition-all duration-300">
@@ -290,6 +344,16 @@ const MotivationalSentence = ({
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-5 w-5 text-orange-500" />
           <h3 className="text-lg font-medium">ประโยคให้กำลังใจ</h3>
+          
+          {showSentence && displaySentence && (
+            <Badge variant={getSentimentBadgeVariant()} className="flex items-center gap-1 ml-auto">
+              {getSentimentIcon()}
+              <span>
+                {sentimentType === 'positive' ? 'เชิงบวก' : 
+                 sentimentType === 'negative' ? 'เชิงลบ' : 'กลาง'}
+              </span>
+            </Badge>
+          )}
         </div>
         
         {showSentence && displaySentence ? (

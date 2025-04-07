@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -37,6 +36,7 @@ import {
   stringToTemplateObjects
 } from "../utils/wordModeration";
 import { getWordPolarity } from "../utils/sentenceAnalysis";
+import { extractSentimentFromTemplate } from "../utils/sentimentConsistency";
 
 interface WordEntry {
   word: string;
@@ -61,7 +61,6 @@ const ManagementPage = () => {
   const [templateErrorMessage, setTemplateErrorMessage] = useState("");
   const [templateSentiment, setTemplateSentiment] = useState<TemplateSentiment>('positive');
 
-  // Load all words
   useEffect(() => {
     const loadWords = () => {
       try {
@@ -77,7 +76,6 @@ const ManagementPage = () => {
     
     loadWords();
     
-    // Listen for updates from other components
     window.addEventListener('word-database-updated', loadWords);
     
     return () => {
@@ -87,14 +85,11 @@ const ManagementPage = () => {
 
   const addWord = () => {
     if (word.trim()) {
-      // Add word to database - now allowing duplicates
       const score = wordPolarity === 'positive' ? 1 : wordPolarity === 'negative' ? -1 : 0;
       addWordToDatabase(word.trim(), wordPolarity, score);
       
-      // Clear input
       setWord("");
       
-      // Reload words
       const updatedWords = [...allWords, { word: word.trim(), polarity: wordPolarity, score }];
       setAllWords(updatedWords);
       
@@ -117,7 +112,6 @@ const ManagementPage = () => {
     setHasTemplateError(false);
     setTemplateErrorMessage("");
     
-    // Set template text from word if it exists - join with commas
     if (word.templates && word.templates.length > 0) {
       const templates = stringToTemplateObjects(word.templates);
       const templateLines = templates.map(t => {
@@ -129,7 +123,6 @@ const ManagementPage = () => {
       });
       setTemplateText(templateLines.join(',\n'));
       
-      // Set default template sentiment from the first template
       if (templates.length > 0) {
         setTemplateSentiment(templates[0].sentiment);
       }
@@ -154,15 +147,12 @@ const ManagementPage = () => {
   const confirmEdit = () => {
     if (!currentEditWord) return;
 
-    // Process template text
     const templates = parseTemplates(templateText);
     
-    // Check for duplicate templates
     if (!checkTemplates(templates)) {
       return;
     }
     
-    // Update polarity in database
     updateWordPolarity(
       currentEditWord.word,
       currentEditWord.polarity,
@@ -170,7 +160,6 @@ const ManagementPage = () => {
       templates
     );
     
-    // Update state
     const updatedWords = allWords.map(w => {
       if (w.word === currentEditWord.word) {
         return { 
@@ -240,12 +229,10 @@ const ManagementPage = () => {
     }
   };
 
-  // Track textarea cursor position
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setTemplateText(e.target.value);
     setCursorPosition(e.target.selectionStart);
     
-    // Validate templates as user types
     const templates = parseTemplates(e.target.value);
     checkTemplates(templates);
   };
@@ -256,7 +243,6 @@ const ManagementPage = () => {
     const startPos = textareaRef.selectionStart || 0;
     const endPos = textareaRef.selectionEnd || 0;
     
-    // Insert ${word} at cursor position
     const newText = 
       templateText.substring(0, startPos) + 
       `\${${word}}` + 
@@ -264,7 +250,6 @@ const ManagementPage = () => {
     
     setTemplateText(newText);
     
-    // Set cursor position after inserted variable
     setTimeout(() => {
       if (textareaRef) {
         const newCursorPos = startPos + `\${${word}}`.length;
@@ -280,7 +265,6 @@ const ManagementPage = () => {
     const startPos = textareaRef.selectionStart || 0;
     const endPos = textareaRef.selectionEnd || 0;
     
-    // Insert sentiment placeholder at cursor position
     const placeholder = 
       sentiment === 'positive' ? '${บวก}' :
       sentiment === 'negative' ? '${ลบ}' :
@@ -293,7 +277,6 @@ const ManagementPage = () => {
     
     setTemplateText(newText);
     
-    // Set cursor position after inserted placeholder
     setTimeout(() => {
       if (textareaRef) {
         const newCursorPos = startPos + placeholder.length;
@@ -303,29 +286,6 @@ const ManagementPage = () => {
     }, 0);
   };
 
-  // Group words by their base name (without suffixes)
-  const getGroupedWords = () => {
-    const wordGroups: Record<string, WordEntry[]> = {};
-
-    allWords.forEach(wordEntry => {
-      // Extract base word (without suffix)
-      const baseWord = wordEntry.word.replace(/-\d+$/, '');
-      
-      if (!wordGroups[baseWord]) {
-        wordGroups[baseWord] = [];
-      }
-      
-      wordGroups[baseWord].push(wordEntry);
-    });
-
-    // Sort each group by word name
-    Object.keys(wordGroups).forEach(baseWord => {
-      wordGroups[baseWord].sort((a, b) => a.word.localeCompare(b.word));
-    });
-
-    return wordGroups;
-  };
-  
   const getSentimentInfo = (template: string): { text: string, sentiment: TemplateSentiment } => {
     if (template.startsWith('${บวก}')) {
       return { text: template.replace('${บวก}', ''), sentiment: 'positive' };
@@ -347,14 +307,12 @@ const ManagementPage = () => {
       <div className="container max-w-4xl py-6 space-y-8 pb-24 md:pb-12">
         <h1 className="text-3xl font-bold text-center mb-6">จัดการระบบ</h1>
         
-        {/* Unified Card for Word Management and Templates */}
         <Card>
           <CardHeader>
             <CardTitle>การจัดการคำและแม่แบบประโยค</CardTitle>
             <CardDescription>เพิ่ม แก้ไข หรือลบคำและแม่แบบประโยคในระบบ</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Word Addition Form */}
             <div className="border rounded-md p-4 bg-secondary/30">
               <h3 className="font-medium mb-3">เพิ่มคำใหม่</h3>
               <div className="space-y-4">
@@ -420,7 +378,6 @@ const ManagementPage = () => {
               </div>
             </div>
             
-            {/* Word List */}
             <div className="space-y-4">
               <h3 className="font-medium">คำทั้งหมดในระบบ ({allWords.length} คำ)</h3>
               
@@ -544,7 +501,6 @@ const ManagementPage = () => {
         
         <ClearDataButtons />
         
-        {/* Edit Word Dialog */}
         <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
@@ -729,7 +685,6 @@ const ManagementPage = () => {
           </DialogContent>
         </Dialog>
         
-        {/* Delete Confirmation Dialog */}
         <Dialog open={deleteConfirmModalOpen} onOpenChange={setDeleteConfirmModalOpen}>
           <DialogContent>
             <DialogHeader>
@@ -756,4 +711,3 @@ const ManagementPage = () => {
 };
 
 export default ManagementPage;
-

@@ -1,4 +1,3 @@
-
 export interface SentimentItem {
   word?: string;
   sentence?: string;
