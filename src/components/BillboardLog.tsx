@@ -5,7 +5,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import { Search, Smile, Meh, Frown } from "lucide-react";
-import { getWordPolarity } from "@/utils/sentenceAnalysis";
 import { Badge } from "@/components/ui/badge";
 
 interface BillboardEntry {
@@ -23,6 +22,30 @@ const BillboardLog = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const entriesPerPage = 30;
   
+  // ฟังก์ชั่นดึงข้อมูล polarity และ score จากฐานข้อมูล
+  const getWordPolarityFromDatabase = (word: string): { polarity: 'positive' | 'neutral' | 'negative', score: number } => {
+    let database: any[] = [];
+    try {
+      const storedData = localStorage.getItem("word-polarity-database");
+      if (storedData) {
+        database = JSON.parse(storedData);
+      }
+    } catch (e) {
+      console.error("Error loading word database:", e);
+    }
+    
+    const foundWord = database.find(w => w.word === word);
+    if (foundWord) {
+      return {
+        polarity: foundWord.polarity,
+        score: foundWord.score
+      };
+    }
+    
+    // ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
+    return { polarity: 'neutral', score: 0 };
+  };
+  
   // Load all motivational sentences
   useEffect(() => {
     const fetchAllSentences = () => {
@@ -35,7 +58,7 @@ const BillboardLog = () => {
           // Process sentences to add polarity and score
           const processedSentences = sentences.map((sentence: BillboardEntry) => {
             // Get the polarity and score from the database if not already provided
-            const wordInfo = getWordPolarity(sentence.word);
+            const wordInfo = getWordPolarityFromDatabase(sentence.word);
             
             // If sentence already has explicit score, use it
             const score = sentence.score !== undefined ? sentence.score : wordInfo.score;
@@ -278,7 +301,7 @@ const BillboardLog = () => {
                     <PaginationItem>
                       <PaginationNext 
                         onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        className={currentPage === currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
                   </PaginationContent>

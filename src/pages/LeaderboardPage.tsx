@@ -36,40 +36,54 @@ const LeaderboardPage = () => {
     
     return Array.from(uniqueMap.values());
   };
+
+  // ฟังก์ชั่นดึงข้อมูล polarity และ score จากฐานข้อมูล
+  const getWordPolarityFromDatabase = (word: string): { polarity: 'positive' | 'neutral' | 'negative', score: number } => {
+    let database: any[] = [];
+    try {
+      const storedData = localStorage.getItem("word-polarity-database");
+      if (storedData) {
+        database = JSON.parse(storedData);
+      }
+    } catch (e) {
+      console.error("Error loading word database:", e);
+    }
+    
+    const foundWord = database.find(w => w.word === word);
+    if (foundWord) {
+      return {
+        polarity: foundWord.polarity,
+        score: foundWord.score
+      };
+    }
+    
+    // ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
+    return { polarity: 'neutral', score: 0 };
+  };
   
   const normalizeScoreByPolarity = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     return sentences.map(sentence => {
-      // If score is already defined, ensure it matches polarity (or fix polarity to match score)
-      if (sentence.score !== undefined) {
-        let expectedPolarity: 'positive' | 'neutral' | 'negative';
-        
-        if (sentence.score > 0) {
-          expectedPolarity = 'positive';
-        } else if (sentence.score < 0) {
-          expectedPolarity = 'negative';
-        } else {
-          expectedPolarity = 'neutral';
-        }
-        
-        // If polarity doesn't match score, update polarity to match score
-        if (sentence.polarity !== expectedPolarity) {
-          return { ...sentence, polarity: expectedPolarity };
-        }
-        
-        return sentence;
+      // หาข้อมูลจากฐานข้อมูล
+      const wordInfo = getWordPolarityFromDatabase(sentence.word);
+      
+      // ถ้ามี score อยู่แล้วให้ใช้ค่าที่มี แต่ถ้าไม่มีให้ใช้จากฐานข้อมูล
+      const score = sentence.score !== undefined ? sentence.score : wordInfo.score;
+      
+      // กำหนด polarity ตาม score เพื่อความสอดคล้อง
+      let polarity: 'positive' | 'neutral' | 'negative';
+      if (score > 0) {
+        polarity = 'positive';
+      } else if (score < 0) {
+        polarity = 'negative';
+      } else {
+        polarity = 'neutral';
       }
       
-      // If no score but polarity exists, derive score from polarity
-      if (sentence.polarity) {
-        const normalizedScore = 
-          sentence.polarity === 'positive' ? 1 : 
-          sentence.polarity === 'negative' ? -1 : 0;
-        
-        return { ...sentence, score: normalizedScore };
-      }
-      
-      // Default to neutral if neither score nor polarity exists
-      return { ...sentence, polarity: 'neutral', score: 0 };
+      return { 
+        ...sentence, 
+        polarity: polarity,
+        score: score 
+      };
     });
   };
   
@@ -121,10 +135,10 @@ const LeaderboardPage = () => {
 
   const convertSentencesToQuotes = (sentences: MotivationalSentence[]) => {
     return sentences.map(sentence => {
-      // Use the score property directly if available
+      // ใช้ค่า score จากข้อมูลที่มีการปรับมาตรฐานแล้ว
       const score = sentence.score !== undefined ? sentence.score : 0;
       
-      // Derive polarity from score (for consistency)
+      // กำหนด polarity ตาม score เพื่อความสอดคล้อง
       let polarity: 'positive' | 'neutral' | 'negative';
       if (score > 0) {
         polarity = 'positive';
