@@ -37,7 +37,6 @@ const ManagementPage = () => {
   const [newPolarity, setNewPolarity] = useState<'positive' | 'neutral' | 'negative'>('neutral');
   const [newScore, setNewScore] = useState<number>(0);
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const [name, setName] = useState('');
   const [newTemplate, setNewTemplate] = useState('');
   const [selectedWordForTemplate, setSelectedWordForTemplate] = useState('');
   const [templateWord, setTemplateWord] = useState('');
@@ -50,11 +49,6 @@ const ManagementPage = () => {
   // Load words from localStorage
   useEffect(() => {
     try {
-      const savedName = localStorage.getItem('contributor-name');
-      if (savedName) {
-        setName(savedName);
-      }
-      
       const savedWords = localStorage.getItem('word-polarity-database');
       if (savedWords) {
         const parsedWords = JSON.parse(savedWords);
@@ -116,17 +110,6 @@ const ManagementPage = () => {
     }
   }, []);
 
-  // Save contributor name
-  const saveName = () => {
-    if (name.trim()) {
-      localStorage.setItem('contributor-name', name);
-      toast({
-        title: 'บันทึกชื่อสำเร็จ',
-        description: `ชื่อ "${name}" ถูกบันทึกเรียบร้อยแล้ว`,
-      });
-    }
-  };
-
   // Handle adding new word
   const handleAddWord = () => {
     if (!newWord.trim()) {
@@ -149,14 +132,15 @@ const ManagementPage = () => {
       return;
     }
     
-    // Create new word object
-    const normalizedScore = newPolarity === 'positive' ? 1 : 
-                           newPolarity === 'negative' ? -1 : 0;
+    // Create new word object with standardized score values
+    let wordScore = 0;
+    if (newPolarity === 'positive') wordScore = 1;
+    else if (newPolarity === 'negative') wordScore = -1;
     
     const newWordObj: Word = {
       word: newWord,
       polarity: newPolarity,
-      score: newScore !== undefined ? newScore : normalizedScore,
+      score: wordScore,
       templates: []
     };
     
@@ -257,13 +241,18 @@ const ManagementPage = () => {
   const handleUpdateWord = () => {
     if (!wordToEdit) return;
     
+    // Standardize the score based on polarity
+    let updatedScore = 0;
+    if (editedPolarity === 'positive') updatedScore = 1;
+    else if (editedPolarity === 'negative') updatedScore = -1;
+    
     // Update the word
     const updatedWords = words.map(word => {
       if (word.word === wordToEdit.word) {
         return {
           ...word,
           polarity: editedPolarity,
-          score: editedScore
+          score: updatedScore
         };
       }
       return word;
@@ -331,7 +320,7 @@ const ManagementPage = () => {
   const handlePolarityChange = (polarity: 'positive' | 'neutral' | 'negative') => {
     setNewPolarity(polarity);
     
-    // Set default score based on polarity
+    // Set standard score based on polarity
     if (polarity === 'positive') {
       setNewScore(1);
     } else if (polarity === 'negative') {
@@ -345,7 +334,7 @@ const ManagementPage = () => {
   const handleEditedPolarityChange = (polarity: 'positive' | 'neutral' | 'negative') => {
     setEditedPolarity(polarity);
     
-    // Set default score based on polarity
+    // Set standard score based on polarity
     if (polarity === 'positive') {
       setEditedScore(1);
     } else if (polarity === 'negative') {
@@ -362,49 +351,12 @@ const ManagementPage = () => {
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">จัดการคำและประโยคกำลังใจ</h1>
         
-        <Tabs defaultValue="name" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="name">ชื่อผู้ให้กำลังใจ</TabsTrigger>
+        <Tabs defaultValue="words" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="words">คำ</TabsTrigger>
             <TabsTrigger value="templates">แม่แบบประโยค</TabsTrigger>
             <TabsTrigger value="settings">ตั้งค่า</TabsTrigger>
           </TabsList>
-          
-          {/* Name Tab */}
-          <TabsContent value="name" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>ตั้งค่าชื่อผู้ให้กำลังใจ</CardTitle>
-                <CardDescription>
-                  ชื่อของคุณจะปรากฏเมื่อคุณสร้างประโยคให้กำลังใจ
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">ชื่อผู้ให้กำลังใจ</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="ระบุชื่อของคุณ"
-                  />
-                </div>
-                <Button onClick={saveName}>บันทึกชื่อ</Button>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>ประวัติประโยคกำลังใจ</CardTitle>
-                <CardDescription>
-                  ประโยคกำลังใจทั้งหมดที่เคยสร้าง
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <MotivationQuoteTable quotes={quotes} showAllUsers={true} />
-              </CardContent>
-            </Card>
-          </TabsContent>
           
           {/* Words Tab */}
           <TabsContent value="words" className="space-y-4">
@@ -426,34 +378,21 @@ const ManagementPage = () => {
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="polarity">ความรู้สึก</Label>
-                    <Select 
-                      value={newPolarity} 
-                      onValueChange={(value) => handlePolarityChange(value as 'positive' | 'neutral' | 'negative')}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="เลือกความรู้สึก" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="positive">เชิงบวก</SelectItem>
-                        <SelectItem value="neutral">กลาง</SelectItem>
-                        <SelectItem value="negative">เชิงลบ</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="score">คะแนน</Label>
-                    <Input
-                      id="score"
-                      type="number"
-                      value={newScore}
-                      onChange={(e) => setNewScore(Number(e.target.value))}
-                      placeholder="คะแนน"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="polarity">ความรู้สึก</Label>
+                  <Select 
+                    value={newPolarity} 
+                    onValueChange={(value) => handlePolarityChange(value as 'positive' | 'neutral' | 'negative')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="เลือกความรู้สึก" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="positive">เชิงบวก (+1)</SelectItem>
+                      <SelectItem value="neutral">กลาง (0)</SelectItem>
+                      <SelectItem value="negative">เชิงลบ (-1)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <Button onClick={handleAddWord}>เพิ่มคำ</Button>
@@ -519,34 +458,21 @@ const ManagementPage = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-polarity">ความรู้สึก</Label>
-                        <Select 
-                          value={editedPolarity} 
-                          onValueChange={(value) => handleEditedPolarityChange(value as 'positive' | 'neutral' | 'negative')}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="เลือกความรู้สึก" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="positive">เชิงบวก</SelectItem>
-                            <SelectItem value="neutral">กลาง</SelectItem>
-                            <SelectItem value="negative">เชิงลบ</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-score">คะแนน</Label>
-                        <Input
-                          id="edit-score"
-                          type="number"
-                          value={editedScore}
-                          onChange={(e) => setEditedScore(Number(e.target.value))}
-                          placeholder="คะแนน"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-polarity">ความรู้สึก</Label>
+                      <Select 
+                        value={editedPolarity} 
+                        onValueChange={(value) => handleEditedPolarityChange(value as 'positive' | 'neutral' | 'negative')}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="เลือกความรู้สึก" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="positive">เชิงบวก (+1)</SelectItem>
+                          <SelectItem value="neutral">กลาง (0)</SelectItem>
+                          <SelectItem value="negative">เชิงลบ (-1)</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     <div className="flex justify-end gap-2 mt-4">
@@ -643,7 +569,83 @@ const ManagementPage = () => {
           
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-4">
-            <ClearDataButtons />
+            <Card>
+              <CardHeader>
+                <CardTitle>ประวัติประโยคกำลังใจ</CardTitle>
+                <CardDescription>
+                  ประโยคกำลังใจทั้งหมดที่เคยสร้าง
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MotivationQuoteTable quotes={quotes} showAllUsers={true} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>ล้างข้อมูล</CardTitle>
+                <CardDescription>
+                  ล้างข้อมูลต่างๆ ในระบบ
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ClearDataButtons />
+                <div className="mt-4">
+                  <h3 className="font-medium mb-2">ล้าง Cache และ Cookies</h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        localStorage.clear();
+                        toast({
+                          title: "ล้าง Local Storage สำเร็จ",
+                          description: "ข้อมูลใน Local Storage ทั้งหมดถูกล้างแล้ว",
+                        });
+                      }}
+                    >
+                      ล้าง Local Storage
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        document.cookie.split(";").forEach(function(c) {
+                          document.cookie = c.replace(/^ +/, "").replace(/=.*/, 
+                            "=;expires=" + new Date().toUTCString() + ";path=/");
+                        });
+                        toast({
+                          title: "ล้าง Cookies สำเร็จ",
+                          description: "Cookies ทั้งหมดถูกล้างแล้ว",
+                        });
+                      }}
+                    >
+                      ล้าง Cookies
+                    </Button>
+                    
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => {
+                        if (window.confirm("คุณแน่ใจหรือไม่ที่จะล้างข้อมูลทั้งหมด (Cache และ Cookies)?")) {
+                          localStorage.clear();
+                          document.cookie.split(";").forEach(function(c) {
+                            document.cookie = c.replace(/^ +/, "").replace(/=.*/, 
+                              "=;expires=" + new Date().toUTCString() + ";path=/");
+                          });
+                          toast({
+                            title: "ล้างข้อมูลทั้งหมดสำเร็จ",
+                            description: "Cache และ Cookies ทั้งหมดถูกล้างแล้ว โปรดรีเฟรชหน้าเว็บ",
+                          });
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 1500);
+                        }
+                      }}
+                    >
+                      ล้างข้อมูลทั้งหมด
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
