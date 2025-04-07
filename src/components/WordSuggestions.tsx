@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge"; 
 import { RefreshCw, PlusCircle, Smile, Meh, Frown } from "lucide-react";
-import { getWordPolarity } from "@/utils/sentenceAnalysis";
+import { getWordPolarity, wordPolarityDatabase } from "@/utils/sentenceAnalysis";
 import { extractSentimentFromTemplate } from "@/utils/sentimentConsistency";
 import { cn } from "@/lib/utils";
 

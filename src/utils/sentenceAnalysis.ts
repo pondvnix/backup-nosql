@@ -47,11 +47,14 @@ export const getWordPolarity = (word: string): { polarity: 'positive' | 'neutral
 };
 
 // Function to analyze a sentence for sentiment
-export const analyzeSentence = (sentence: string): { 
+export const analyzeSentence = (sentence: string | string[]): { 
   polarity: 'positive' | 'neutral' | 'negative'; 
   score: number;
 } => {
-  const result = analyzeSentimentFromSentence(sentence);
+  // Convert array of words to a single string if needed
+  const sentenceText = Array.isArray(sentence) ? sentence.join(' ') : sentence;
+  
+  const result = analyzeSentimentFromSentence(sentenceText);
   return {
     polarity: result.sentiment,
     score: result.score
