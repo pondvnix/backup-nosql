@@ -1,3 +1,4 @@
+
 // Word Polarity Database (Simple version)
 // In a production app, this would be loaded from a database
 export interface WordPolarity {
@@ -43,16 +44,16 @@ export const wordPolarityDatabase: WordPolarity[] = [
   { word: "ทุกคน", polarity: "neutral", score: 1, templates: [] },
   
   // Negative words
-  { word: "หมดหวัง", polarity: "negative", score: -3, templates: [] },
-  { word: "ล้มเหลว", polarity: "negative", score: -3, templates: [] },
-  { word: "เศร้า", polarity: "negative", score: -3, templates: [] },
-  { word: "เจ็บปวด", polarity: "negative", score: -3, templates: [] },
-  { word: "ท้อแท้", polarity: "negative", score: -3, templates: [] },
-  { word: "พัง", polarity: "negative", score: -3, templates: [] },
-  { word: "สิ้นหวัง", polarity: "negative", score: -3, templates: [] },
-  { word: "แย่", polarity: "negative", score: -3, templates: [] },
-  { word: "ผิดหวัง", polarity: "negative", score: -3, templates: [] },
-  { word: "เลวร้าย", polarity: "negative", score: -3, templates: [] },
+  { word: "หมดหวัง", polarity: "negative", score: -1, templates: [] },
+  { word: "ล้มเหลว", polarity: "negative", score: -1, templates: [] },
+  { word: "เศร้า", polarity: "negative", score: -1, templates: [] },
+  { word: "เจ็บปวด", polarity: "negative", score: -1, templates: [] },
+  { word: "ท้อแท้", polarity: "negative", score: -1, templates: [] },
+  { word: "พัง", polarity: "negative", score: -1, templates: [] },
+  { word: "สิ้นหวัง", polarity: "negative", score: -1, templates: [] },
+  { word: "แย่", polarity: "negative", score: -1, templates: [] },
+  { word: "ผิดหวัง", polarity: "negative", score: -1, templates: [] },
+  { word: "เลวร้าย", polarity: "negative", score: -1, templates: [] },
 ];
 */
 
@@ -133,18 +134,18 @@ export const calculateEnergySentenceScore = (words: string[]): {
     
     if (polarity === 'positive') {
       positiveCount++;
-      totalScore += score;
+      totalScore += 2; // Updated to reflect the standard scoring (positive = 2)
     } else if (polarity === 'neutral') {
       neutralCount++;
-      totalScore += score;
+      totalScore += 1; // Updated to reflect the standard scoring (neutral = 1)
     } else {
       negativeCount++;
-      totalScore += score;
+      totalScore += -1; // Updated to reflect the standard scoring (negative = -1)
     }
   });
   
-  // Calculate score using the formula from PRD
-  const energyScore = (positiveCount * 2) + (neutralCount * 1) - (negativeCount * 3);
+  // Calculate score using the updated formula
+  const energyScore = (positiveCount * 2) + (neutralCount * 1) + (negativeCount * -1);
   
   // Calculate confidence (simplified version)
   // Higher proportion of classified words = higher confidence
