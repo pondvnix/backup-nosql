@@ -9,6 +9,7 @@ import { RefreshCw, PlusCircle, Smile, Meh, Frown } from "lucide-react";
 import { getWordPolarity, wordPolarityDatabase } from "@/utils/sentenceAnalysis";
 import { extractSentimentFromTemplate } from "@/utils/sentimentConsistency";
 import { cn } from "@/lib/utils";
+import { isTemplateUsed, markTemplateAsUsed } from "@/utils/templateTracker";
 
 interface WordSuggestionsProps {
   existingWords?: string[];
@@ -56,6 +57,9 @@ const WordSuggestions = ({
           if (item.word && item.sentence) {
             usedCombinations.add(`${item.word}_${item.sentence}`);
           }
+          if (item.word && item.template) {
+            markTemplateAsUsed(item.word, item.template);
+          }
         });
         setUsedWordTemplates(usedCombinations);
       }
@@ -88,7 +92,7 @@ const WordSuggestions = ({
         }
         
         const hasUnusedTemplates = wordEntry.templates.some((template: string) => {
-          return !usedWordTemplates.has(`${wordEntry.word}_${template}`);
+          return !isTemplateUsed(wordEntry.word, template);
         });
         
         return hasUnusedTemplates;
@@ -114,7 +118,7 @@ const WordSuggestions = ({
     words.forEach(wordItem => {
       if (wordItem.templates && wordItem.templates.length > 0 && showMultipleTemplates) {
         wordItem.templates.forEach(template => {
-          if (usedWordTemplates.has(`${wordItem.word}_${template}`)) {
+          if (isTemplateUsed(wordItem.word, template)) {
             return;
           }
           
@@ -155,10 +159,12 @@ const WordSuggestions = ({
     
     window.addEventListener('motivationalSentenceGenerated', handleMotivationalSentenceGenerated);
     window.addEventListener('motivation-billboard-updated', loadUsedWordsAndTemplates);
+    window.addEventListener('template-usage-updated', loadUsedWordsAndTemplates);
     
     return () => {
       window.removeEventListener('motivationalSentenceGenerated', handleMotivationalSentenceGenerated);
       window.removeEventListener('motivation-billboard-updated', loadUsedWordsAndTemplates);
+      window.removeEventListener('template-usage-updated', loadUsedWordsAndTemplates);
     };
   }, []);
   
@@ -187,6 +193,9 @@ const WordSuggestions = ({
           sentenceText = selectedItem.template
             .replace(new RegExp(`\\$\\{${selectedItem.word}\\}`, 'g'), selectedItem.word)
             .replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '');
+            
+          // Mark this template as used
+          markTemplateAsUsed(selectedItem.word, selectedItem.template);
         }
         
         const contributor = localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
@@ -253,6 +262,7 @@ const WordSuggestions = ({
     localStorage.setItem('motivation-sentences', JSON.stringify(updatedEntries));
     
     window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
+    window.dispatchEvent(new CustomEvent('template-usage-updated'));
   };
 
   const getPolarityClass = (polarity: string) => {
@@ -345,7 +355,7 @@ const WordSuggestions = ({
                           </Badge>
                         )}
                         <span className={`text-xs px-2 py-1 rounded-full border ${getPolarityClass(option.polarity)}`}>
-                          คำ{getPolarityText(option.polarity)}
+                          {getPolarityText(option.polarity)}
                         </span>
                       </div>
                     </Label>

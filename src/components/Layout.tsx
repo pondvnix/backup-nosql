@@ -7,11 +7,13 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-16 md:pb-0">
       <Header />
-      <main className="flex-1">{children}</main>
+      <main className="container mx-auto py-8">
+        {children}
+      </main>
       <MobileFooter />
     </div>
   );
