@@ -299,6 +299,22 @@ const ManagementPage = () => {
     return { text: template, sentiment: 'positive' };
   };
 
+  const getGroupedWords = (): Record<string, WordEntry[]> => {
+    const groups: Record<string, WordEntry[]> = {};
+    
+    allWords.forEach(word => {
+      const baseWord = word.word.replace(/-\d+$/, '');
+      
+      if (!groups[baseWord]) {
+        groups[baseWord] = [];
+      }
+      
+      groups[baseWord].push(word);
+    });
+    
+    return groups;
+  };
+
   const wordGroups = getGroupedWords();
   const groupedWordKeys = Object.keys(wordGroups).sort();
 
