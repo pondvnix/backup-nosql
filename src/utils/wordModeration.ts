@@ -1,4 +1,5 @@
 
+
 // List of possible inappropriate words to filter (this is a simple example)
 // In a production environment, this should be on the server side
 const forbiddenWords = [
@@ -96,3 +97,4 @@ export const getContributorStats = (): Record<string, number> => {
     return {};
   }
 };
+

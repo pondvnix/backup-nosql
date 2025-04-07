@@ -1,3 +1,4 @@
+
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -125,7 +126,7 @@ const ManagementPage = () => {
       database.push({
         word: word,
         polarity: "positive",
-        score: 2,
+        score: 1,
         templates: [template]
       });
     }
@@ -433,8 +434,8 @@ const ManagementPage = () => {
                     const polarity = formData.get('polarity') as string;
                     const template = formData.get('template') as string;
                     
-                    const score = polarity === 'positive' ? 2 : 
-                                polarity === 'neutral' ? 1 : -1;
+                    const score = polarity === 'positive' ? 1 : 
+                                polarity === 'neutral' ? 0 : -1;
                     
                     if (!text || !template || !polarity) {
                       toast({
@@ -520,8 +521,8 @@ const ManagementPage = () => {
                           required
                         >
                           <option value="">เลือกความรู้สึก</option>
-                          <option value="positive">เชิงบวก (2 คะแนน)</option>
-                          <option value="neutral">กลาง (1 คะแนน)</option>
+                          <option value="positive">เชิงบวก (1 คะแนน)</option>
+                          <option value="neutral">กลาง (0 คะแนน)</option>
                           <option value="negative">เชิงลบ (-1 คะแนน)</option>
                         </select>
                       </div>
