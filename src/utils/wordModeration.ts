@@ -132,6 +132,28 @@ export const getContributorStats = (): Record<string, number> => {
 };
 
 /**
+ * Checks if template array contains duplicate templates
+ * @param templates Array of templates to check
+ * @returns boolean indicating if duplicates exist
+ */
+export const hasDuplicateTemplates = (templates: string[]): boolean => {
+  const uniqueTemplates = new Set(templates.map(t => t.trim()).filter(t => t !== ''));
+  return uniqueTemplates.size !== templates.filter(t => t.trim() !== '').length;
+};
+
+/**
+ * Parse a comma-separated template string into an array of templates
+ * @param templateText The template text to parse
+ * @returns Array of individual templates
+ */
+export const parseTemplates = (templateText: string): string[] => {
+  return templateText
+    .split(/[,\n]/)  // Split by commas or newlines
+    .map(t => t.trim())  // Trim whitespace
+    .filter(t => t !== '');  // Remove empty entries
+};
+
+/**
  * Add a word to the word polarity database in localStorage
  * @param word The word to add
  * @param polarity The polarity of the word (positive, neutral, negative)

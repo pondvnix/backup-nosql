@@ -9,11 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Plus, Trash, Edit, ChevronDown, ChevronUp, 
-  Smile, Meh, Frown, Check, AlertTriangle, RefreshCcw
+  Smile, Meh, Frown, Check, AlertTriangle, RefreshCcw,
+  AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +24,13 @@ import ClearDataButtons from "../components/ClearDataButtons";
 import MotivationalSentence from "../components/MotivationalSentence";
 
 // Utils
-import { addWordToDatabase, updateWordPolarity, deleteWord } from "../utils/wordModeration";
+import { 
+  addWordToDatabase, 
+  updateWordPolarity, 
+  deleteWord, 
+  hasDuplicateTemplates,
+  parseTemplates
+} from "../utils/wordModeration";
 import { getWordPolarity } from "../utils/sentenceAnalysis";
 
 interface WordEntry {
@@ -35,8 +42,6 @@ interface WordEntry {
 
 const ManagementPage = () => {
   const { toast } = useToast();
-  const [username, setUsername] = useState("");
-  const [savedUsername, setSavedUsername] = useState("");
   const [word, setWord] = useState("");
   const [wordPolarity, setWordPolarity] = useState<'positive' | 'neutral' | 'negative'>('neutral');
   const [allWords, setAllWords] = useState<WordEntry[]>([]);
@@ -47,15 +52,8 @@ const ManagementPage = () => {
   const [textareaRef, setTextareaRef] = useState<HTMLTextAreaElement | null>(null);
   const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false);
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
-
-  // Load saved username
-  useEffect(() => {
-    const saved = localStorage.getItem("contributor-name");
-    if (saved) {
-      setUsername(saved);
-      setSavedUsername(saved);
-    }
-  }, []);
+  const [hasTemplateError, setHasTemplateError] = useState(false);
+  const [templateErrorMessage, setTemplateErrorMessage] = useState("");
 
   // Load all words
   useEffect(() => {
@@ -81,38 +79,9 @@ const ManagementPage = () => {
     };
   }, []);
 
-  const saveUsername = () => {
-    if (username.trim()) {
-      localStorage.setItem("contributor-name", username.trim());
-      setSavedUsername(username.trim());
-      
-      toast({
-        title: "บันทึกชื่อสำเร็จ",
-        description: `ตั้งชื่อผู้ให้กำลังใจเป็น "${username.trim()}" เรียบร้อยแล้ว`,
-      });
-    } else {
-      toast({
-        title: "กรุณาระบุชื่อ",
-        description: "ชื่อผู้ให้กำลังใจไม่สามารถเป็นค่าว่างได้",
-        variant: "destructive",
-      });
-    }
-  };
-
   const addWord = () => {
     if (word.trim()) {
-      // Check if word already exists
-      const existingWord = allWords.find(w => w.word === word.trim());
-      if (existingWord) {
-        toast({
-          title: "คำนี้มีอยู่แล้ว",
-          description: `คำว่า "${word.trim()}" มีอยู่ในระบบแล้ว`,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Add word to database
+      // Add word to database - now allowing duplicates
       const score = wordPolarity === 'positive' ? 1 : wordPolarity === 'negative' ? -1 : 0;
       addWordToDatabase(word.trim(), wordPolarity, score);
       
@@ -139,22 +108,39 @@ const ManagementPage = () => {
   const editWord = (word: WordEntry) => {
     setCurrentEditWord(word);
     setEditModalOpen(true);
+    setHasTemplateError(false);
+    setTemplateErrorMessage("");
     
-    // Set template text from word if it exists
+    // Set template text from word if it exists - join with commas
     if (word.templates && word.templates.length > 0) {
-      setTemplateText(word.templates.join('\n'));
+      setTemplateText(word.templates.join(',\n'));
     } else {
       setTemplateText('');
     }
+  };
+
+  const checkTemplates = (templates: string[]): boolean => {
+    if (hasDuplicateTemplates(templates)) {
+      setHasTemplateError(true);
+      setTemplateErrorMessage("มีแม่แบบประโยคที่ซ้ำกัน กรุณาตรวจสอบ");
+      return false;
+    }
+    
+    setHasTemplateError(false);
+    setTemplateErrorMessage("");
+    return true;
   };
 
   const confirmEdit = () => {
     if (!currentEditWord) return;
 
     // Process template text
-    const templates = templateText.trim()
-      ? templateText.split('\n').filter(t => t.trim() !== '')
-      : [];
+    const templates = parseTemplates(templateText);
+    
+    // Check for duplicate templates
+    if (!checkTemplates(templates)) {
+      return;
+    }
     
     // Update polarity in database
     updateWordPolarity(
@@ -235,6 +221,10 @@ const ManagementPage = () => {
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setTemplateText(e.target.value);
     setCursorPosition(e.target.selectionStart);
+    
+    // Validate templates as user types
+    const templates = parseTemplates(e.target.value);
+    checkTemplates(templates);
   };
 
   const insertWordVariable = (word: string) => {
@@ -261,38 +251,36 @@ const ManagementPage = () => {
     }, 0);
   };
 
+  // Group words by their base name (without suffixes)
+  const getGroupedWords = () => {
+    const wordGroups: Record<string, WordEntry[]> = {};
+
+    allWords.forEach(wordEntry => {
+      // Extract base word (without suffix)
+      const baseWord = wordEntry.word.replace(/-\d+$/, '');
+      
+      if (!wordGroups[baseWord]) {
+        wordGroups[baseWord] = [];
+      }
+      
+      wordGroups[baseWord].push(wordEntry);
+    });
+
+    // Sort each group by word name
+    Object.keys(wordGroups).forEach(baseWord => {
+      wordGroups[baseWord].sort((a, b) => a.word.localeCompare(b.word));
+    });
+
+    return wordGroups;
+  };
+
+  const wordGroups = getGroupedWords();
+  const groupedWordKeys = Object.keys(wordGroups).sort();
+
   return (
     <Layout>
       <div className="container max-w-4xl py-6 space-y-8 pb-24 md:pb-12">
         <h1 className="text-3xl font-bold text-center mb-6">จัดการระบบ</h1>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>ตั้งค่าผู้ใช้</CardTitle>
-            <CardDescription>ตั้งค่าชื่อผู้ให้กำลังใจ</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="username">ชื่อผู้ให้กำลังใจ</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="username"
-                    placeholder="ชื่อของคุณ"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                  />
-                  <Button onClick={saveUsername}>บันทึกชื่อ</Button>
-                </div>
-                {savedUsername && (
-                  <p className="text-sm text-muted-foreground">
-                    ชื่อปัจจุบัน: <span className="font-medium">{savedUsername}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
         
         {/* Unified Card for Word Management and Templates */}
         <Card>
@@ -384,51 +372,71 @@ const ManagementPage = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {allWords.map((wordEntry, index) => (
-                          <tr key={wordEntry.word} className={index % 2 === 0 ? "bg-secondary/30" : "bg-white"}>
-                            <td className="py-2 px-3 font-medium">{wordEntry.word}</td>
-                            <td className="py-2 px-3">
-                              <div className="flex items-center">
-                                {getPolarityIcon(wordEntry.polarity)}
-                                <span className={`ml-2 ${getPolarityColor(wordEntry.polarity)}`}>
-                                  {wordEntry.polarity === 'positive' ? 'บวก' : 
-                                   wordEntry.polarity === 'negative' ? 'ลบ' : 
-                                   'กลาง'}
+                        {groupedWordKeys.map((baseWord, groupIndex) => {
+                          const wordGroup = wordGroups[baseWord];
+                          const isGrouped = wordGroup.length > 1;
+                          
+                          return wordGroup.map((wordEntry, itemIndex) => (
+                            <tr 
+                              key={wordEntry.word} 
+                              className={cn(
+                                groupIndex % 2 === 0 ? "bg-secondary/30" : "bg-white",
+                                isGrouped && itemIndex > 0 && "border-t border-dashed border-gray-200"
+                              )}
+                            >
+                              <td className="py-2 px-3">
+                                <div className="font-medium flex items-center">
+                                  {isGrouped && itemIndex === 0 && (
+                                    <Badge variant="outline" className="mr-2">
+                                      กลุ่ม
+                                    </Badge>
+                                  )}
+                                  {wordEntry.word}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className="flex items-center">
+                                  {getPolarityIcon(wordEntry.polarity)}
+                                  <span className={`ml-2 ${getPolarityColor(wordEntry.polarity)}`}>
+                                    {wordEntry.polarity === 'positive' ? 'บวก' : 
+                                     wordEntry.polarity === 'negative' ? 'ลบ' : 
+                                     'กลาง'}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-2 px-3">
+                                <span className="text-sm text-muted-foreground">
+                                  {wordEntry.templates && wordEntry.templates.length > 0 
+                                    ? `${wordEntry.templates.length} แม่แบบ` 
+                                    : "ไม่มี"}
                                 </span>
-                              </div>
-                            </td>
-                            <td className="py-2 px-3">
-                              <span className="text-sm text-muted-foreground">
-                                {wordEntry.templates && wordEntry.templates.length > 0 
-                                  ? `${wordEntry.templates.length} แม่แบบ` 
-                                  : "ไม่มี"}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3">
-                              <div className="flex justify-center gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  onClick={() => editWord(wordEntry)}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  onClick={() => {
-                                    setWordToDelete(wordEntry.word);
-                                    setDeleteConfirmModalOpen(true);
-                                  }}
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className="flex justify-center gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost"
+                                    onClick={() => editWord(wordEntry)}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => {
+                                      setWordToDelete(wordEntry.word);
+                                      setDeleteConfirmModalOpen(true);
+                                    }}
+                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ));
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -452,6 +460,9 @@ const ManagementPage = () => {
                 <Edit className="h-5 w-5" />
                 แก้ไขคำ: {currentEditWord?.word}
               </DialogTitle>
+              <DialogDescription>
+                แก้ไขความรู้สึกของคำและแม่แบบประโยค คั่นแม่แบบด้วยเครื่องหมายคอมม่า (,) หรือการขึ้นบรรทัดใหม่
+              </DialogDescription>
             </DialogHeader>
             
             {currentEditWord && (
@@ -506,7 +517,9 @@ const ManagementPage = () => {
                 
                 <div className="grid gap-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="templates">แม่แบบประโยค (แต่ละบรรทัดคือ 1 แม่แบบ)</Label>
+                    <Label htmlFor="templates">
+                      แม่แบบประโยค (คั่นด้วย , หรือขึ้นบรรทัดใหม่)
+                    </Label>
                     <Button
                       variant="outline"
                       size="sm"
@@ -519,15 +532,27 @@ const ManagementPage = () => {
                   </div>
                   <Textarea 
                     id="templates" 
-                    placeholder={`ตัวอย่าง:\n${currentEditWord.word}ทำให้ชีวิตสดใส\nการมี${currentEditWord.word}ทำให้เรามีกำลังใจ`}
+                    placeholder={`ตัวอย่าง:\n${currentEditWord.word}ทำให้ชีวิตสดใส,\nการมี${currentEditWord.word}ทำให้เรามีกำลังใจ`}
                     value={templateText}
                     onChange={handleTextareaChange}
                     rows={6}
                     ref={(ref) => setTextareaRef(ref)}
-                    className="font-mono text-sm"
+                    className={cn(
+                      "font-mono text-sm",
+                      hasTemplateError && "border-red-500 focus-visible:ring-red-500"
+                    )}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    ใช้ ${"{"}คำ{"}"} สำหรับแทรกคำอัตโนมัติ เช่น ${"{" + currentEditWord.word + "}"} จะถูกแทนที่ด้วย {currentEditWord.word}
+                  
+                  {hasTemplateError && (
+                    <div className="text-red-500 text-sm flex items-center gap-2 mt-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {templateErrorMessage}
+                    </div>
+                  )}
+                  
+                  <p className="text-xs text-muted-foreground flex flex-col gap-1">
+                    <span>ใช้ ${"{"}คำ{"}"} สำหรับแทรกคำอัตโนมัติ เช่น ${"{" + currentEditWord.word + "}"} จะถูกแทนที่ด้วย {currentEditWord.word}</span>
+                    <span>ใช้เครื่องหมายคอมม่า (,) หรือการขึ้นบรรทัดใหม่เพื่อแยกแม่แบบประโยคหลายประโยค</span>
                   </p>
                 </div>
               </div>
@@ -535,7 +560,12 @@ const ManagementPage = () => {
             
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditModalOpen(false)}>ยกเลิก</Button>
-              <Button onClick={confirmEdit}>บันทึกการเปลี่ยนแปลง</Button>
+              <Button 
+                onClick={confirmEdit}
+                disabled={hasTemplateError}
+              >
+                บันทึกการเปลี่ยนแปลง
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
