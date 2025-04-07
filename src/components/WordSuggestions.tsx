@@ -1,24 +1,11 @@
 
-import { useState, useEffect, useMemo } from "react";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { UniqueValueSelector } from "@/components/ui/unique-value-selector";
-import { RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent } from "@/components/ui/card";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { RefreshCw, PlusCircle } from "lucide-react";
 import { getWordPolarity } from "@/utils/sentenceAnalysis";
-
-interface WordOption {
-  text: string;
-  value: string;
-  template?: string;
-  preview?: string;
-}
 
 interface WordSuggestionsProps {
   existingWords?: string[];
@@ -31,188 +18,216 @@ const WordSuggestions = ({
   existingWords = [],
   onSelectWord,
   disableAutoRefresh = false,
-  showMultipleTemplates = true, // Default to showing multiple templates
+  showMultipleTemplates = true,
 }: WordSuggestionsProps) => {
-  const [selectedOption, setSelectedOption] = useState<WordOption | undefined>();
-  const [allWordOptions, setAllWordOptions] = useState<WordOption[]>([]);
-  const [refreshCounter, setRefreshCounter] = useState(0);
-  const { toast } = useToast();
+  const [suggestedWords, setSuggestedWords] = useState<Array<{
+    word: string;
+    polarity: 'positive' | 'neutral' | 'negative';
+    templates?: string[];
+  }>>([]);
+  const [selectedWord, setSelectedWord] = useState<string>("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Get all available words with templates
-  const getAvailableWords = () => {
-    try {
-      // Try to get custom word database from localStorage
-      const storedData = localStorage.getItem("word-polarity-database");
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        
-        // Create options for each word and template combination
-        const options: WordOption[] = [];
-        
-        parsedData.forEach((item: any) => {
-          const word = item.word;
-          
-          if (showMultipleTemplates && item.templates && item.templates.length > 0) {
-            // Create an option for each template
-            item.templates.forEach((template: string, index: number) => {
-              // Create a preview of the template by replacing placeholders
-              const preview = template.replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
-              
-              options.push({
-                text: word,
-                value: `${word}-template-${index}`,
-                template: template,
-                preview: preview
-              });
-            });
-          } else {
-            // Just add the word without template specifics
-            options.push({
-              text: word,
-              value: word
-            });
-          }
-        });
-        
-        return options;
+  // Generate a list of suggested words
+  const generateSuggestions = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      // Get word database from localStorage or use default
+      let wordDatabase = [];
+      try {
+        const storedData = localStorage.getItem("word-polarity-database");
+        if (storedData) {
+          wordDatabase = JSON.parse(storedData);
+        }
+      } catch (e) {
+        console.error("Error loading word database:", e);
       }
-    } catch (e) {
-      console.error("Error parsing word database:", e);
-    }
-    
-    return [];
-  };
-
-  // Get a list of random words
-  const getRandomWords = (
-    count: number,
-    allOptions: WordOption[],
-    existingWords: string[]
-  ): WordOption[] => {
-    // Filter out existing words
-    const filteredOptions = allOptions.filter(
-      (option) => !existingWords.includes(option.text)
-    );
-    
-    if (filteredOptions.length === 0) return [];
-    
-    // Shuffle and select random words
-    const shuffled = [...filteredOptions].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count);
-  };
-
-  // Update word options when refreshCounter changes
-  useEffect(() => {
-    const allOptions = getAvailableWords();
-    setAllWordOptions(allOptions);
-    
-    const randomOptions = getRandomWords(6, allOptions, existingWords);
-    
-    if (randomOptions.length > 0) {
-      // Auto-select the first option
-      setSelectedOption(randomOptions[0]);
-    } else {
-      setSelectedOption(undefined);
-    }
-  }, [refreshCounter, existingWords]);
-
-  // Auto-refresh suggestions every 10 seconds if enabled
-  useEffect(() => {
-    if (disableAutoRefresh) return;
-    
-    const intervalId = setInterval(() => {
-      setRefreshCounter((prev) => prev + 1);
-    }, 10000);
-    
-    return () => clearInterval(intervalId);
-  }, [disableAutoRefresh]);
-
-  // Handle refresh button click
-  const handleRefresh = () => {
-    setRefreshCounter((prev) => prev + 1);
-    toast({
-      title: "รีเฟรชคำแนะนำสำเร็จ",
-      description: "แสดงคำแนะนำใหม่จากคลังคำทั้งหมดแล้ว",
-    });
-  };
-
-  // Handle word selection
-  const handleWordSelect = (option: WordOption | undefined) => {
-    setSelectedOption(option);
-  };
-
-  // Handle use this word button click
-  const handleUseWord = () => {
-    if (!selectedOption) return;
-    
-    // Call window.showMotivationalSentence with the selected word and template
-    if (typeof window !== "undefined" && window.showMotivationalSentence) {
-      window.showMotivationalSentence(selectedOption.text, undefined, selectedOption.template);
-    }
-    
-    // Call onSelectWord with the word and template
-    onSelectWord(selectedOption.text, selectedOption.template);
-    
-    toast({
-      title: "เลือกคำสำเร็จ",
-      description: `คำ "${selectedOption.text}" ถูกเลือกแล้ว`,
-    });
-    
-    // Reset selection after use
-    setSelectedOption(undefined);
-    
-    // Refresh suggestions
-    setRefreshCounter((prev) => prev + 1);
-  };
-
-  // Use a function to customize how options are displayed in the selector
-  const renderOptionLabel = (option: WordOption) => {
-    if (option.preview) {
-      return (
-        <div>
-          <div className="font-bold">{option.text}</div>
-          <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-            {option.preview}
-          </div>
-        </div>
+      
+      // If no words in database, use default polarity database from utils
+      if (wordDatabase.length === 0) {
+        wordDatabase = getWordPolarity("").database || [];
+      }
+      
+      // Filter out words that are already in existingWords
+      const filteredWords = wordDatabase.filter(
+        (word: any) => !existingWords.includes(word.word)
       );
+      
+      // Shuffle and take the first few words
+      const shuffled = [...filteredWords].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, 6);
+      
+      setSuggestedWords(selected);
+      setSelectedWord("");
+      setSelectedTemplate("");
+      setIsRefreshing(false);
+    }, 500);
+  };
+
+  // Initialize suggestions on component mount
+  useEffect(() => {
+    generateSuggestions();
+    
+    // Set up auto-refresh timer if not disabled
+    if (!disableAutoRefresh) {
+      const refreshInterval = setInterval(generateSuggestions, 60000);
+      return () => clearInterval(refreshInterval);
     }
-    return option.text;
+  }, [disableAutoRefresh, existingWords]);
+
+  // Handle template selection
+  const handleTemplateSelect = (template: string) => {
+    setSelectedTemplate(template);
+  };
+
+  // Handle word selection from radio group
+  const handleWordSelect = (word: string) => {
+    setSelectedWord(word);
+    
+    // Find templates for the selected word
+    const wordEntry = suggestedWords.find(w => w.word === word);
+    if (wordEntry && wordEntry.templates && wordEntry.templates.length > 0) {
+      setSelectedTemplate(wordEntry.templates[0]);
+    } else {
+      setSelectedTemplate("");
+    }
+  };
+
+  // Handle submit button click
+  const handleSubmit = () => {
+    if (selectedWord) {
+      onSelectWord(selectedWord, selectedTemplate);
+      setSelectedWord("");
+      setSelectedTemplate("");
+      generateSuggestions();
+    }
+  };
+
+  // Get polarity display class
+  const getPolarityClass = (polarity: string) => {
+    switch (polarity) {
+      case 'positive':
+        return 'text-green-600 border-green-200';
+      case 'negative':
+        return 'text-red-600 border-red-200';
+      default:
+        return 'text-blue-600 border-blue-200';
+    }
+  };
+
+  // Get polarity Thai text
+  const getPolarityText = (polarity: string) => {
+    switch (polarity) {
+      case 'positive':
+        return 'เชิงบวก';
+      case 'negative':
+        return 'เชิงลบ';
+      default:
+        return 'กลาง';
+    }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex justify-between items-center">
-          <span>คำแนะนำสำหรับคุณ</span>
+    <Card className="w-full">
+      <CardContent className="p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-md font-medium">คำแนะนำ</h3>
           <Button
             variant="outline"
-            size="icon"
-            onClick={handleRefresh}
-            className="h-8 w-8"
+            size="sm"
+            onClick={generateSuggestions}
+            disabled={isRefreshing}
+            className="gap-1"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="text-xs">สุ่มใหม่</span>
           </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <UniqueValueSelector
-          options={allWordOptions}
-          selected={selectedOption}
-          onSelect={handleWordSelect}
-          title="เลือกคำที่คุณต้องการ"
-          renderOptionLabel={renderOptionLabel}
-        />
+        </div>
+
+        {suggestedWords.length > 0 ? (
+          <div className="space-y-4">
+            <RadioGroup
+              value={selectedWord}
+              onValueChange={handleWordSelect}
+              className="space-y-2"
+            >
+              {suggestedWords.map((suggestion) => (
+                <div 
+                  key={suggestion.word}
+                  className={`flex items-center space-x-2 p-2 rounded-md border ${
+                    selectedWord === suggestion.word 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-gray-200 hover:border-primary/50'
+                  } transition-all duration-300`}
+                >
+                  <RadioGroupItem value={suggestion.word} id={suggestion.word} />
+                  <Label 
+                    htmlFor={suggestion.word} 
+                    className="flex flex-1 justify-between items-center cursor-pointer"
+                  >
+                    <span className="font-medium">{suggestion.word}</span>
+                    <span className={`text-xs px-2 py-1 rounded-full border ${getPolarityClass(suggestion.polarity)}`}>
+                      {getPolarityText(suggestion.polarity)}
+                    </span>
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+            
+            {selectedWord && showMultipleTemplates && (
+              <div className="mt-4 space-y-2">
+                <h4 className="text-sm font-medium">ประโยคตัวอย่าง:</h4>
+                <RadioGroup 
+                  value={selectedTemplate} 
+                  onValueChange={handleTemplateSelect}
+                  className="space-y-2"
+                >
+                  {suggestedWords
+                    .find(w => w.word === selectedWord)?.templates?.map((template, idx) => {
+                      const filledTemplate = template.replace(
+                        new RegExp(`\\$\\{${selectedWord}\\}`, 'g'), 
+                        selectedWord
+                      );
+                      
+                      return (
+                        <div 
+                          key={idx} 
+                          className={`flex items-center space-x-2 p-2 rounded-md border ${
+                            selectedTemplate === template 
+                              ? 'border-primary bg-primary/5' 
+                              : 'border-gray-200 hover:border-primary/50'
+                          } transition-all duration-300`}
+                        >
+                          <RadioGroupItem value={template} id={`template-${idx}`} />
+                          <Label 
+                            htmlFor={`template-${idx}`} 
+                            className="text-sm cursor-pointer"
+                          >
+                            {filledTemplate}
+                          </Label>
+                        </div>
+                      );
+                    }) || []}
+                </RadioGroup>
+              </div>
+            )}
+            
+            <Button 
+              onClick={handleSubmit} 
+              disabled={!selectedWord}
+              className="w-full mt-4 gap-2"
+            >
+              <PlusCircle className="h-4 w-4" />
+              ใช้คำนี้
+            </Button>
+          </div>
+        ) : (
+          <div className="text-center p-4 text-muted-foreground animate-pulse">
+            กำลังโหลดคำแนะนำ...
+          </div>
+        )}
       </CardContent>
-      <CardFooter>
-        <Button
-          onClick={handleUseWord}
-          disabled={!selectedOption}
-          className="w-full"
-        >
-          ใช้คำนี้
-        </Button>
-      </CardFooter>
     </Card>
   );
 };
