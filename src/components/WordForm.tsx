@@ -137,7 +137,8 @@ const WordForm = ({
         sentence: sentence,
         template: template,
         contributor: trimmedContributor,
-        timestamp: new Date()
+        timestamp: new Date(),
+        polarity: wordEntry.polarity
       };
       
       try {
@@ -160,7 +161,8 @@ const WordForm = ({
           sentence,
           word: trimmedWord,
           contributor: trimmedContributor,
-          template
+          template,
+          polarity: wordEntry.polarity
         }
       });
       window.dispatchEvent(sentenceEvent);

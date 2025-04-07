@@ -93,11 +93,28 @@ const TomatoBox = ({ word, contributor, sentence, selectedWords = [] }: TomatoBo
     try {
       setIsRendering(true);
       
+      // Fix: Use safe canvas options to prevent gradient issues
       const canvas = await html2canvas(boxRef.current, {
         scale: 2,
         backgroundColor: null,
         logging: false,
         useCORS: true,
+        allowTaint: true, // Allow cross-origin images
+        onclone: (document, clone) => {
+          // Safe handling for gradients in cloned document
+          const elementsWithGradients = clone.querySelectorAll('[style*="gradient"]');
+          elementsWithGradients.forEach((el) => {
+            if (el instanceof HTMLElement) {
+              // Use solid fallback colors instead of gradients for export
+              const bgColor = window.getComputedStyle(el).backgroundColor;
+              if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') {
+                el.style.background = bgColor;
+              } else {
+                el.style.background = '#f97316'; // Fallback to orange color
+              }
+            }
+          });
+        }
       });
       
       if (navigator.clipboard && navigator.clipboard.write) {
@@ -198,11 +215,28 @@ const TomatoBox = ({ word, contributor, sentence, selectedWords = [] }: TomatoBo
     try {
       setIsRendering(true);
       
+      // Fix: Use safe canvas options to prevent gradient issues
       const canvas = await html2canvas(boxRef.current, {
         scale: 2,
         backgroundColor: null,
         logging: false,
         useCORS: true,
+        allowTaint: true, // Allow cross-origin images
+        onclone: (document, clone) => {
+          // Safe handling for gradients in cloned document
+          const elementsWithGradients = clone.querySelectorAll('[style*="gradient"]');
+          elementsWithGradients.forEach((el) => {
+            if (el instanceof HTMLElement) {
+              // Use solid fallback colors instead of gradients for export
+              const bgColor = window.getComputedStyle(el).backgroundColor;
+              if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') {
+                el.style.background = bgColor;
+              } else {
+                el.style.background = '#f97316'; // Fallback to orange color
+              }
+            }
+          });
+        }
       });
       
       const url = canvas.toDataURL('image/png', 0.9);
@@ -247,11 +281,28 @@ const TomatoBox = ({ word, contributor, sentence, selectedWords = [] }: TomatoBo
     try {
       setIsRendering(true);
       
+      // Fix: Use safe canvas options to prevent gradient issues
       const canvas = await html2canvas(boxRef.current, {
         scale: 2,
         backgroundColor: null,
         logging: false,
         useCORS: true,
+        allowTaint: true, // Allow cross-origin images
+        onclone: (document, clone) => {
+          // Safe handling for gradients in cloned document
+          const elementsWithGradients = clone.querySelectorAll('[style*="gradient"]');
+          elementsWithGradients.forEach((el) => {
+            if (el instanceof HTMLElement) {
+              // Use solid fallback colors instead of gradients for export
+              const bgColor = window.getComputedStyle(el).backgroundColor;
+              if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)') {
+                el.style.background = bgColor;
+              } else {
+                el.style.background = '#f97316'; // Fallback to orange color
+              }
+            }
+          });
+        }
       });
       
       const url = canvas.toDataURL('image/png', 0.9);
@@ -283,12 +334,11 @@ const TomatoBox = ({ word, contributor, sentence, selectedWords = [] }: TomatoBo
           id="tomato-box-image"
           className="relative bg-gradient-to-br from-red-500 to-orange-500 aspect-[2/3] rounded-lg shadow-lg flex flex-col items-center justify-center p-4 mb-4 overflow-hidden"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23e74c3c' /%3E%3Ccircle cx='30' cy='30' r='4' fill='%23c0392b' /%3E%3Ccircle cx='40' cy='25' r='3' fill='%23c0392b' /%3E%3Ccircle cx='55' cy='30' r='3.5' fill='%23c0392b' /%3E%3Ccircle cx='65' cy='40' r='4' fill='%23c0392b' /%3E%3Cpath d='M 50 10 Q 40 10 30 25' stroke='%2327ae60' stroke-width='2' fill='none' /%3E%3C/svg%3E")`,
+            background: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)', // Simplified gradient
             backgroundSize: '120px 120px',
-            backgroundRepeat: 'repeat',
           }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-red-500/90 to-orange-500/90"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-red-500/90 to-orange-500/90" style={{ background: 'rgba(239, 68, 68, 0.9)' }}></div>
           
           <div className="absolute top-0 right-0 w-16 h-16 z-10">
             <svg viewBox="0 0 100 100" className="fill-white/20">
@@ -300,7 +350,7 @@ const TomatoBox = ({ word, contributor, sentence, selectedWords = [] }: TomatoBo
             การ์ดปอนด์
           </div>
           
-          <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-r from-orange-600/40 to-transparent z-10" />
+          <div className="absolute top-0 left-0 w-full h-8 bg-orange-600/40 z-10" />
           
           <div className="bg-white/90 rounded-md p-4 w-4/5 aspect-square flex items-center justify-center shadow-lg transform -rotate-1 z-20 transition-all duration-300 hover:rotate-0 hover:scale-105">
             <div className="text-center">
@@ -320,7 +370,7 @@ const TomatoBox = ({ word, contributor, sentence, selectedWords = [] }: TomatoBo
             <p className="text-xs mt-1">ร่วมกันสร้างกำลังใจ</p>
           </div>
           
-          <div className="absolute bottom-0 left-0 w-full h-20 bg-gradient-to-t from-orange-600/20 to-transparent z-10" />
+          <div className="absolute bottom-0 left-0 w-full h-20 bg-orange-600/20 z-10" />
           <div className="absolute bottom-2 right-2 text-2xs text-white/70 z-10">
             "คำ"ลังใจ
           </div>
