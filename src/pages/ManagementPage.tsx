@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import MobileFooter from "@/components/MobileFooter";
@@ -55,7 +54,6 @@ const ManagementPage = () => {
   const [editedTemplate, setEditedTemplate] = useState('');
   const { toast } = useToast();
 
-  // Load words from localStorage
   useEffect(() => {
     try {
       const savedWords = localStorage.getItem('word-polarity-database');
@@ -63,7 +61,6 @@ const ManagementPage = () => {
         const parsedWords = JSON.parse(savedWords);
         setWords(parsedWords);
         
-        // Extract templates
         const extractedTemplates: Template[] = [];
         parsedWords.forEach((word: Word) => {
           if (word.templates && word.templates.length > 0) {
@@ -84,7 +81,6 @@ const ManagementPage = () => {
         try {
           const parsedQuotes = JSON.parse(savedQuotes);
           
-          // Normalize data structure
           const formattedQuotes: Quote[] = Array.isArray(parsedQuotes) 
             ? parsedQuotes.map((quote: any) => {
                 const normalized = normalizeScoreAndPolarity({
@@ -125,7 +121,6 @@ const ManagementPage = () => {
     }
   }, []);
 
-  // Handle adding new word
   const handleAddWord = () => {
     if (!newWord.trim()) {
       toast({
@@ -136,18 +131,6 @@ const ManagementPage = () => {
       return;
     }
     
-    // Check if word already exists
-    const existingWord = words.find(w => w.word === newWord);
-    if (existingWord) {
-      toast({
-        title: 'คำนี้มีอยู่แล้ว',
-        description: `คำว่า "${newWord}" มีอยู่ในระบบแล้ว`,
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    // Create new word object with standardized score values
     let wordScore = 0;
     if (newPolarity === 'positive') wordScore = 1;
     else if (newPolarity === 'negative') wordScore = -1;
@@ -159,27 +142,22 @@ const ManagementPage = () => {
       templates: []
     };
     
-    // Update state and localStorage
     const updatedWords = [...words, newWordObj];
     setWords(updatedWords);
     localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
     
-    // Notify user
     toast({
       title: 'เพิ่มคำสำเร็จ',
       description: `คำว่า "${newWord}" ถูกเพิ่มเรียบร้อยแล้ว`,
     });
     
-    // Reset form
     setNewWord('');
     setNewPolarity('neutral');
     setNewScore(0);
     
-    // Dispatch event to notify other components
     window.dispatchEvent(new Event('word-database-updated'));
   };
 
-  // Handle adding new template
   const handleAddTemplate = () => {
     if (!templateWord) {
       toast({
@@ -199,7 +177,6 @@ const ManagementPage = () => {
       return;
     }
     
-    // Check if template includes the word
     if (!newTemplate.includes(`\${${templateWord}}`)) {
       toast({
         title: 'แม่แบบประโยคไม่ถูกต้อง',
@@ -209,29 +186,25 @@ const ManagementPage = () => {
       return;
     }
     
-    // Check if template already exists
-    const templateExists = templates.some(t => t.template === newTemplate && t.word === templateWord);
+    const templateExists = templates.some(t => t.template === newTemplate);
     if (templateExists) {
       toast({
         title: 'แม่แบบประโยคนี้มีอยู่แล้ว',
-        description: 'แม่แบบประโยคนี้มีอยู่ในระบบแล้วสำหรับคำนี้',
+        description: 'แม่แบบประโยคนี้มีอยู่ในระบบแล้ว',
         variant: 'destructive',
       });
       return;
     }
     
-    // Create new template object
     const newTemplateObj: Template = {
       id: `${templateWord}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       template: newTemplate,
       word: templateWord
     };
     
-    // Update templates state
     const updatedTemplates = [...templates, newTemplateObj];
     setTemplates(updatedTemplates);
     
-    // Update words state to include template
     const updatedWords = words.map(word => {
       if (word.word === templateWord) {
         const wordTemplates = word.templates || [];
@@ -243,41 +216,33 @@ const ManagementPage = () => {
       return word;
     });
     
-    // Save to localStorage
     setWords(updatedWords);
     localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
     
-    // Notify user
     toast({
       title: 'เพิ่มแม่แบบประโยคสำเร็จ',
       description: `แม่แบบประโยคสำหรับคำว่า "${templateWord}" ถูกเพิ่มเรียบร้อยแล้ว`,
     });
     
-    // Reset form
     setNewTemplate('');
     setTemplateWord('');
     
-    // Dispatch event to notify other components
     window.dispatchEvent(new Event('word-database-updated'));
   };
 
-  // Handle word selection for editing
   const handleSelectWordForEdit = (word: Word) => {
     setWordToEdit(word);
     setEditedPolarity(word.polarity);
     setEditedScore(word.score);
   };
 
-  // Handle updating word
   const handleUpdateWord = () => {
     if (!wordToEdit) return;
     
-    // Standardize the score based on polarity
     let updatedScore = 0;
     if (editedPolarity === 'positive') updatedScore = 1;
     else if (editedPolarity === 'negative') updatedScore = -1;
     
-    // Update the word
     const updatedWords = words.map(word => {
       if (word.word === wordToEdit.word) {
         return {
@@ -292,59 +257,47 @@ const ManagementPage = () => {
     setWords(updatedWords);
     localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
     
-    // Notify user
     toast({
       title: 'แก้ไขคำสำเร็จ',
       description: `คำว่า "${wordToEdit.word}" ถูกแก้ไขเรียบร้อยแล้ว`,
     });
     
-    // Reset form
     setWordToEdit(null);
     setEditedPolarity('neutral');
     setEditedScore(0);
     
-    // Dispatch event to notify other components
     window.dispatchEvent(new Event('word-database-updated'));
   };
 
-  // Handle deleting word
   const handleDeleteWord = (wordToDelete: string) => {
-    // Remove the word
     const updatedWords = words.filter(word => word.word !== wordToDelete);
     
     setWords(updatedWords);
     localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
     
-    // Also remove templates for this word
     const updatedTemplates = templates.filter(template => template.word !== wordToDelete);
     setTemplates(updatedTemplates);
     
-    // Notify user
     toast({
       title: 'ลบคำสำเร็จ',
       description: `คำว่า "${wordToDelete}" ถูกลบเรียบร้อยแล้ว`,
     });
     
-    // Close edit modal if we're deleting the word being edited
     if (wordToEdit && wordToEdit.word === wordToDelete) {
       setWordToEdit(null);
     }
     
-    // Dispatch event to notify other components
     window.dispatchEvent(new Event('word-database-updated'));
   };
 
-  // Handle template selection for editing
   const handleSelectTemplateForEdit = (template: Template) => {
     setTemplateToEdit(template);
     setEditedTemplate(template.template);
   };
 
-  // Handle updating template
   const handleUpdateTemplate = () => {
     if (!templateToEdit) return;
     
-    // Check if template includes the word
     if (!editedTemplate.includes(`\${${templateToEdit.word}}`)) {
       toast({
         title: 'แม่แบบประโยคไม่ถูกต้อง',
@@ -354,23 +307,20 @@ const ManagementPage = () => {
       return;
     }
     
-    // Check if template already exists (excluding the current one)
     const templateExists = templates.some(t => 
       t.template === editedTemplate && 
-      t.word === templateToEdit.word && 
       t.id !== templateToEdit.id
     );
     
     if (templateExists) {
       toast({
         title: 'แม่แบบประโยคนี้มีอยู่แล้ว',
-        description: 'แม่แบบประโยคนี้มีอยู่ในระบบแล้วสำหรับคำนี้',
+        description: 'แม่แบบประโยคนี้มีอยู่ในระบบแล้ว',
         variant: 'destructive',
       });
       return;
     }
     
-    // Update templates state
     const updatedTemplates = templates.map(template => {
       if (template.id === templateToEdit.id) {
         return {
@@ -383,10 +333,8 @@ const ManagementPage = () => {
     
     setTemplates(updatedTemplates);
     
-    // Update words state with updated template
     const updatedWords = words.map(word => {
       if (word.word === templateToEdit.word) {
-        // Find index of the template to update
         const oldTemplate = templateToEdit.template;
         const wordTemplates = word.templates || [];
         const templateIndex = wordTemplates.findIndex(t => t === oldTemplate);
@@ -406,27 +354,21 @@ const ManagementPage = () => {
     setWords(updatedWords);
     localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
     
-    // Notify user
     toast({
       title: 'แก้ไขแม่แบบประโยคสำเร็จ',
       description: `แม่แบบประโยคถูกแก้ไขเรียบร้อยแล้ว`,
     });
     
-    // Reset form
     setTemplateToEdit(null);
     setEditedTemplate('');
     
-    // Dispatch event to notify other components
     window.dispatchEvent(new Event('word-database-updated'));
   };
 
-  // Handle deleting template
   const handleDeleteTemplate = (templateToDelete: Template) => {
-    // Update templates state
     const updatedTemplates = templates.filter(template => template.id !== templateToDelete.id);
     setTemplates(updatedTemplates);
     
-    // Update words state to remove the template
     const updatedWords = words.map(word => {
       if (word.word === templateToDelete.word) {
         const wordTemplates = word.templates || [];
@@ -441,22 +383,18 @@ const ManagementPage = () => {
     setWords(updatedWords);
     localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
     
-    // Notify user
     toast({
       title: 'ลบแม่แบบประโยคสำเร็จ',
       description: `แม่แบบประโยคถูกลบเรียบร้อยแล้ว`,
     });
     
-    // Close edit modal if we're deleting the template being edited
     if (templateToEdit && templateToEdit.id === templateToDelete.id) {
       setTemplateToEdit(null);
     }
     
-    // Dispatch event to notify other components
     window.dispatchEvent(new Event('word-database-updated'));
   };
 
-  // Map polarity to Thai translation
   const getPolarityThai = (polarity: 'positive' | 'neutral' | 'negative') => {
     switch (polarity) {
       case 'positive':
@@ -468,11 +406,9 @@ const ManagementPage = () => {
     }
   };
 
-  // Handle polarity change and update score accordingly
   const handlePolarityChange = (polarity: 'positive' | 'neutral' | 'negative') => {
     setNewPolarity(polarity);
     
-    // Set standard score based on polarity
     if (polarity === 'positive') {
       setNewScore(1);
     } else if (polarity === 'negative') {
@@ -482,11 +418,9 @@ const ManagementPage = () => {
     }
   };
 
-  // Handle edited polarity change and update score accordingly  
   const handleEditedPolarityChange = (polarity: 'positive' | 'neutral' | 'negative') => {
     setEditedPolarity(polarity);
     
-    // Set standard score based on polarity
     if (polarity === 'positive') {
       setEditedScore(1);
     } else if (polarity === 'negative') {
@@ -494,6 +428,15 @@ const ManagementPage = () => {
     } else {
       setEditedScore(0);
     }
+  };
+
+  const highlightWordInTemplate = (template: string, word: string) => {
+    if (!template.includes(`\${${word}}`)) return template;
+    
+    return template.replace(
+      `\${${word}}`, 
+      `<span class="text-[#F97316] font-semibold">${word}</span>`
+    );
   };
 
   return (
@@ -510,7 +453,6 @@ const ManagementPage = () => {
             <TabsTrigger value="settings">ตั้งค่า</TabsTrigger>
           </TabsList>
           
-          {/* Templates Tab (Now as primary tab) */}
           <TabsContent value="templates" className="space-y-4">
             <Card>
               <CardHeader>
@@ -574,7 +516,11 @@ const ManagementPage = () => {
                             .filter(template => template.word === word.word)
                             .map((template) => (
                               <div key={template.id} className="p-3 border rounded-md bg-slate-50 flex justify-between items-start">
-                                <p className="mt-1">{template.template.replace(`\${${word.word}}`, word.word)}</p>
+                                <p className="mt-1" 
+                                   dangerouslySetInnerHTML={{ 
+                                     __html: highlightWordInTemplate(template.template, word.word) 
+                                   }} 
+                                />
                                 <div className="flex gap-2 ml-4">
                                   <Button
                                     variant="outline"
@@ -604,7 +550,6 @@ const ManagementPage = () => {
               </CardContent>
             </Card>
             
-            {/* Edit Template Modal */}
             {templateToEdit && (
               <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
                 <Card className="w-full max-w-md mx-4">
@@ -643,7 +588,6 @@ const ManagementPage = () => {
             )}
           </TabsContent>
           
-          {/* Words Tab */}
           <TabsContent value="words" className="space-y-4">
             <Card>
               <CardHeader>
@@ -732,7 +676,6 @@ const ManagementPage = () => {
               </CardContent>
             </Card>
             
-            {/* Edit Word Modal */}
             {wordToEdit && (
               <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
                 <Card className="w-full max-w-md mx-4">
@@ -775,7 +718,6 @@ const ManagementPage = () => {
             )}
           </TabsContent>
           
-          {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-4">
             <Card>
               <CardHeader>
