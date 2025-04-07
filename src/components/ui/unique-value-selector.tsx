@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -89,6 +88,23 @@ export function UniqueValueSelector({
     return title?.replace(/\s+/g, '-').toLowerCase() || 'default';
   };
 
+  // Filter out duplicate text options - only show the first occurrence of each text
+  const getUniqueTextOptions = () => {
+    const uniqueTextMap = new Map();
+    return options.filter(option => {
+      // If we haven't seen this text before, add it to the map and keep this option
+      if (!uniqueTextMap.has(option.text)) {
+        uniqueTextMap.set(option.text, true);
+        return true;
+      }
+      // Skip duplicate text options
+      return false;
+    });
+  };
+
+  // Get unique options based on text value
+  const uniqueOptions = getUniqueTextOptions();
+
   return (
     <div className={cn("space-y-4", className)}>
       <div className="flex justify-between items-center">
@@ -123,8 +139,9 @@ export function UniqueValueSelector({
         value={selectedValue} 
         onValueChange={handleValueChange}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"
+        name={`radio-group-${getSafeTitle()}`} // Add a name attribute for proper radio button grouping
       >
-        {options.map((option) => {
+        {uniqueOptions.map((option) => {
           // A value is disabled if it's used elsewhere (but not by this selector)
           const isDisabled = usedValues.includes(option.value) && option.value !== selected?.value;
           // Create a unique ID for each radio item

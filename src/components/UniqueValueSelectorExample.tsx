@@ -8,13 +8,14 @@ interface OptionType {
   value: string;
 }
 
+// Sample color options - with some duplicate texts but unique values
 const colorOptions: OptionType[] = [
-  { text: "Red", value: "red" },
-  { text: "Blue", value: "blue" },
-  { text: "Green", value: "green" },
-  { text: "Yellow", value: "yellow" },
-  { text: "Purple", value: "purple" },
-  { text: "Orange", value: "orange" },
+  { text: "Red", value: "red-1" },
+  { text: "Blue", value: "blue-1" },
+  { text: "Green", value: "green-1" },
+  { text: "Yellow", value: "yellow-1" },
+  { text: "Purple", value: "purple-1" },
+  { text: "Orange", value: "orange-1" },
 ];
 
 const UniqueValueSelectorExample = () => {
@@ -34,7 +35,13 @@ const UniqueValueSelectorExample = () => {
     if (option && option.value === selection2?.value) {
       setSelection2(undefined);
       console.log(`Clearing selector 2 because "${option.text}" was selected in selector 1`);
+    } 
+    // If selecting an option with the same text as in selector 2, clear selector 2
+    else if (option && selection2 && option.text === selection2.text) {
+      setSelection2(undefined);
+      console.log(`Clearing selector 2 because text "${option.text}" was selected in selector 1`);
     }
+    
     setSelection1(option);
   };
 
@@ -45,6 +52,12 @@ const UniqueValueSelectorExample = () => {
       setSelection1(undefined);
       console.log(`Clearing selector 1 because "${option.text}" was selected in selector 2`);
     }
+    // If selecting an option with the same text as in selector 1, clear selector 1
+    else if (option && selection1 && option.text === selection1.text) {
+      setSelection1(undefined);
+      console.log(`Clearing selector 1 because text "${option.text}" was selected in selector 2`);
+    }
+    
     setSelection2(option);
   };
 
