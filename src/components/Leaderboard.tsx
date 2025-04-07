@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getContributorStats } from "@/utils/wordModeration";
@@ -48,29 +47,26 @@ const fetchMotivationalSentences = (): MotivationalSentence[] => {
   return [];
 };
 
-// วิเคราะห์ความรู้สึกจากแม่แบบหรือประโยค
 const analyzeSentencesByTemplate = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
   return sentences.map(sentence => {
-    let sentiment: 'positive' | 'neutral' | 'negative';
+    let polarity: 'positive' | 'neutral' | 'negative';
     let score: number;
     
-    // ถ้ามีแม่แบบ ใช้ความรู้สึกจากแม่แบบ
     if (sentence.template) {
       const analysis = analyzeSentimentFromSentence("", sentence.template);
-      sentiment = analysis.sentiment;
+      polarity = analysis.sentiment;
       score = analysis.score;
     } 
-    // ถ้าไม่มีแม่แบบ ใช้การวิเคราะห์จากประโยค
     else {
       const analysis = analyzeSentimentFromSentence(sentence.sentence);
-      sentiment = analysis.sentiment;
+      polarity = analysis.sentiment;
       score = analysis.score;
     }
     
     return {
       ...sentence,
-      polarity: sentiment,
-      score: score
+      polarity,
+      score
     };
   });
 };

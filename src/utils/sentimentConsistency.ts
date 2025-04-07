@@ -60,3 +60,28 @@ export function analyzeSentimentFromSentence(sentence: string, template?: string
     return { sentiment: 'neutral', score: 0 };
   }
 }
+
+// Helper functions for UI display
+export function getSentimentBadgeVariant(sentiment: 'positive' | 'neutral' | 'negative'): string {
+  switch (sentiment) {
+    case 'positive':
+      return 'success';
+    case 'negative':
+      return 'destructive';
+    case 'neutral':
+    default:
+      return 'secondary';
+  }
+}
+
+export function getPolarityText(sentiment: 'positive' | 'neutral' | 'negative'): string {
+  switch (sentiment) {
+    case 'positive':
+      return 'เชิงบวก';
+    case 'negative':
+      return 'เชิงลบ';
+    case 'neutral':
+    default:
+      return 'กลาง';
+  }
+}

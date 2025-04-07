@@ -1,6 +1,37 @@
 
 import { analyzeSentimentFromSentence } from "./sentimentConsistency";
 
+// Enum for template sentiment types
+export enum TemplateSentiment {
+  POSITIVE = 'บวก',
+  NEUTRAL = 'กลาง',
+  NEGATIVE = 'ลบ'
+}
+
+// Template interface for word templates
+export interface Template {
+  template: string;
+  sentiment: TemplateSentiment;
+}
+
+// ฟังก์ชั่นตรวจสอบความถูกต้องของคำที่ป้อนเข้ามา
+export const validateWordInput = (word: string, contributor: string): { isValid: boolean, message: string } => {
+  if (!word.trim()) {
+    return { isValid: false, message: "กรุณาใส่คำที่ต้องการ" };
+  }
+  
+  if (!contributor.trim()) {
+    return { isValid: false, message: "กรุณาระบุชื่อของคุณ" };
+  }
+  
+  // ตรวจสอบว่าคำที่ใส่มีคำหยาบหรือไม่
+  if (moderateText(word)) {
+    return { isValid: false, message: "คำนี้ไม่เหมาะสม กรุณาใช้คำอื่น" };
+  }
+  
+  return { isValid: true, message: "คำถูกต้อง" };
+};
+
 // ฟังก์ชั่นสำหรับดึงข้อมูลสถิติผู้ร่วมสร้างกำลังใจ
 export const getContributorStats = (): Record<string, number> => {
   const contributorStats: Record<string, number> = {};
@@ -98,4 +129,130 @@ export const saveMotivationalSentence = (
     console.error("Error saving motivational sentence:", error);
     return false;
   }
+};
+
+// ฟังก์ชั่นสำหรับเพิ่มคำใหม่ลงในฐานข้อมูล
+export const addWordToDatabase = (word: string, templates: string[]): boolean => {
+  try {
+    // ดึงข้อมูลเดิม
+    let database = [];
+    const storedData = localStorage.getItem("word-polarity-database");
+    if (storedData) {
+      database = JSON.parse(storedData);
+    }
+    
+    // ตรวจสอบว่ามีคำนี้อยู่แล้วหรือไม่
+    const existingWordIndex = database.findIndex((entry: any) => entry.word === word);
+    
+    if (existingWordIndex !== -1) {
+      // หากมีคำนี้อยู่แล้ว ให้อัปเดต templates
+      database[existingWordIndex].templates = templates;
+    } else {
+      // หากยังไม่มีคำนี้ ให้เพิ่มใหม่
+      database.push({
+        word,
+        templates
+      });
+    }
+    
+    // บันทึกลงใน localStorage
+    localStorage.setItem("word-polarity-database", JSON.stringify(database));
+    
+    // แจ้งเตือนคอมโพเนนต์อื่นๆ
+    const event = new CustomEvent('word-database-updated');
+    window.dispatchEvent(event);
+    
+    return true;
+  } catch (error) {
+    console.error("Error adding word to database:", error);
+    return false;
+  }
+};
+
+// ฟังก์ชั่นสำหรับอัปเดตความรู้สึกของคำ
+export const updateWordPolarity = (word: string, templates: string[]): boolean => {
+  return addWordToDatabase(word, templates);
+};
+
+// ฟังก์ชั่นสำหรับลบคำออกจากฐานข้อมูล
+export const deleteWord = (word: string): boolean => {
+  try {
+    // ดึงข้อมูลเดิม
+    const storedData = localStorage.getItem("word-polarity-database");
+    if (storedData) {
+      let database = JSON.parse(storedData);
+      
+      // ลบคำที่ต้องการ
+      database = database.filter((entry: any) => entry.word !== word);
+      
+      // บันทึกกลับลงใน localStorage
+      localStorage.setItem("word-polarity-database", JSON.stringify(database));
+      
+      // แจ้งเตือนคอมโพเนนต์อื่นๆ
+      const event = new CustomEvent('word-database-updated');
+      window.dispatchEvent(event);
+      
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Error deleting word from database:", error);
+    return false;
+  }
+};
+
+// ตรวจสอบว่ามีแม่แบบซ้ำกันหรือไม่
+export const hasDuplicateTemplates = (templates: string[]): boolean => {
+  const uniqueTemplates = new Set(templates);
+  return uniqueTemplates.size !== templates.length;
+};
+
+// แปลงสตริงเทมเพลตให้เป็นอ็อบเจกต์
+export const stringToTemplateObjects = (templates: string[]): Template[] => {
+  return templates.map(template => {
+    if (template.includes("${บวก}")) {
+      return {
+        template: template.replace(/\$\{บวก\}/g, ''),
+        sentiment: TemplateSentiment.POSITIVE
+      };
+    } else if (template.includes("${ลบ}")) {
+      return {
+        template: template.replace(/\$\{ลบ\}/g, ''),
+        sentiment: TemplateSentiment.NEGATIVE
+      };
+    } else {
+      return {
+        template: template.replace(/\$\{กลาง\}/g, ''),
+        sentiment: TemplateSentiment.NEUTRAL
+      };
+    }
+  });
+};
+
+// แปลงอ็อบเจกต์เทมเพลตให้เป็นสตริง
+export const templateObjectsToStrings = (templates: Template[]): string[] => {
+  return templates.map(template => {
+    switch (template.sentiment) {
+      case TemplateSentiment.POSITIVE:
+        return `\${บวก}${template.template}`;
+      case TemplateSentiment.NEGATIVE:
+        return `\${ลบ}${template.template}`;
+      case TemplateSentiment.NEUTRAL:
+      default:
+        return `\${กลาง}${template.template}`;
+    }
+  });
+};
+
+// แยกวิเคราะห์ templates จากข้อความ
+export const parseTemplates = (templatesString: string): string[] => {
+  if (!templatesString.trim()) {
+    return [];
+  }
+  
+  // แยกตามบรรทัด
+  return templatesString
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line !== '');
 };

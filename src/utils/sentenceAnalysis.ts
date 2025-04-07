@@ -31,7 +31,7 @@ export const getWordPolarity = (word: string): { polarity: 'positive' | 'neutral
   }
   
   // ค้นหาคำในฐานข้อมูล
-  const wordEntry = database.find(entry => entry.word === word);
+  const wordEntry = database.find((entry: any) => entry.word === word);
   
   if (wordEntry && wordEntry.templates && wordEntry.templates.length > 0) {
     // ใช้แม่แบบแรกเพื่อวิเคราะห์ความรู้สึก
@@ -44,4 +44,17 @@ export const getWordPolarity = (word: string): { polarity: 'positive' | 'neutral
   
   // ค่าเริ่มต้น หากไม่พบคำในฐานข้อมูล
   return { polarity: 'neutral', score: 0 };
+};
+
+// Function to analyze a sentence for sentiment
+export const analyzeSentence = (sentence: string): { 
+  polarity: 'positive' | 'neutral' | 'negative'; 
+  score: number;
+  database?: any;
+} => {
+  const result = analyzeSentimentFromSentence(sentence);
+  return {
+    polarity: result.sentiment,
+    score: result.score
+  };
 };

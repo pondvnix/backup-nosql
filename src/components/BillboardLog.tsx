@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,11 +27,19 @@ const BillboardLog = () => {
   const getSentimentFromEntry = (entry: BillboardEntry): { polarity: 'positive' | 'neutral' | 'negative', score: number } => {
     // ถ้ามี template ใช้ความรู้สึกจาก template
     if (entry.template) {
-      return analyzeSentimentFromSentence("", entry.template);
+      const result = analyzeSentimentFromSentence("", entry.template);
+      return {
+        polarity: result.sentiment,
+        score: result.score
+      };
     }
     
     // ถ้าไม่มี template ใช้ความรู้สึกจากการวิเคราะห์ประโยค
-    return analyzeSentimentFromSentence(entry.sentence);
+    const result = analyzeSentimentFromSentence(entry.sentence);
+    return {
+      polarity: result.sentiment,
+      score: result.score
+    };
   };
   
   // Load all motivational sentences
