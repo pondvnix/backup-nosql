@@ -1,7 +1,6 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Layout from "@/layouts/Layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Leaderboard from "@/components/Leaderboard";
 import StatsDashboard from "@/components/StatsDashboard";
@@ -15,29 +14,45 @@ interface MotivationalSentence {
   timestamp: Date | string | number;
   polarity?: 'positive' | 'neutral' | 'negative';
   score?: number;
+  id?: string;
 }
 
 const LeaderboardPage = () => {
   const [sentences, setSentences] = useState<MotivationalSentence[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
+  // ปรับปรุงฟังก์ชั่น removeDuplicateSentences ให้มีการจัดการ ID ที่ดีขึ้น
+  const removeDuplicateSentences = useCallback((sentences: MotivationalSentence[]): MotivationalSentence[] => {
     const uniqueMap = new Map();
     
     sentences.forEach(sentence => {
-      const uniqueKey = `${sentence.word}-${sentence.sentence}`;
+      // กำหนด uniqueId ที่เฉพาะเจาะจงมากขึ้น
+      const uniqueId = sentence.id || 
+                      `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'unknown'}-${
+                        new Date(sentence.timestamp).getTime()
+                      }`;
       
-      if (!uniqueMap.has(uniqueKey) || 
-          new Date(sentence.timestamp).getTime() > new Date(uniqueMap.get(uniqueKey).timestamp).getTime()) {
-        uniqueMap.set(uniqueKey, sentence);
+      // ตรวจสอบว่ามีอยู่แล้วหรือไม่ และมี timestamp ใหม่กว่าหรือไม่
+      if (!uniqueMap.has(uniqueId) || 
+          new Date(sentence.timestamp).getTime() > new Date(uniqueMap.get(uniqueId).timestamp).getTime()) {
+        
+        // เพิ่มการตรวจสอบและรับรองค่า contributor
+        const safeContributor = sentence.contributor && sentence.contributor.trim() ? 
+                              sentence.contributor.trim() : 'ไม่ระบุชื่อ';
+        
+        uniqueMap.set(uniqueId, {
+          ...sentence,
+          contributor: safeContributor,
+          id: uniqueId
+        });
       }
     });
     
     return Array.from(uniqueMap.values());
-  };
+  }, []);
 
   // ฟังก์ชั่นดึงข้อมูล polarity และ score จากฐานข้อมูล
-  const getWordPolarityFromDatabase = (word: string): { polarity: 'positive' | 'neutral' | 'negative', score: number } => {
+  const getWordPolarityFromDatabase = useCallback((word: string): { polarity: 'positive' | 'neutral' | 'negative', score: number } => {
     let database: any[] = [];
     try {
       const storedData = localStorage.getItem("word-polarity-database");
@@ -58,9 +73,9 @@ const LeaderboardPage = () => {
     
     // ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
     return { polarity: 'neutral', score: 0 };
-  };
+  }, []);
   
-  const normalizeScoreByPolarity = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
+  const normalizeScoreByPolarity = useCallback((sentences: MotivationalSentence[]): MotivationalSentence[] => {
     return sentences.map(sentence => {
       // หาข้อมูลจากฐานข้อมูล
       const wordInfo = getWordPolarityFromDatabase(sentence.word);
@@ -78,39 +93,45 @@ const LeaderboardPage = () => {
         polarity = 'neutral';
       }
       
+      // ตรวจสอบและกำหนดชื่อผู้ร่วมสร้าง
+      const contributor = sentence.contributor && sentence.contributor.trim() ? 
+                         sentence.contributor.trim() : 'ไม่ระบุชื่อ';
+      
       return { 
         ...sentence, 
         polarity: polarity,
-        score: score 
+        score: score,
+        contributor: contributor
       };
     });
-  };
+  }, [getWordPolarityFromDatabase]);
+  
+  // สร้างฟังก์ชันแยกสำหรับการดึงข้อมูล
+  const fetchSentences = useCallback(() => {
+    try {
+      const stored = localStorage.getItem('motivation-sentences');
+      if (stored) {
+        const parsedData = JSON.parse(stored);
+        const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
+        
+        const uniqueSentences = removeDuplicateSentences(sentences);
+        
+        const normalizedSentences = normalizeScoreByPolarity(uniqueSentences);
+        
+        const sortedSentences = normalizedSentences.sort((a, b) => {
+          const timeA = new Date(a.timestamp).getTime();
+          const timeB = new Date(b.timestamp).getTime();
+          return timeB - timeA;
+        });
+        
+        setSentences(sortedSentences);
+      }
+    } catch (error) {
+      console.error("Error fetching sentences:", error);
+    }
+  }, [removeDuplicateSentences, normalizeScoreByPolarity]);
   
   useEffect(() => {
-    const fetchSentences = () => {
-      try {
-        const stored = localStorage.getItem('motivation-sentences');
-        if (stored) {
-          const parsedData = JSON.parse(stored);
-          const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
-          
-          const uniqueSentences = removeDuplicateSentences(sentences);
-          
-          const normalizedSentences = normalizeScoreByPolarity(uniqueSentences);
-          
-          const sortedSentences = normalizedSentences.sort((a, b) => {
-            const timeA = new Date(a.timestamp).getTime();
-            const timeB = new Date(b.timestamp).getTime();
-            return timeB - timeA;
-          });
-          
-          setSentences(sortedSentences);
-        }
-      } catch (error) {
-        console.error("Error fetching sentences:", error);
-      }
-    };
-
     fetchSentences();
     
     const handleUpdate = () => {
@@ -122,7 +143,8 @@ const LeaderboardPage = () => {
     window.addEventListener('word-database-updated', handleUpdate);
     window.addEventListener('motivation-billboard-updated', handleUpdate);
     
-    const intervalId = setInterval(fetchSentences, 2000);
+    // ลดความถี่เป็น 5 วินาที
+    const intervalId = setInterval(fetchSentences, 5000);
     
     return () => {
       clearInterval(intervalId);
@@ -130,7 +152,7 @@ const LeaderboardPage = () => {
       window.removeEventListener('word-database-updated', handleUpdate);
       window.removeEventListener('motivation-billboard-updated', handleUpdate);
     };
-  }, []);
+  }, [fetchSentences]);
 
   return (
     <Layout>

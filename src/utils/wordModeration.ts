@@ -9,9 +9,16 @@ export interface Template {
   sentiment: TemplateSentiment;
 }
 
-// Helper function to standardize contributor names
+// Helper function to standardize contributor names - ปรับปรุงเพื่อรับรองว่าชื่อจะไม่เป็นค่าว่างหรือ undefined
 export const standardizeContributorName = (contributor?: string): string => {
-  return contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
+  // ตรวจสอบว่าเป็น null หรือ undefined
+  if (contributor === null || contributor === undefined) {
+    return 'ไม่ระบุชื่อ';
+  }
+  
+  // ตรวจสอบว่าเป็นสตริงที่มีความยาวมากกว่า 0 หรือไม่
+  const trimmedContributor = contributor.trim();
+  return trimmedContributor.length > 0 ? trimmedContributor : 'ไม่ระบุชื่อ';
 };
 
 // ฟังก์ชั่นตรวจสอบความถูกต้องของคำที่ป้อนเข้ามา
@@ -89,7 +96,7 @@ export const saveMotivationalSentence = (
     // วิเคราะห์ความรู้สึกจากแม่แบบหรือประโยค
     const { sentiment, score } = analyzeMotivationalSentence(sentence, template);
     
-    // Standardize contributor - never allow empty contributor
+    // Standardize contributor - แก้ไขการใช้งานเพื่อไม่ให้มีชื่อว่าง
     const safeContributor = standardizeContributorName(contributor);
     
     // สร้างรายการใหม่
@@ -121,7 +128,7 @@ export const saveMotivationalSentence = (
     const isDuplicate = existingEntries.some(
       (entry: any) => entry.word === word && 
                      entry.sentence === sentence && 
-                     (entry.contributor || 'ไม่ระบุชื่อ') === safeContributor
+                     standardizeContributorName(entry.contributor) === safeContributor
     );
     
     // เพิ่มรายการใหม่ถ้าไม่ซ้ำ
@@ -191,7 +198,7 @@ export const addWordToDatabase = (
   }
 };
 
-// ฟังก์ชั่นสำหรับอัปเดตความรู้สึกของคำ
+// ฟังก์ชั่นสำหรับอัปเดตความ��ู้สึกของคำ
 export const updateWordPolarity = (
   word: string, 
   sentiment: TemplateSentiment = 'neutral',

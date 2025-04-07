@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+
+import React, { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -23,12 +24,14 @@ const BillboardLog = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const sentencesPerPage = 10;
   
-  const loadSentences = () => {
+  // ปรับปรุงฟังก์ชันให้ใช้ useCallback เพื่อไม่ต้องสร้างฟังก์ชันใหม่ทุกครั้งที่ render
+  const loadSentences = useCallback(() => {
     try {
       const stored = localStorage.getItem('motivation-sentences');
       if (stored) {
         const parsedSentences = JSON.parse(stored);
         
+        // ใช้ uniqueIds เพื่อตรวจสอบข้อมูลซ้ำอย่างมีประสิทธิภาพ
         const uniqueSentences = removeDuplicateSentences(parsedSentences);
         const sortedSentences = uniqueSentences.sort((a, b) => {
           const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
@@ -41,27 +44,31 @@ const BillboardLog = () => {
     } catch (error) {
       console.error("Error loading sentences:", error);
     }
-  };
+  }, []);
   
+  // ปรับปรุงฟังก์ชันเพื่อตรวจสอบและกำจัดข้อมูลซ้ำ
   const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     const uniqueEntries = new Map<string, MotivationalSentence>();
     
     sentences.forEach(sentence => {
+      // ใช้ id ที่มีอยู่หรือสร้างขึ้นใหม่จากองค์ประกอบหลัก
+      const id = sentence.id || `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'unknown'}-${new Date(sentence.timestamp).getTime()}`;
+      
+      // ตรวจสอบและรับรองชื่อผู้ร่วมสร้าง
       const contributor = sentence.contributor && sentence.contributor.trim() ? 
         sentence.contributor.trim() : 'ไม่ระบุชื่อ';
       
-      const uniqueKey = `${sentence.word}-${sentence.sentence}-${contributor}`;
-      
-      if (!uniqueEntries.has(uniqueKey) || 
-          new Date(sentence.timestamp).getTime() > new Date(uniqueEntries.get(uniqueKey)!.timestamp).getTime()) {
+      // ถ้ายังไม่มี ID นี้ในแมพหรือเป็นข้อมูลที่ใหม่กว่า
+      if (!uniqueEntries.has(id) || 
+          new Date(sentence.timestamp).getTime() > new Date(uniqueEntries.get(id)!.timestamp).getTime()) {
         
         const updatedSentence = {
           ...sentence,
           contributor,
-          id: sentence.id || `${uniqueKey}-${new Date(sentence.timestamp).getTime()}`
+          id: id
         };
         
-        uniqueEntries.set(uniqueKey, updatedSentence);
+        uniqueEntries.set(id, updatedSentence);
       }
     });
     
@@ -78,11 +85,15 @@ const BillboardLog = () => {
     window.addEventListener('motivationalSentenceGenerated', handleUpdate);
     window.addEventListener('motivation-billboard-updated', handleUpdate);
     
+    // ลดความถี่เป็น 5 วินาที
+    const intervalId = setInterval(handleUpdate, 5000);
+    
     return () => {
+      clearInterval(intervalId);
       window.removeEventListener('motivationalSentenceGenerated', handleUpdate);
       window.removeEventListener('motivation-billboard-updated', handleUpdate);
     };
-  }, []);
+  }, [loadSentences]);
   
   const cleanText = (text: string): string => {
     return text
@@ -212,7 +223,7 @@ const BillboardLog = () => {
                 </TableHeader>
                 <TableBody>
                   {currentSentences.map((sentence) => (
-                    <TableRow key={sentence.id || `sentence-${sentence.word}-${sentence.timestamp}`}>
+                    <TableRow key={sentence.id || `sentence-${sentence.word}-${new Date(sentence.timestamp).getTime()}`}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {getSentimentIcon(sentence.sentiment)}

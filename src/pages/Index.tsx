@@ -43,8 +43,11 @@ const Index = () => {
           setCurrentWord(word);
         }
         
+        // ปรับปรุงการจัดการ contributor เพื่อให้มั่นใจว่าจะถูกส่งไปอย่างถูกต้อง
         if (contributor) {
-          setCurrentContributor(contributor);
+          // ใช้การทำให้ชื่อเป็นมาตรฐาน
+          const safeContributor = standardizeContributorName(contributor);
+          setCurrentContributor(safeContributor);
         }
       }
     };
@@ -76,7 +79,7 @@ const Index = () => {
         setSelectedWords(prev => [...prev, word]);
       }
       
-      // Standardize contributor name
+      // Standardize contributor name เพื่อให้มั่นใจว่าจะไม่เป็นค่าว่าง
       const safeContributor = standardizeContributorName(contributor);
       
       // Update current word and contributor

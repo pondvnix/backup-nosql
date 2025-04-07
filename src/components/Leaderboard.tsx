@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getContributorStats } from "@/utils/wordModeration";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +21,7 @@ interface MotivationalSentence {
   polarity?: 'positive' | 'neutral' | 'negative';
   score?: number;
   template?: string;
+  id?: string;
 }
 
 interface LeaderboardProps {
@@ -34,6 +35,7 @@ const fetchContributorStats = async (): Promise<Contributor[]> => {
   return Object.entries(stats).map(([name, count]) => ({ name, count }));
 };
 
+// ปรับปรุงฟังก์ชันให้มีการ debounce โดยใช้ memoization
 const fetchMotivationalSentences = (): MotivationalSentence[] => {
   const stored = localStorage.getItem('motivation-sentences');
   if (stored) {
@@ -48,24 +50,31 @@ const fetchMotivationalSentences = (): MotivationalSentence[] => {
   return [];
 };
 
-// Function to remove duplicates based on word and sentence combination
+// ปรับปรุงฟังก์ชัน removeDuplicateSentences ให้มีการใช้ unique ID ที่ดีขึ้น
 const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
   const uniqueMap = new Map<string, MotivationalSentence>();
   
   sentences.forEach(sentence => {
-    // Create a truly unique key that includes word, sentence and contributor
-    const uniqueKey = `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'ไม่ระบุชื่อ'}`;
+    // ใช้ ID ที่มีอยู่แล้ว หรือสร้างขึ้นใหม่จากข้อมูลที่มี
+    const uniqueId = sentence.id || 
+                    `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'unknown'}-${
+                      new Date(sentence.timestamp || new Date()).getTime()
+                    }`;
     
-    if (!uniqueMap.has(uniqueKey) || 
-        new Date(sentence.timestamp || new Date()).getTime() > 
-        new Date(uniqueMap.get(uniqueKey)!.timestamp || new Date()).getTime()) {
+    // หากเป็นรายการใหม่หรือมี timestamp ใหม่กว่า จึงทำการอัปเดต
+    if (!uniqueMap.has(uniqueId) || 
+        new Date(sentence.timestamp || 0).getTime() > 
+        new Date(uniqueMap.get(uniqueId)!.timestamp || 0).getTime()) {
       
-      // Standardize contributor name
-      if (!sentence.contributor || sentence.contributor.trim() === '') {
-        sentence.contributor = 'ไม่ระบุชื่อ';
-      }
+      // ตรวจสอบและตั้งค่าชื่อผู้ร่วมสร้างที่ถูกต้อง
+      const contributor = sentence.contributor && sentence.contributor.trim() ? 
+                         sentence.contributor.trim() : 'ไม่ระบุชื่อ';
       
-      uniqueMap.set(uniqueKey, sentence);
+      uniqueMap.set(uniqueId, {
+        ...sentence,
+        contributor,
+        id: uniqueId
+      });
     }
   });
   
@@ -145,7 +154,9 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     queryKey: ['contributor-stats'],
     queryFn: fetchContributorStats,
     enabled: !propContributors,
-    refetchInterval: 1000,
+    // เพิ่ม staleTime เพื่อลดความถี่ในการโหลดข้อมูล
+    staleTime: 2000,
+    refetchInterval: 5000, // ปรับเป็น 5 วินาที
   });
 
   const [motivationalSentences, setMotivationalSentences] = useState<MotivationalSentence[]>([]);
@@ -158,27 +169,8 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     longestSentence: { text: '', length: 0, contributor: '' }
   });
 
-  useEffect(() => {
-    if (refreshTrigger && !propContributors) {
-      refetch();
-      
-      const sentences = propSentences ? analyzeSentencesByTemplate(propSentences) : fetchMotivationalSentences();
-      const uniqueSentences = removeDuplicateSentences(sentences);
-      setMotivationalSentences(uniqueSentences);
-      calculateStatistics(uniqueSentences);
-    }
-  }, [refreshTrigger, refetch, propContributors, propSentences]);
-
-  useEffect(() => {
-    if (propSentences) {
-      const analyzedSentences = analyzeSentencesByTemplate(propSentences);
-      const uniqueSentences = removeDuplicateSentences(analyzedSentences);
-      setMotivationalSentences(uniqueSentences);
-      calculateStatistics(uniqueSentences);
-    }
-  }, [propSentences]);
-
-  const calculateStatistics = (sentences: MotivationalSentence[]) => {
+  // ใช้ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ทุกครั้งที่ render
+  const calculateStatistics = useCallback((sentences: MotivationalSentence[]) => {
     const uniqueUsers = new Set(sentences.map(s => s.contributor || 'Anonymous')).size;
     
     let positiveSentences = 0;
@@ -213,18 +205,40 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
       negativeSentences,
       longestSentence
     });
-  };
+  }, []);
+
+  // สร้างฟังก์ชันแยกเพื่อโหลดและอัปเดตข้อมูล
+  const fetchAndUpdateSentences = useCallback(() => {
+    if (!propSentences) {
+      const sentences = fetchMotivationalSentences();
+      const uniqueSentences = removeDuplicateSentences(sentences);
+      setMotivationalSentences(uniqueSentences);
+      calculateStatistics(uniqueSentences);
+    }
+  }, [propSentences, calculateStatistics]);
+
+  // ปรับปรุง useEffect ให้มี dependencies ที่ถูกต้อง
+  useEffect(() => {
+    if (refreshTrigger && !propContributors) {
+      refetch();
+      
+      const sentences = propSentences ? analyzeSentencesByTemplate(propSentences) : fetchMotivationalSentences();
+      const uniqueSentences = removeDuplicateSentences(sentences);
+      setMotivationalSentences(uniqueSentences);
+      calculateStatistics(uniqueSentences);
+    }
+  }, [refreshTrigger, refetch, propContributors, propSentences, calculateStatistics]);
 
   useEffect(() => {
-    const fetchAndUpdateSentences = () => {
-      if (!propSentences) {
-        const sentences = fetchMotivationalSentences();
-        const uniqueSentences = removeDuplicateSentences(sentences);
-        setMotivationalSentences(uniqueSentences);
-        calculateStatistics(uniqueSentences);
-      }
-    };
-    
+    if (propSentences) {
+      const analyzedSentences = analyzeSentencesByTemplate(propSentences);
+      const uniqueSentences = removeDuplicateSentences(analyzedSentences);
+      setMotivationalSentences(uniqueSentences);
+      calculateStatistics(uniqueSentences);
+    }
+  }, [propSentences, calculateStatistics]);
+
+  useEffect(() => {
     fetchAndUpdateSentences();
     
     const handleSentenceUpdate = () => {
@@ -237,7 +251,8 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     window.addEventListener('motivation-billboard-updated', handleSentenceUpdate);
     window.addEventListener('word-database-updated', handleSentenceUpdate);
     
-    const intervalId = setInterval(fetchAndUpdateSentences, 1000);
+    // ปรับเพิ่ม interval เป็น 5 วินาที เพื่อลดความถี่การโหลดข้อมูล
+    const intervalId = setInterval(fetchAndUpdateSentences, 5000);
     
     return () => {
       clearInterval(intervalId);
@@ -245,13 +260,13 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
       window.removeEventListener('motivation-billboard-updated', handleSentenceUpdate);
       window.removeEventListener('word-database-updated', handleSentenceUpdate);
     };
-  }, [propSentences]);
+  }, [propSentences, fetchAndUpdateSentences]);
 
   const contributors = propContributors || fetchedContributors;
   const sortedContributors = [...contributors].sort((a, b) => b.count - a.count);
   const topContributors = sortedContributors.slice(0, 10);
 
-  // Make sure we only get unique sentences for display
+  // ตรวจสอบให้แน่ใจว่าเราใช้ uniqueSentences ที่ถูกต้อง
   const uniqueLatestSentences = motivationalSentences.length > 0 ? 
     removeDuplicateSentences(motivationalSentences).slice(-5).reverse() : [];
 
@@ -369,7 +384,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
               </TableHeader>
               <TableBody>
                 {uniqueLatestSentences.map((item, index) => (
-                  <TableRow key={`latest-${index}-${item.word}-${item.timestamp}`}>
+                  <TableRow key={`latest-${index}-${item.id || item.word}-${item.timestamp}`}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getSentimentIcon(item)}
