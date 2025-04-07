@@ -14,6 +14,13 @@ interface WordSuggestionsProps {
   showMultipleTemplates?: boolean;
 }
 
+interface WordTemplateOption {
+  word: string;
+  polarity: 'positive' | 'neutral' | 'negative';
+  template?: string;
+  displayText: string;
+}
+
 const WordSuggestions = ({
   existingWords = [],
   onSelectWord,
@@ -25,8 +32,8 @@ const WordSuggestions = ({
     polarity: 'positive' | 'neutral' | 'negative';
     templates?: string[];
   }>>([]);
-  const [selectedWord, setSelectedWord] = useState<string>("");
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [wordTemplateOptions, setWordTemplateOptions] = useState<WordTemplateOption[]>([]);
+  const [selectedOption, setSelectedOption] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Generate a list of suggested words
@@ -60,10 +67,47 @@ const WordSuggestions = ({
       const selected = shuffled.slice(0, 6);
       
       setSuggestedWords(selected);
-      setSelectedWord("");
-      setSelectedTemplate("");
-      setIsRefreshing(false);
+      setSelectedOption("");
+      generateWordTemplateOptions(selected);
     }, 500);
+  };
+
+  // Create combined word-template options
+  const generateWordTemplateOptions = (words: Array<{
+    word: string;
+    polarity: 'positive' | 'neutral' | 'negative';
+    templates?: string[];
+  }>) => {
+    const options: WordTemplateOption[] = [];
+
+    words.forEach(wordItem => {
+      if (wordItem.templates && wordItem.templates.length > 0 && showMultipleTemplates) {
+        // Add each word-template combination as a separate option
+        wordItem.templates.forEach(template => {
+          // Create a preview of the template by replacing ${word} with the actual word
+          const templatePreview = template
+            .replace(new RegExp(`\\$\\{${wordItem.word}\\}`, 'g'), wordItem.word)
+            .substring(0, 35) + (template.length > 35 ? '...' : '');
+          
+          options.push({
+            word: wordItem.word,
+            polarity: wordItem.polarity,
+            template: template,
+            displayText: `${wordItem.word} - ${templatePreview}`
+          });
+        });
+      } else {
+        // Add just the word as an option if no templates or showMultipleTemplates is false
+        options.push({
+          word: wordItem.word,
+          polarity: wordItem.polarity,
+          displayText: wordItem.word
+        });
+      }
+    });
+
+    setWordTemplateOptions(options);
+    setIsRefreshing(false);
   };
 
   // Initialize suggestions on component mount
@@ -77,31 +121,24 @@ const WordSuggestions = ({
     }
   }, [disableAutoRefresh, existingWords]);
 
-  // Handle template selection
-  const handleTemplateSelect = (template: string) => {
-    setSelectedTemplate(template);
-  };
-
-  // Handle word selection from radio group
-  const handleWordSelect = (word: string) => {
-    setSelectedWord(word);
-    
-    // Find templates for the selected word
-    const wordEntry = suggestedWords.find(w => w.word === word);
-    if (wordEntry && wordEntry.templates && wordEntry.templates.length > 0) {
-      setSelectedTemplate(wordEntry.templates[0]);
-    } else {
-      setSelectedTemplate("");
-    }
+  // Handle option selection from radio group
+  const handleOptionSelect = (optionId: string) => {
+    setSelectedOption(optionId);
   };
 
   // Handle submit button click
   const handleSubmit = () => {
-    if (selectedWord) {
-      onSelectWord(selectedWord, selectedTemplate);
-      setSelectedWord("");
-      setSelectedTemplate("");
-      generateSuggestions();
+    if (selectedOption) {
+      // Find the selected option
+      const selectedItem = wordTemplateOptions.find(
+        option => `${option.word}_${option.template || 'default'}` === selectedOption
+      );
+      
+      if (selectedItem) {
+        onSelectWord(selectedItem.word, selectedItem.template);
+        setSelectedOption("");
+        generateSuggestions();
+      }
     }
   };
 
@@ -146,77 +183,44 @@ const WordSuggestions = ({
           </Button>
         </div>
 
-        {suggestedWords.length > 0 ? (
+        {wordTemplateOptions.length > 0 ? (
           <div className="space-y-4">
             <RadioGroup
-              value={selectedWord}
-              onValueChange={handleWordSelect}
+              value={selectedOption}
+              onValueChange={handleOptionSelect}
               className="space-y-2"
             >
-              {suggestedWords.map((suggestion) => (
-                <div 
-                  key={suggestion.word}
-                  className={`flex items-center space-x-2 p-2 rounded-md border ${
-                    selectedWord === suggestion.word 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-gray-200 hover:border-primary/50'
-                  } transition-all duration-300`}
-                >
-                  <RadioGroupItem value={suggestion.word} id={suggestion.word} />
-                  <Label 
-                    htmlFor={suggestion.word} 
-                    className="flex flex-1 justify-between items-center cursor-pointer"
+              {wordTemplateOptions.map((option) => {
+                const optionId = `${option.word}_${option.template || 'default'}`;
+                return (
+                  <div 
+                    key={optionId}
+                    className={`flex items-center space-x-2 p-2 rounded-md border ${
+                      selectedOption === optionId 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-gray-200 hover:border-primary/50'
+                    } transition-all duration-300`}
                   >
-                    <span className="font-medium">{suggestion.word}</span>
-                    <span className={`text-xs px-2 py-1 rounded-full border ${getPolarityClass(suggestion.polarity)}`}>
-                      {getPolarityText(suggestion.polarity)}
-                    </span>
-                  </Label>
-                </div>
-              ))}
+                    <RadioGroupItem value={optionId} id={optionId} />
+                    <Label 
+                      htmlFor={optionId} 
+                      className="flex flex-1 justify-between items-center cursor-pointer"
+                    >
+                      <span className="font-medium">
+                        {option.displayText}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded-full border ${getPolarityClass(option.polarity)}`}>
+                        {getPolarityText(option.polarity)}
+                      </span>
+                    </Label>
+                  </div>
+                );
+              })}
             </RadioGroup>
-            
-            {selectedWord && showMultipleTemplates && (
-              <div className="mt-4 space-y-2">
-                <h4 className="text-sm font-medium">ประโยคตัวอย่าง:</h4>
-                <RadioGroup 
-                  value={selectedTemplate} 
-                  onValueChange={handleTemplateSelect}
-                  className="space-y-2"
-                >
-                  {suggestedWords
-                    .find(w => w.word === selectedWord)?.templates?.map((template, idx) => {
-                      const filledTemplate = template.replace(
-                        new RegExp(`\\$\\{${selectedWord}\\}`, 'g'), 
-                        selectedWord
-                      );
-                      
-                      return (
-                        <div 
-                          key={idx} 
-                          className={`flex items-center space-x-2 p-2 rounded-md border ${
-                            selectedTemplate === template 
-                              ? 'border-primary bg-primary/5' 
-                              : 'border-gray-200 hover:border-primary/50'
-                          } transition-all duration-300`}
-                        >
-                          <RadioGroupItem value={template} id={`template-${idx}`} />
-                          <Label 
-                            htmlFor={`template-${idx}`} 
-                            className="text-sm cursor-pointer"
-                          >
-                            {filledTemplate}
-                          </Label>
-                        </div>
-                      );
-                    }) || []}
-                </RadioGroup>
-              </div>
-            )}
             
             <Button 
               onClick={handleSubmit} 
-              disabled={!selectedWord}
+              disabled={!selectedOption}
               className="w-full mt-4 gap-2"
             >
               <PlusCircle className="h-4 w-4" />
