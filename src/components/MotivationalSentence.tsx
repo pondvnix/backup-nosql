@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { wordPolarityDatabase } from "@/utils/sentenceAnalysis";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Smile, Meh, Frown } from "lucide-react";
-import { extractSentimentFromTemplate } from "@/utils/sentimentConsistency";
+import { extractSentimentFromTemplate, analyzeSentimentFromSentence } from "@/utils/sentimentConsistency";
 
 interface MotivationalSentenceProps {
   selectedWords: string[];
@@ -149,9 +149,8 @@ const MotivationalSentence = ({
     // Combine default database with stored database
     const combinedDatabase = storedDatabase.length > 0 ? storedDatabase : wordPolarityDatabase;
     
-    // Find word polarity and templates
+    // Find word templates
     const wordEntry = combinedDatabase.find(entry => entry.word === word);
-    const polarity = wordEntry?.polarity || "neutral";
     
     // Get templates for this word if available, otherwise use default templates
     if (wordEntry?.templates && wordEntry.templates.length > 0) {
@@ -166,59 +165,57 @@ const MotivationalSentence = ({
         const selectedTemplate = unusedTemplates[randomIndex];
         
         // Extract sentiment from the template
-        const { sentiment } = extractSentimentFromTemplate(selectedTemplate);
+        const { sentiment, text } = extractSentimentFromTemplate(selectedTemplate);
         setSentimentType(sentiment);
         
-        return selectedTemplate.replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '')
-          .replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+        return text.replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
       }
       
       // If all templates are used, fall back to the first template
       const firstTemplate = wordEntry.templates[0];
-      const { sentiment } = extractSentimentFromTemplate(firstTemplate);
+      const { sentiment, text } = extractSentimentFromTemplate(firstTemplate);
       setSentimentType(sentiment);
       
-      return firstTemplate.replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '')
-        .replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+      return text.replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
     }
     
-    // Default templates based on polarity
+    // Default templates based on sentiment
     const positiveTemplates = [
-      `การมี${word}ในชีวิตทำให้เรารู้สึกดีขึ้น`,
-      `${word}คือสิ่งที่เราทุกคนต้องการ`,
-      `${word}จะทำให้เราเข้มแข็งขึ้น`,
-      `อย่าลืมที่จะ${word}ทุกวัน`,
-      `${word}คือพลังใจที่เราสร้างได้`,
-      `${word}ช่วยให้เราเติบโตได้อย่างแข็งแรง`,
-      `${word}ผ่อนคลายจิตใจได้อย่างดี`,
-      `${word}เพื่อตัวเองบ้างนะ เป็นกำลังใจให้เสมอ`,
+      "${บวก}การมี${word}ในชีวิตทำให้เรารู้สึกดีขึ้น",
+      "${บวก}${word}คือสิ่งที่เราทุกคนต้องการ",
+      "${บวก}${word}จะทำให้เราเข้มแข็งขึ้น",
+      "${บวก}อย่าลืมที่จะ${word}ทุกวัน",
+      "${บวก}${word}คือพลังใจที่เราสร้างได้",
     ];
     
     const neutralTemplates = [
-      `${word}เป็นส่วนหนึ่งของชีวิตที่เราต้องเรียนรู้`,
-      `${word}และความพยายามจะนำไปสู่ความสำเร็จ`,
-      `${word}จะทำให้เราเข้าใจตัวเองมากขึ้น`,
-      `ทุกคนมี${word}ในแบบของตัวเอง`,
-      `${word}เป็นสิ่งที่ทำให้ชีวิตมีความหมาย`,
-      `${word}เป็นกำลังใจให้ก้าวต่อไป`,
-      `${word}ทำให้เราเห็นคุณค่าของสิ่งรอบตัว`,
+      "${กลาง}${word}เป็นส่วนหนึ่งของชีวิตที่เราต้องเรียนรู้",
+      "${กลาง}${word}และความพยายามจะนำไปสู่ความสำเร็จ",
+      "${กลาง}${word}จะทำให้เราเข้าใจตัวเองมากขึ้น",
+      "${กลาง}ทุกคนมี${word}ในแบบของตัวเอง",
     ];
     
     const negativeTemplates = [
-      `แม้จะมี${word} แต่เราจะผ่านมันไปได้`,
-      `${word}เป็นบทเรียนที่ทำให้เราเติบโต`,
-      `อย่าให้${word}มาหยุดความฝันของเรา`,
-      `${word}จะกลายเป็นแรงผลักดันให้เราไปต่อ`,
-      `เราจะเปลี่ยน${word}ให้เป็นพลัง`,
+      "${ลบ}แม้จะมี${word} แต่เราจะผ่านมันไปได้",
+      "${ลบ}${word}เป็นบทเรียนที่ทำให้เราเติบโต",
+      "${ลบ}อย่าให้${word}มาหยุดความฝันของเรา",
     ];
     
-    const templates = polarity === "positive" ? positiveTemplates : 
-                      polarity === "neutral" ? neutralTemplates : 
-                      negativeTemplates;
+    // เลือกประเภทแม่แบบแบบสุ่ม
+    const templateTypes = [positiveTemplates, neutralTemplates, negativeTemplates];
+    const randomTypeIndex = Math.floor(Math.random() * templateTypes.length);
+    const templates = templateTypes[randomTypeIndex];
     
-    // Randomly select a template
+    // เลือกแม่แบบแบบสุ่ม
     const randomIndex = Math.floor(Math.random() * templates.length);
-    return templates[randomIndex];
+    const selectedTemplate = templates[randomIndex];
+    
+    // วิเคราะห์ความรู้สึกจากแม่แบบ
+    const { sentiment, text } = extractSentimentFromTemplate(selectedTemplate);
+    setSentimentType(sentiment);
+    
+    // แทนที่คำในแม่แบบ
+    return text.replace(/\$\{word\}/g, word);
   };
 
   // Highlight the selected words in the sentence
@@ -265,6 +262,7 @@ const MotivationalSentence = ({
     // Attach the method to window object to make it globally accessible
     (window as any).showMotivationalSentence = (word: string, contributor?: string, template?: string) => {
       let sentence = "";
+      let actualTemplate = template;
       
       if (template) {
         // Use the provided template to generate the sentence
@@ -292,7 +290,7 @@ const MotivationalSentence = ({
           sentence: sentence, 
           word,
           contributor: contributorName,
-          template,
+          template: actualTemplate,
           sentiment: sentimentType
         }
       });

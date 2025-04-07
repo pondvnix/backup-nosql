@@ -1,11 +1,12 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getContributorStats } from "@/utils/wordModeration";
 import { useQuery } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Smile, Meh, Frown } from "lucide-react";
-import { getWordPolarity } from "@/utils/sentenceAnalysis";
 import { Badge } from "@/components/ui/badge";
+import { analyzeSentimentFromSentence } from "@/utils/sentimentConsistency";
 
 interface Contributor {
   name: string;
@@ -19,6 +20,7 @@ interface MotivationalSentence {
   timestamp?: Date | number | string;
   polarity?: 'positive' | 'neutral' | 'negative';
   score?: number;
+  template?: string;
 }
 
 interface LeaderboardProps {
@@ -37,7 +39,7 @@ const fetchMotivationalSentences = (): MotivationalSentence[] => {
   if (stored) {
     try {
       const sentences = JSON.parse(stored);
-      return normalizeScoresByPolarity(sentences);
+      return analyzeSentencesByTemplate(sentences);
     } catch (error) {
       console.error("Error processing sentences:", error);
       return [];
@@ -46,31 +48,30 @@ const fetchMotivationalSentences = (): MotivationalSentence[] => {
   return [];
 };
 
-const normalizeScoresByPolarity = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
+// วิเคราะห์ความรู้สึกจากแม่แบบหรือประโยค
+const analyzeSentencesByTemplate = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
   return sentences.map(sentence => {
-    if (sentence.score !== undefined) {
-      if (sentence.polarity) {
-        const expectedScore = 
-          sentence.polarity === 'positive' ? 1 : 
-          sentence.polarity === 'negative' ? -1 : 0;
-        
-        if (sentence.score !== expectedScore) {
-          return { ...sentence, score: expectedScore };
-        }
-      }
-      
-      return sentence;
+    let sentiment: 'positive' | 'neutral' | 'negative';
+    let score: number;
+    
+    // ถ้ามีแม่แบบ ใช้ความรู้สึกจากแม่แบบ
+    if (sentence.template) {
+      const analysis = analyzeSentimentFromSentence("", sentence.template);
+      sentiment = analysis.sentiment;
+      score = analysis.score;
+    } 
+    // ถ้าไม่มีแม่แบบ ใช้การวิเคราะห์จากประโยค
+    else {
+      const analysis = analyzeSentimentFromSentence(sentence.sentence);
+      sentiment = analysis.sentiment;
+      score = analysis.score;
     }
     
-    if (sentence.polarity) {
-      const normalizedScore = 
-        sentence.polarity === 'positive' ? 1 : 
-        sentence.polarity === 'negative' ? -1 : 0;
-      
-      return { ...sentence, score: normalizedScore };
-    }
-    
-    return { ...sentence, polarity: 'neutral', score: 0 };
+    return {
+      ...sentence,
+      polarity: sentiment,
+      score: score
+    };
   });
 };
 
@@ -92,9 +93,7 @@ const highlightWord = (sentence: string, word: string): React.ReactNode => {
 };
 
 const getSentimentIcon = (item: MotivationalSentence) => {
-  const score = item.score !== undefined ? item.score : 
-               item.polarity === 'positive' ? 1 :
-               item.polarity === 'negative' ? -1 : 0;
+  const score = item.score !== undefined ? item.score : 0;
   
   if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
   if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
@@ -102,9 +101,7 @@ const getSentimentIcon = (item: MotivationalSentence) => {
 };
 
 const getBadgeVariant = (item: MotivationalSentence) => {
-  const score = item.score !== undefined ? item.score : 
-               item.polarity === 'positive' ? 1 :
-               item.polarity === 'negative' ? -1 : 0;
+  const score = item.score !== undefined ? item.score : 0;
   
   if (score > 0) return 'success';
   if (score < 0) return 'destructive';
@@ -149,7 +146,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     if (refreshTrigger && !propContributors) {
       refetch();
       
-      const sentences = propSentences ? normalizeScoresByPolarity(propSentences) : fetchMotivationalSentences();
+      const sentences = propSentences ? analyzeSentencesByTemplate(propSentences) : fetchMotivationalSentences();
       const uniqueSentences = removeDuplicateSentences(sentences);
       setMotivationalSentences(uniqueSentences);
       calculateStatistics(uniqueSentences);
@@ -158,8 +155,8 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
 
   useEffect(() => {
     if (propSentences) {
-      const normalizedSentences = normalizeScoresByPolarity(propSentences);
-      const uniqueSentences = removeDuplicateSentences(normalizedSentences);
+      const analyzedSentences = analyzeSentencesByTemplate(propSentences);
+      const uniqueSentences = removeDuplicateSentences(analyzedSentences);
       setMotivationalSentences(uniqueSentences);
       calculateStatistics(uniqueSentences);
     }
@@ -238,9 +235,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
   const latestSentences = motivationalSentences.slice(-5).reverse();
 
   const getPolarityText = (item: MotivationalSentence): string => {
-    const score = item.score !== undefined ? item.score : 
-                 item.polarity === 'positive' ? 1 :
-                 item.polarity === 'negative' ? -1 : 0;
+    const score = item.score !== undefined ? item.score : 0;
     
     if (score > 0) return 'เชิงบวก';
     if (score < 0) return 'เชิงลบ';
@@ -363,9 +358,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
                       </div>
                     </TableCell>
                     <TableCell>
-                      {item.score !== undefined ? item.score : 
-                       item.polarity === 'positive' ? 1 : 
-                       item.polarity === 'negative' ? -1 : 0}
+                      {item.score !== undefined ? item.score : 0}
                     </TableCell>
                     <TableCell className="font-medium">
                       {item.contributor || 'ไม่ระบุชื่อ'}

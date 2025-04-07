@@ -6,6 +6,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Input } from "@/components/ui/input";
 import { Search, Smile, Meh, Frown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { analyzeSentimentFromSentence } from "@/utils/sentimentConsistency";
 
 interface BillboardEntry {
   word: string;
@@ -14,6 +15,7 @@ interface BillboardEntry {
   timestamp: Date | string;
   polarity?: 'positive' | 'neutral' | 'negative';
   score?: number;
+  template?: string;
 }
 
 const BillboardLog = () => {
@@ -22,28 +24,15 @@ const BillboardLog = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const entriesPerPage = 30;
   
-  // ฟังก์ชั่นดึงข้อมูล polarity และ score จากฐานข้อมูล
-  const getWordPolarityFromDatabase = (word: string): { polarity: 'positive' | 'neutral' | 'negative', score: number } => {
-    let database: any[] = [];
-    try {
-      const storedData = localStorage.getItem("word-polarity-database");
-      if (storedData) {
-        database = JSON.parse(storedData);
-      }
-    } catch (e) {
-      console.error("Error loading word database:", e);
+  // ฟังก์ชั่นวิเคราะห์ความรู้สึกจากแม่แบบหรือประโยค
+  const getSentimentFromEntry = (entry: BillboardEntry): { polarity: 'positive' | 'neutral' | 'negative', score: number } => {
+    // ถ้ามี template ใช้ความรู้สึกจาก template
+    if (entry.template) {
+      return analyzeSentimentFromSentence("", entry.template);
     }
     
-    const foundWord = database.find(w => w.word === word);
-    if (foundWord) {
-      return {
-        polarity: foundWord.polarity,
-        score: foundWord.score
-      };
-    }
-    
-    // ค่าเริ่มต้นถ้าไม่พบในฐานข้อมูล
-    return { polarity: 'neutral', score: 0 };
+    // ถ้าไม่มี template ใช้ความรู้สึกจากการวิเคราะห์ประโยค
+    return analyzeSentimentFromSentence(entry.sentence);
   };
   
   // Load all motivational sentences
@@ -55,23 +44,10 @@ const BillboardLog = () => {
           const parsedData = JSON.parse(stored);
           const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
           
-          // Process sentences to add polarity and score
+          // Process sentences to add sentiment and score based on template
           const processedSentences = sentences.map((sentence: BillboardEntry) => {
-            // Get the polarity and score from the database if not already provided
-            const wordInfo = getWordPolarityFromDatabase(sentence.word);
-            
-            // If sentence already has explicit score, use it
-            const score = sentence.score !== undefined ? sentence.score : wordInfo.score;
-            
-            // Ensure polarity matches score for consistency
-            let polarity: 'positive' | 'neutral' | 'negative';
-            if (score > 0) {
-              polarity = 'positive';
-            } else if (score < 0) {
-              polarity = 'negative';
-            } else {
-              polarity = 'neutral';
-            }
+            // วิเคราะห์ความรู้สึกโดยใช้แม่แบบหรือประโยค
+            const { polarity, score } = getSentimentFromEntry(sentence);
             
             return {
               ...sentence,

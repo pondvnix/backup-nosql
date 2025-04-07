@@ -4,6 +4,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { useState, useEffect } from "react";
 import { Smile, Meh, Frown } from "lucide-react";
 import { Badge } from "./ui/badge";
+import { analyzeSentimentFromSentence } from "@/utils/sentimentConsistency";
 
 interface Quote {
   text: string;
@@ -12,6 +13,7 @@ interface Quote {
   word?: string;
   polarity?: 'positive' | 'neutral' | 'negative';
   score?: number;
+  template?: string;
 }
 
 interface QuoteManagementTableProps {
@@ -39,39 +41,32 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     
-    // Normalize scores to ensure consistency
-    const normalizedQuotes = sortedQuotes.map(quote => {
-      // ถ้ามี score อยู่แล้วใช้ค่าที่มีเลย
-      let score = quote.score;
+    // Analyze sentiment based on template or text
+    const analyzedQuotes = sortedQuotes.map(quote => {
+      let sentiment: 'positive' | 'neutral' | 'negative';
+      let score: number;
       
-      // ถ้าไม่มี score แต่มี polarity ให้แปลงจาก polarity
-      if (score === undefined && quote.polarity) {
-        score = quote.polarity === 'positive' ? 1 : 
-                quote.polarity === 'negative' ? -1 : 0;
-      }
-      // ถ้าไม่มีทั้งสองอย่าง ให้เป็นกลาง
-      else if (score === undefined) {
-        score = 0;
-      }
-      
-      // กำหนด polarity ตาม score เสมอ เพื่อความสอดคล้อง
-      let polarity: 'positive' | 'neutral' | 'negative';
-      if (score > 0) {
-        polarity = 'positive';
-      } else if (score < 0) {
-        polarity = 'negative';
-      } else {
-        polarity = 'neutral';
+      // ถ้ามีแม่แบบ ใช้ความรู้สึกจากแม่แบบ
+      if (quote.template) {
+        const analysis = analyzeSentimentFromSentence("", quote.template);
+        sentiment = analysis.sentiment;
+        score = analysis.score;
+      } 
+      // ถ้าไม่มีแม่แบบ ใช้การวิเคราะห์จากประโยค
+      else {
+        const analysis = analyzeSentimentFromSentence(quote.text);
+        sentiment = analysis.sentiment;
+        score = analysis.score;
       }
       
       return {
         ...quote,
-        score,
-        polarity
+        polarity: sentiment,
+        score: score
       };
     });
     
-    setDisplayedQuotes(normalizedQuotes);
+    setDisplayedQuotes(analyzedQuotes);
   }, [quotes]);
   
   // Calculate pagination
