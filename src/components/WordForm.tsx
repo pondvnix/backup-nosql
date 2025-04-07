@@ -70,7 +70,6 @@ const WordForm = ({
       if (storedSentences) {
         const sentences = JSON.parse(storedSentences);
         
-        // Track used word-template combinations
         const usedCombinations = new Set<string>();
         sentences.forEach((item: any) => {
           if (item.word && item.sentence) {
@@ -117,7 +116,6 @@ const WordForm = ({
     const wordEntry = wordDatabase.find(entry => entry.word === trimmedWord);
     
     if (wordEntry) {
-      // Find an unused template for this word
       const unusedTemplates = wordEntry.templates.filter(template => 
         !usedWordTemplates.has(`${trimmedWord}_${template}`)
       );
@@ -131,11 +129,9 @@ const WordForm = ({
         return;
       }
       
-      // Select a random unused template
       const template = unusedTemplates[Math.floor(Math.random() * unusedTemplates.length)];
       const sentence = template.replace(new RegExp(`\\$\\{${trimmedWord}\\}`, 'g'), trimmedWord);
       
-      // Create a new sentence entry
       const newSentenceEntry = {
         word: trimmedWord,
         sentence: sentence,
@@ -144,7 +140,6 @@ const WordForm = ({
         timestamp: new Date()
       };
       
-      // Update the list of sentences in localStorage
       try {
         const storedSentences = localStorage.getItem('motivation-sentences');
         const existingSentences = storedSentences ? JSON.parse(storedSentences) : [];
@@ -154,7 +149,6 @@ const WordForm = ({
         console.error("Error updating sentences:", error);
       }
       
-      // Add to used word-template combinations
       setUsedWordTemplates(prev => {
         const newSet = new Set(prev);
         newSet.add(`${trimmedWord}_${template}`);
@@ -186,11 +180,10 @@ const WordForm = ({
     setWord("");
   };
 
-  const handleSelectSuggestion = (selectedWord: string, template?: string) => {
-    const contributorName = contributor.trim() || "ไม่ระบุชื่อ";
-    localStorage.setItem("contributor-name", contributorName);
+  const handleSelectWord = (selectedWord: string, contributor: string, template?: string) => {
+    const trimmedContributor = contributor.trim() || "ไม่ระบุชื่อ";
+    localStorage.setItem("contributor-name", trimmedContributor);
     
-    // Add to used word-template combinations if template is provided
     if (template) {
       setUsedWordTemplates(prev => {
         const newSet = new Set(prev);
@@ -199,10 +192,17 @@ const WordForm = ({
       });
     }
     
-    onSelectWord(selectedWord, contributorName, template);
+    onAddWord(selectedWord, trimmedContributor, template);
+    setWord("");
   };
 
-  // We'll maintain this for backward compatibility, but now we focus on word-template combinations
+  const handleSelectSuggestion = (selectedWord: string, template?: string) => {
+    const contributorName = contributor.trim() || "ไม่ระบุชื่อ";
+    localStorage.setItem("contributor-name", contributorName);
+    
+    handleSelectWord(selectedWord, contributorName, template);
+  };
+
   const isWordAvailable = (wordText: string) => {
     const wordEntry = wordDatabase.find(entry => entry.word === wordText);
     
@@ -210,7 +210,6 @@ const WordForm = ({
       return false;
     }
     
-    // Check if there are any unused templates for this word
     return wordEntry.templates.some(template => 
       !usedWordTemplates.has(`${wordText}_${template}`)
     );
