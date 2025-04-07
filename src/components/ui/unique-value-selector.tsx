@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Check, X } from "lucide-react";
+import { Check, X, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,7 @@ interface OptionType {
 
 interface UniqueValueSelectorProps {
   options: OptionType[];
-  selected?: { value: string };
+  selected?: { value: string; text?: string };
   onSelect: (option: OptionType | undefined) => void;
   onSelectAll?: (options: OptionType[]) => void;
   usedValues?: string[];
@@ -42,12 +42,21 @@ export function UniqueValueSelector({
   const handleValueChange = (value: string) => {
     // Check if the value is already used elsewhere (but not by the current selection)
     if (usedValues.includes(value) && value !== selected?.value) {
+      // Find the option text
+      const optionText = options.find(opt => opt.value === value)?.text || value;
+      
       toast({
         title: "Selection Error",
-        description: "This value has already been selected elsewhere. Please choose a unique value.",
+        description: (
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            <span>
+              "{optionText}" has already been selected elsewhere. The other selection will be cleared.
+            </span>
+          </div>
+        ),
         variant: "destructive",
       });
-      return;
     }
 
     // Update internal state
@@ -73,6 +82,11 @@ export function UniqueValueSelector({
       );
       onSelectAll(availableOptions);
     }
+  };
+
+  // Generate a safe ID from the title
+  const getSafeTitle = () => {
+    return title?.replace(/\s+/g, '-').toLowerCase() || 'default';
   };
 
   return (
@@ -113,24 +127,26 @@ export function UniqueValueSelector({
         {options.map((option) => {
           // A value is disabled if it's used elsewhere (but not by this selector)
           const isDisabled = usedValues.includes(option.value) && option.value !== selected?.value;
+          // Create a unique ID for each radio item
+          const uniqueId = `option-${option.value}-${getSafeTitle()}`;
           
           return (
             <div 
               key={option.value}
               className={cn(
                 "flex items-center space-x-2 rounded-md border p-3 transition-colors",
-                isDisabled ? "opacity-50 cursor-not-allowed bg-muted" : "hover:bg-accent",
+                isDisabled ? "opacity-50 cursor-not-allowed bg-muted" : "hover:bg-accent cursor-pointer",
                 selectedValue === option.value && "border-primary bg-accent"
               )}
               onClick={() => !isDisabled && handleValueChange(option.value)}
             >
               <RadioGroupItem 
                 value={option.value}
-                id={`option-${option.value}-${title?.replace(/\s+/g, '-').toLowerCase() || ''}`}
+                id={uniqueId}
                 disabled={isDisabled}
               />
               <Label 
-                htmlFor={`option-${option.value}-${title?.replace(/\s+/g, '-').toLowerCase() || ''}`}
+                htmlFor={uniqueId}
                 className={cn(
                   "cursor-pointer flex-1",
                   isDisabled && "cursor-not-allowed"

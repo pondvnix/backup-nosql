@@ -33,6 +33,7 @@ const UniqueValueSelectorExample = () => {
     // If selecting the same value that's already in selector 2, clear selector 2
     if (option && option.value === selection2?.value) {
       setSelection2(undefined);
+      console.log(`Clearing selector 2 because "${option.text}" was selected in selector 1`);
     }
     setSelection1(option);
   };
@@ -42,6 +43,7 @@ const UniqueValueSelectorExample = () => {
     // If selecting the same value that's already in selector 1, clear selector 1
     if (option && option.value === selection1?.value) {
       setSelection1(undefined);
+      console.log(`Clearing selector 1 because "${option.text}" was selected in selector 2`);
     }
     setSelection2(option);
   };
