@@ -50,7 +50,6 @@ export const getWordPolarity = (word: string): { polarity: 'positive' | 'neutral
 export const analyzeSentence = (sentence: string): { 
   polarity: 'positive' | 'neutral' | 'negative'; 
   score: number;
-  database?: any;
 } => {
   const result = analyzeSentimentFromSentence(sentence);
   return {

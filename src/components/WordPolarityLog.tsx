@@ -108,7 +108,7 @@ const WordPolarityLog = ({ words }: WordPolarityLogProps) => {
         <tbody>
           {currentEntries.map((entry, index) => {
             // Get badge variant based on template sentiment
-            const badgeVariant = getSentimentBadgeVariant({ sentiment: entry.sentiment });
+            const badgeVariant = getSentimentBadgeVariant(entry.sentiment);
             
             return (
               <tr key={index} className="border-t border-gray-200 hover:bg-muted/50 transition-colors">
@@ -125,7 +125,7 @@ const WordPolarityLog = ({ words }: WordPolarityLogProps) => {
                     badgeVariant === 'destructive' ? 'bg-red-100 text-red-800 border-red-300' :
                     'bg-blue-100 text-blue-800 border-blue-300'
                   }`}>
-                    {getPolarityText({ sentiment: entry.sentiment })}
+                    {getPolarityText(entry.sentiment)}
                   </span>
                 </td>
                 <td className="px-4 py-2">

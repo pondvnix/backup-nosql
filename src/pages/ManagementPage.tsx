@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -89,7 +88,7 @@ const ManagementPage = () => {
         '${กลาง}';
       
       const defaultTemplate: Template = {
-        text: `${word.trim()} คือสิ่งสำคัญในชีวิต`,
+        template: `${word.trim()} คือสิ่งสำคัญในชีวิต`,
         sentiment: templateSentiment
       };
       
@@ -100,7 +99,7 @@ const ManagementPage = () => {
       
       const updatedWords = [...allWords, { 
         word: word.trim(), 
-        templates: [sentimentPrefix + defaultTemplate.text]
+        templates: [sentimentPrefix + defaultTemplate.template]
       }];
       
       setAllWords(updatedWords);
@@ -131,7 +130,7 @@ const ManagementPage = () => {
           t.sentiment === 'positive' ? '${บวก}' :
           t.sentiment === 'negative' ? '${ลบ}' :
           '${กลาง}';
-        return `${sentimentPrefix}${t.text}`;
+        return `${sentimentPrefix}${t.template}`;
       });
       setTemplateText(templateLines.join(',\n'));
       
@@ -213,13 +212,11 @@ const ManagementPage = () => {
     setWordToDelete(null);
   };
 
-  // Get template sentiment badge
   const getTemplateSentimentBadge = (templates?: string[]): React.ReactNode => {
     if (!templates || templates.length === 0) {
       return <Badge variant="secondary" className="ml-2">กลาง</Badge>;
     }
     
-    // Use the first template's sentiment
     const { sentiment } = extractSentimentFromTemplate(templates[0]);
     
     switch (sentiment) {
@@ -232,13 +229,11 @@ const ManagementPage = () => {
     }
   };
 
-  // Get template sentiment icon
   const getTemplateSentimentIcon = (templates?: string[]): React.ReactNode => {
     if (!templates || templates.length === 0) {
       return <Meh className="h-4 w-4 text-blue-500" />;
     }
     
-    // Use the first template's sentiment
     const { sentiment } = extractSentimentFromTemplate(templates[0]);
     
     switch (sentiment) {

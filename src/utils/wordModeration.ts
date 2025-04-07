@@ -1,12 +1,8 @@
 
 import { analyzeSentimentFromSentence } from "./sentimentConsistency";
 
-// Enum for template sentiment types
-export enum TemplateSentiment {
-  POSITIVE = 'บวก',
-  NEUTRAL = 'กลาง',
-  NEGATIVE = 'ลบ'
-}
+// Define TemplateSentiment as a string type for better TypeScript compatibility
+export type TemplateSentiment = 'positive' | 'neutral' | 'negative';
 
 // Template interface for word templates
 export interface Template {
@@ -132,7 +128,12 @@ export const saveMotivationalSentence = (
 };
 
 // ฟังก์ชั่นสำหรับเพิ่มคำใหม่ลงในฐานข้อมูล
-export const addWordToDatabase = (word: string, templates: string[]): boolean => {
+export const addWordToDatabase = (
+  word: string,
+  sentiment: TemplateSentiment = 'neutral',
+  score: number = 0,
+  templates: Template[] = []
+): boolean => {
   try {
     // ดึงข้อมูลเดิม
     let database = [];
@@ -141,17 +142,20 @@ export const addWordToDatabase = (word: string, templates: string[]): boolean =>
       database = JSON.parse(storedData);
     }
     
+    // แปลง Template[] เป็น string[] ที่มีรูปแบบถูกต้อง
+    const templateStrings = templateObjectsToStrings(templates);
+    
     // ตรวจสอบว่ามีคำนี้อยู่แล้วหรือไม่
     const existingWordIndex = database.findIndex((entry: any) => entry.word === word);
     
     if (existingWordIndex !== -1) {
       // หากมีคำนี้อยู่แล้ว ให้อัปเดต templates
-      database[existingWordIndex].templates = templates;
+      database[existingWordIndex].templates = templateStrings;
     } else {
       // หากยังไม่มีคำนี้ ให้เพิ่มใหม่
       database.push({
         word,
-        templates
+        templates: templateStrings
       });
     }
     
@@ -170,8 +174,13 @@ export const addWordToDatabase = (word: string, templates: string[]): boolean =>
 };
 
 // ฟังก์ชั่นสำหรับอัปเดตความรู้สึกของคำ
-export const updateWordPolarity = (word: string, templates: string[]): boolean => {
-  return addWordToDatabase(word, templates);
+export const updateWordPolarity = (
+  word: string, 
+  sentiment: TemplateSentiment = 'neutral',
+  score: number = 0, 
+  templates: Template[] = []
+): boolean => {
+  return addWordToDatabase(word, sentiment, score, templates);
 };
 
 // ฟังก์ชั่นสำหรับลบคำออกจากฐานข้อมูล
@@ -202,8 +211,8 @@ export const deleteWord = (word: string): boolean => {
 };
 
 // ตรวจสอบว่ามีแม่แบบซ้ำกันหรือไม่
-export const hasDuplicateTemplates = (templates: string[]): boolean => {
-  const uniqueTemplates = new Set(templates);
+export const hasDuplicateTemplates = (templates: Template[]): boolean => {
+  const uniqueTemplates = new Set(templates.map(t => t.template));
   return uniqueTemplates.size !== templates.length;
 };
 
@@ -213,17 +222,17 @@ export const stringToTemplateObjects = (templates: string[]): Template[] => {
     if (template.includes("${บวก}")) {
       return {
         template: template.replace(/\$\{บวก\}/g, ''),
-        sentiment: TemplateSentiment.POSITIVE
+        sentiment: 'positive'
       };
     } else if (template.includes("${ลบ}")) {
       return {
         template: template.replace(/\$\{ลบ\}/g, ''),
-        sentiment: TemplateSentiment.NEGATIVE
+        sentiment: 'negative'
       };
     } else {
       return {
         template: template.replace(/\$\{กลาง\}/g, ''),
-        sentiment: TemplateSentiment.NEUTRAL
+        sentiment: 'neutral'
       };
     }
   });
@@ -233,11 +242,11 @@ export const stringToTemplateObjects = (templates: string[]): Template[] => {
 export const templateObjectsToStrings = (templates: Template[]): string[] => {
   return templates.map(template => {
     switch (template.sentiment) {
-      case TemplateSentiment.POSITIVE:
+      case 'positive':
         return `\${บวก}${template.template}`;
-      case TemplateSentiment.NEGATIVE:
+      case 'negative':
         return `\${ลบ}${template.template}`;
-      case TemplateSentiment.NEUTRAL:
+      case 'neutral':
       default:
         return `\${กลาง}${template.template}`;
     }
@@ -245,14 +254,32 @@ export const templateObjectsToStrings = (templates: Template[]): string[] => {
 };
 
 // แยกวิเคราะห์ templates จากข้อความ
-export const parseTemplates = (templatesString: string): string[] => {
+export const parseTemplates = (templatesString: string): Template[] => {
   if (!templatesString.trim()) {
     return [];
   }
   
-  // แยกตามบรรทัด
-  return templatesString
-    .split('\n')
+  // แยกตามบรรทัดและคอมม่า
+  const templateStrings = templatesString
+    .split(/[\n,]+/)
     .map(line => line.trim())
     .filter(line => line !== '');
+  
+  return templateStrings.map(templateString => {
+    let sentiment: TemplateSentiment = 'neutral';
+    let template = templateString;
+    
+    if (templateString.includes('${บวก}')) {
+      sentiment = 'positive';
+      template = templateString.replace(/\$\{บวก\}/g, '');
+    } else if (templateString.includes('${ลบ}')) {
+      sentiment = 'negative';
+      template = templateString.replace(/\$\{ลบ\}/g, '');
+    } else if (templateString.includes('${กลาง}')) {
+      sentiment = 'neutral';
+      template = templateString.replace(/\$\{กลาง\}/g, '');
+    }
+    
+    return { sentiment, template };
+  });
 };

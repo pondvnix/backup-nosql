@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,18 +41,15 @@ const WordSuggestions = ({
   const [globalUsedWords, setGlobalUsedWords] = useState<string[]>([]);
   const [usedWordTemplates, setUsedWordTemplates] = useState<Set<string>>(new Set());
 
-  // Load all globally used words and word-template combinations from localStorage
   const loadUsedWordsAndTemplates = () => {
     try {
       const storedSentences = localStorage.getItem('motivation-sentences');
       if (storedSentences) {
         const sentences = JSON.parse(storedSentences);
         
-        // Track used words
         const allUsedWords = sentences.map((item: any) => item.word || "");
         setGlobalUsedWords(allUsedWords.filter(Boolean));
         
-        // Track used word-template combinations
         const usedCombinations = new Set<string>();
         sentences.forEach((item: any) => {
           if (item.word && item.sentence) {
@@ -69,35 +65,27 @@ const WordSuggestions = ({
     }
   };
 
-  // Generate a list of suggested words
   const generateSuggestions = () => {
     setIsRefreshing(true);
     setTimeout(() => {
-      // Get word database from localStorage or use default
       let wordDatabase = [];
       try {
         const storedData = localStorage.getItem("word-polarity-database");
         if (storedData) {
           wordDatabase = JSON.parse(storedData);
+        } else {
+          wordDatabase = wordPolarityDatabase;
         }
       } catch (e) {
         console.error("Error loading word database:", e);
+        wordDatabase = wordPolarityDatabase;
       }
       
-      // If no words in database, use default polarity database from utils
-      if (wordDatabase.length === 0) {
-        const response = getWordPolarity("");
-        wordDatabase = response.database || [];
-      }
-      
-      // Filter out words that don't have any unused templates
       const filteredWords = wordDatabase.filter((wordEntry: any) => {
-        // If the word doesn't have templates, don't suggest it
         if (!wordEntry.templates || wordEntry.templates.length === 0) {
           return false;
         }
         
-        // Check if there are any unused templates for this word
         const hasUnusedTemplates = wordEntry.templates.some((template: string) => {
           return !usedWordTemplates.has(`${wordEntry.word}_${template}`);
         });
@@ -105,7 +93,6 @@ const WordSuggestions = ({
         return hasUnusedTemplates;
       });
       
-      // Shuffle and take the first few words
       const shuffled = [...filteredWords].sort(() => 0.5 - Math.random());
       const selected = shuffled.slice(0, 6);
       
@@ -116,7 +103,6 @@ const WordSuggestions = ({
     }, 500);
   };
 
-  // Create combined word-template options
   const generateWordTemplateOptions = (words: Array<{
     word: string;
     polarity: 'positive' | 'neutral' | 'negative';
@@ -126,20 +112,16 @@ const WordSuggestions = ({
 
     words.forEach(wordItem => {
       if (wordItem.templates && wordItem.templates.length > 0 && showMultipleTemplates) {
-        // Add each word-template combination as a separate option, but only if not already used
         wordItem.templates.forEach(template => {
-          // Skip this template if it's already been used with this word
           if (usedWordTemplates.has(`${wordItem.word}_${template}`)) {
             return;
           }
           
-          // Extract sentiment from template
           const { sentiment } = extractSentimentFromTemplate(template);
           
-          // Create a preview of the template by replacing ${word} with the actual word
           const templatePreview = template
             .replace(new RegExp(`\\$\\{${wordItem.word}\\}`, 'g'), wordItem.word)
-            .replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '') // Remove sentiment markers
+            .replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '')
             .substring(0, 35) + (template.length > 35 ? '...' : '');
           
           options.push({
@@ -151,7 +133,6 @@ const WordSuggestions = ({
           });
         });
       } else if (!showMultipleTemplates) {
-        // Add just the word as an option if showMultipleTemplates is false
         options.push({
           word: wordItem.word,
           polarity: wordItem.polarity,
@@ -164,7 +145,6 @@ const WordSuggestions = ({
     setIsRefreshing(false);
   };
 
-  // Initialize suggestions on component mount and when global used words change
   useEffect(() => {
     loadUsedWordsAndTemplates();
     
@@ -181,53 +161,43 @@ const WordSuggestions = ({
     };
   }, []);
   
-  // Generate suggestions when component mounts or global used words change
   useEffect(() => {
     generateSuggestions();
     
-    // Set up auto-refresh timer if not disabled
     if (!disableAutoRefresh) {
       const refreshInterval = setInterval(generateSuggestions, 60000);
       return () => clearInterval(refreshInterval);
     }
   }, [disableAutoRefresh, existingWords, globalUsedWords, usedWordTemplates]);
 
-  // Handle option selection from radio group
   const handleOptionSelect = (optionId: string) => {
     setSelectedOption(optionId);
   };
 
-  // Handle submit button click
   const handleSubmit = () => {
     if (selectedOption) {
-      // Find the selected option
       const selectedItem = wordTemplateOptions.find(
         option => `${option.word}_${option.template || 'default'}` === selectedOption
       );
       
       if (selectedItem) {
-        // Generate the actual sentence for this word and template
         let sentenceText = "";
         if (selectedItem.template) {
           sentenceText = selectedItem.template
             .replace(new RegExp(`\\$\\{${selectedItem.word}\\}`, 'g'), selectedItem.word)
-            .replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, ''); // Remove sentiment markers for display
+            .replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '');
         }
         
-        // Get contributor name from localStorage
         const contributor = localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
         
-        // Save the sentence to the motivational sentences database
         storeSentenceInDatabase(selectedItem.word, sentenceText, contributor, selectedItem.template);
         
-        // Add the selected word-template combination to the usedWordTemplates set
         setUsedWordTemplates(prev => {
           const newSet = new Set(prev);
           newSet.add(`${selectedItem.word}_${selectedItem.template || 'default'}`);
           return newSet;
         });
         
-        // Trigger the motivational sentence event so other components can update
         const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
           detail: { 
             sentence: sentenceText, 
@@ -239,19 +209,16 @@ const WordSuggestions = ({
         });
         window.dispatchEvent(sentenceEvent);
         
-        // Pass the word and template to the parent component
         onSelectWord(selectedItem.word, selectedItem.template);
         setSelectedOption("");
         generateSuggestions();
       }
     }
   };
-  
-  // Store the sentence in the local database
+
   const storeSentenceInDatabase = (word: string, sentence: string, contributor: string, template?: string) => {
     if (!sentence) return;
     
-    // Extract sentiment from template if available
     let sentiment;
     if (template) {
       const sentimentInfo = extractSentimentFromTemplate(template);
@@ -287,7 +254,6 @@ const WordSuggestions = ({
     window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
   };
 
-  // Get polarity display class
   const getPolarityClass = (polarity: string) => {
     switch (polarity) {
       case 'positive':
@@ -299,7 +265,6 @@ const WordSuggestions = ({
     }
   };
 
-  // Get polarity Thai text
   const getPolarityText = (polarity: string) => {
     switch (polarity) {
       case 'positive':
@@ -310,8 +275,7 @@ const WordSuggestions = ({
         return 'กลาง';
     }
   };
-  
-  // Get sentiment icon based on sentiment value
+
   const getSentimentIcon = (sentiment?: 'positive' | 'neutral' | 'negative') => {
     switch (sentiment) {
       case 'positive':
@@ -351,7 +315,6 @@ const WordSuggestions = ({
             >
               {wordTemplateOptions.map((option) => {
                 const optionId = `${option.word}_${option.template || 'default'}`;
-                // Determine badge variant based on sentiment
                 const badgeVariant = option.sentiment === 'positive' ? 'success' : 
                                     option.sentiment === 'negative' ? 'destructive' : 'secondary';
                 

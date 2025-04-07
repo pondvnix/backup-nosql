@@ -137,7 +137,7 @@ const WordStream = () => {
   useEffect(() => {
     if (words.length > 0) {
       const wordTexts = words.map(word => word.text);
-      const result = analyzeSentence(wordTexts);
+      const result = analyzeSentence(wordTexts.join(' '));
       setAnalysisResult(result);
     }
   }, [words]);
