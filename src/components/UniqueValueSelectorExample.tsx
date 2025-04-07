@@ -28,6 +28,24 @@ const UniqueValueSelectorExample = () => {
     selection2?.value,
   ].filter(Boolean) as string[];
 
+  // Handle selection for selector 1
+  const handleSelect1 = (option: OptionType | undefined) => {
+    // If selecting the same value that's already in selector 2, clear selector 2
+    if (option && option.value === selection2?.value) {
+      setSelection2(undefined);
+    }
+    setSelection1(option);
+  };
+
+  // Handle selection for selector 2
+  const handleSelect2 = (option: OptionType | undefined) => {
+    // If selecting the same value that's already in selector 1, clear selector 1
+    if (option && option.value === selection1?.value) {
+      setSelection1(undefined);
+    }
+    setSelection2(option);
+  };
+
   const handleSelectAll = (options: OptionType[]) => {
     setAllSelected(options);
     // Distribute these values among your selectors
@@ -59,7 +77,7 @@ const UniqueValueSelectorExample = () => {
             <UniqueValueSelector
               options={colorOptions}
               selected={selection1}
-              onSelect={setSelection1}
+              onSelect={handleSelect1}
               usedValues={usedValues}
               title="Choose a color"
             />
@@ -74,7 +92,7 @@ const UniqueValueSelectorExample = () => {
             <UniqueValueSelector
               options={colorOptions}
               selected={selection2}
-              onSelect={setSelection2}
+              onSelect={handleSelect2}
               onSelectAll={handleSelectAll}
               usedValues={usedValues}
               title="Choose another color"

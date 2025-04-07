@@ -34,12 +34,13 @@ export function UniqueValueSelector({
   const [selectedValue, setSelectedValue] = useState<string | undefined>(selected?.value);
   const { toast } = useToast();
 
+  // Update selectedValue when selected prop changes
   useEffect(() => {
     setSelectedValue(selected?.value);
   }, [selected]);
 
   const handleValueChange = (value: string) => {
-    // Check if the value is already used (but not by the current selection)
+    // Check if the value is already used elsewhere (but not by the current selection)
     if (usedValues.includes(value) && value !== selected?.value) {
       toast({
         title: "Selection Error",
@@ -49,7 +50,10 @@ export function UniqueValueSelector({
       return;
     }
 
+    // Update internal state
     setSelectedValue(value);
+    
+    // Find the selected option and send it to parent
     const selectedOption = options.find(option => option.value === value);
     if (selectedOption) {
       onSelect(selectedOption);
@@ -107,26 +111,26 @@ export function UniqueValueSelector({
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"
       >
         {options.map((option) => {
+          // A value is disabled if it's used elsewhere (but not by this selector)
           const isDisabled = usedValues.includes(option.value) && option.value !== selected?.value;
-          // Create a unique value for each option
-          const optionValue = option.value;
           
           return (
             <div 
-              key={optionValue} 
+              key={option.value}
               className={cn(
                 "flex items-center space-x-2 rounded-md border p-3 transition-colors",
                 isDisabled ? "opacity-50 cursor-not-allowed bg-muted" : "hover:bg-accent",
-                selectedValue === optionValue && "border-primary bg-accent"
+                selectedValue === option.value && "border-primary bg-accent"
               )}
+              onClick={() => !isDisabled && handleValueChange(option.value)}
             >
               <RadioGroupItem 
-                value={optionValue} 
-                id={`option-${optionValue}`}
+                value={option.value}
+                id={`option-${option.value}-${title?.replace(/\s+/g, '-').toLowerCase() || ''}`}
                 disabled={isDisabled}
               />
               <Label 
-                htmlFor={`option-${optionValue}`} 
+                htmlFor={`option-${option.value}-${title?.replace(/\s+/g, '-').toLowerCase() || ''}`}
                 className={cn(
                   "cursor-pointer flex-1",
                   isDisabled && "cursor-not-allowed"
