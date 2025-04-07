@@ -32,7 +32,25 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
     // ปรับปรุงวิธีการกรองข้อมูลซ้ำซ้อนโดยใช้ Map เพื่อเก็บข้อมูลล่าสุดของแต่ละประโยค
     const uniqueMap = new Map();
     
-    filteredQuotes.forEach(quote => {
+    // ตรวจสอบและกำหนดค่า score ที่ถูกต้องตามมาตรฐาน
+    const normalizedQuotes = filteredQuotes.map(quote => {
+      // ถ้ามีค่า score อยู่แล้ว ให้ใช้ค่านั้น
+      if (quote.score !== undefined) return quote;
+      
+      // ถ้าไม่มี score แต่มี polarity ให้กำหนดค่า score ตามมาตรฐาน
+      if (quote.polarity) {
+        const normalizedScore = 
+          quote.polarity === 'positive' ? 1 : 
+          quote.polarity === 'negative' ? -1 : 0;
+        
+        return { ...quote, score: normalizedScore };
+      }
+      
+      // กรณีไม่มีทั้ง score และ polarity ให้กำหนดเป็นกลาง
+      return { ...quote, polarity: 'neutral', score: 0 };
+    });
+    
+    normalizedQuotes.forEach(quote => {
       const uniqueKey = `${quote.word}-${quote.text}`;
       
       // เก็บข้อมูลล่าสุดของแต่ละประโยค (ตามวันที่)
@@ -106,7 +124,7 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
     });
   };
   
-  // Function to get score based on polarity
+  // ปรับปรุงฟังก์ชั่นให้ใช้ตามมาตรฐาน positive=1, neutral=0, negative=-1
   const getScoreFromPolarity = (polarity?: string): number => {
     switch (polarity) {
       case 'positive':
@@ -118,7 +136,7 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
     }
   };
   
-  // Function to get polarity icon
+  // อัปเดตฟังก์ชั่นให้แสดงไอคอนตามค่า score ที่ถูกต้อง
   const getPolarityIcon = (score: number) => {
     if (score > 0) {
       return <Smile className="h-4 w-4 text-green-500" />;

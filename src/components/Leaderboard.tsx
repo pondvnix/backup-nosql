@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getContributorStats } from "@/utils/wordModeration";
@@ -36,14 +37,34 @@ const fetchMotivationalSentences = (): MotivationalSentence[] => {
   if (stored) {
     try {
       const sentences = JSON.parse(stored);
-      // ไม่ต้องคำนวณค่า polarity และ score ใหม่ถ้ามีอยู่แล้วในข้อมูล
-      return sentences;
+      // ปรับให้ทุกประโยคมีค่า score ที่สอดคล้องกับ polarity
+      return normalizeScoresByPolarity(sentences);
     } catch (error) {
       console.error("Error processing sentences:", error);
       return [];
     }
   }
   return [];
+};
+
+// เพิ่มฟังก์ชั่นตรวจสอบและกำหนดค่า score ตามมาตรฐาน
+const normalizeScoresByPolarity = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
+  return sentences.map(sentence => {
+    // ถ้ามีค่า score อยู่แล้ว ให้ใช้ค่านั้น
+    if (sentence.score !== undefined) return sentence;
+    
+    // ถ้าไม่มี score แต่มี polarity ให้กำหนดค่า score ตามมาตรฐาน
+    if (sentence.polarity) {
+      const normalizedScore = 
+        sentence.polarity === 'positive' ? 1 : 
+        sentence.polarity === 'negative' ? -1 : 0;
+      
+      return { ...sentence, score: normalizedScore };
+    }
+    
+    // กรณีไม่มีทั้ง score และ polarity ให้กำหนดเป็นกลาง
+    return { ...sentence, polarity: 'neutral', score: 0 };
+  });
 };
 
 const highlightWord = (sentence: string, word: string): React.ReactNode => {
@@ -63,7 +84,16 @@ const highlightWord = (sentence: string, word: string): React.ReactNode => {
   });
 };
 
-const getSentimentIcon = (polarity: string | undefined) => {
+// อัปเดตฟังก์ชั่นให้แสดงไอคอนตามค่า polarity ที่ถูกต้อง
+const getSentimentIcon = (polarity: string | undefined, score?: number) => {
+  // ใช้ค่า score ถ้ามี
+  if (score !== undefined) {
+    if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
+    if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
+    return <Meh className="h-4 w-4 text-blue-500" />;
+  }
+  
+  // ถ้าไม่มี score ให้ใช้ค่า polarity
   switch (polarity) {
     case 'positive':
       return <Smile className="h-4 w-4 text-green-500" />;
@@ -112,7 +142,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     if (refreshTrigger && !propContributors) {
       refetch();
       
-      const sentences = propSentences || fetchMotivationalSentences();
+      const sentences = propSentences ? normalizeScoresByPolarity(propSentences) : fetchMotivationalSentences();
       const uniqueSentences = removeDuplicateSentences(sentences);
       setMotivationalSentences(uniqueSentences);
       calculateStatistics(uniqueSentences);
@@ -121,12 +151,14 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
 
   useEffect(() => {
     if (propSentences) {
-      const uniqueSentences = removeDuplicateSentences(propSentences);
+      const normalizedSentences = normalizeScoresByPolarity(propSentences);
+      const uniqueSentences = removeDuplicateSentences(normalizedSentences);
       setMotivationalSentences(uniqueSentences);
       calculateStatistics(uniqueSentences);
     }
   }, [propSentences]);
 
+  // ปรับปรุงฟังก์ชั่นคำนวณสถิติให้ใช้ค่า score ในการตัดสินใจว่าเป็นประโยคประเภทใด
   const calculateStatistics = (sentences: MotivationalSentence[]) => {
     const uniqueUsers = new Set(sentences.map(s => s.contributor || 'Anonymous')).size;
     
@@ -136,8 +168,17 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     let longestSentence = { text: '', length: 0, contributor: '' };
     
     sentences.forEach(sentence => {
-      if (sentence.polarity === 'positive') positiveSentences++;
-      else if (sentence.polarity === 'negative') negativeSentences++;
+      // ใช้ค่า score ถ้ามี ถ้าไม่มีให้ใช้ค่า polarity
+      const score = sentence.score !== undefined 
+        ? sentence.score 
+        : sentence.polarity === 'positive' 
+          ? 1 
+          : sentence.polarity === 'negative' 
+            ? -1 
+            : 0;
+      
+      if (score > 0) positiveSentences++;
+      else if (score < 0) negativeSentences++;
       else neutralSentences++;
       
       if (sentence.sentence && sentence.sentence.length > longestSentence.length) {
@@ -197,7 +238,16 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
 
   const latestSentences = motivationalSentences.slice(-5).reverse();
 
-  const getPolarityText = (polarity: string | undefined): string => {
+  // ปรับปรุงฟังก์ชั่นให้แสดงข้อความตามค่า score
+  const getPolarityText = (polarity: string | undefined, score?: number): string => {
+    // ใช้ค่า score ถ้ามี
+    if (score !== undefined) {
+      if (score > 0) return 'เชิงบวก';
+      if (score < 0) return 'เชิงลบ';
+      return 'กลาง';
+    }
+    
+    // ถ้าไม่มี score ให้ใช้ค่า polarity
     switch (polarity) {
       case 'positive':
         return 'เชิงบวก';
@@ -316,7 +366,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
               <TableBody>
                 {latestSentences.map((item, index) => (
                   <TableRow key={`latest-${item.word}-${item.sentence}-${index}`}>
-                    <TableCell>{getSentimentIcon(item.polarity)}</TableCell>
+                    <TableCell>{getSentimentIcon(item.polarity, item.score)}</TableCell>
                     <TableCell className="font-medium">
                       {item.contributor || 'ไม่ระบุชื่อ'}
                     </TableCell>

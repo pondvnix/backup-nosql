@@ -44,6 +44,26 @@ const LeaderboardPage = () => {
     return Array.from(uniqueMap.values());
   };
   
+  // ตรวจสอบและกำหนดค่า score ตามมาตรฐาน (positive=1, neutral=0, negative=-1)
+  const normalizeScoreByPolarity = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
+    return sentences.map(sentence => {
+      // ถ้ามีค่า score อยู่แล้ว ให้ใช้ค่านั้น
+      if (sentence.score !== undefined) return sentence;
+      
+      // ถ้าไม่มี score แต่มี polarity ให้กำหนดค่า score ตามมาตรฐาน
+      if (sentence.polarity) {
+        const normalizedScore = 
+          sentence.polarity === 'positive' ? 1 : 
+          sentence.polarity === 'negative' ? -1 : 0;
+        
+        return { ...sentence, score: normalizedScore };
+      }
+      
+      // กรณีไม่มีทั้ง score และ polarity ให้กำหนดเป็นกลาง
+      return { ...sentence, polarity: 'neutral', score: 0 };
+    });
+  };
+  
   useEffect(() => {
     const fetchSentences = () => {
       try {
@@ -52,11 +72,14 @@ const LeaderboardPage = () => {
           const parsedData = JSON.parse(stored);
           const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
           
-          // ใช้ polarity และ score ที่มาจากฐานข้อมูลเลย ไม่ต้องคำนวณใหม่
+          // กรองข้อมูลซ้ำซ้อน
           const uniqueSentences = removeDuplicateSentences(sentences);
           
+          // ตรวจสอบและกำหนดค่า score ตามมาตรฐาน
+          const normalizedSentences = normalizeScoreByPolarity(uniqueSentences);
+          
           // Sort by timestamp (newest first)
-          const sortedSentences = uniqueSentences.sort((a, b) => {
+          const sortedSentences = normalizedSentences.sort((a, b) => {
             const timeA = new Date(a.timestamp).getTime();
             const timeB = new Date(b.timestamp).getTime();
             return timeB - timeA;
@@ -92,16 +115,22 @@ const LeaderboardPage = () => {
 
   // Convert MotivationalSentence to the Quote format expected by MotivationQuoteTable
   const convertSentencesToQuotes = (sentences: MotivationalSentence[]) => {
-    return sentences.map(sentence => ({
-      text: sentence.sentence,
-      date: new Date(sentence.timestamp),
-      userId: sentence.contributor || "",
-      word: sentence.word,
-      polarity: sentence.polarity as 'positive' | 'neutral' | 'negative',
-      score: sentence.score !== undefined ? sentence.score : 
-             sentence.polarity === 'positive' ? 1 :
-             sentence.polarity === 'negative' ? -1 : 0
-    }));
+    return sentences.map(sentence => {
+      // ตรวจสอบว่ามีค่า score หรือไม่ ถ้าไม่มีให้ใช้ค่า polarity มากำหนด
+      const score = sentence.score !== undefined ? sentence.score : 
+                  sentence.polarity === 'positive' ? 1 :
+                  sentence.polarity === 'negative' ? -1 : 0;
+      
+      return {
+        text: sentence.sentence,
+        date: new Date(sentence.timestamp),
+        userId: sentence.contributor || "",
+        word: sentence.word,
+        // ตรวจสอบว่ามีค่า polarity หรือไม่ ถ้าไม่มีให้ใช้ค่า score มากำหนด
+        polarity: sentence.polarity || (score > 0 ? 'positive' : score < 0 ? 'negative' : 'neutral'),
+        score: score
+      };
+    });
   };
 
   return (
