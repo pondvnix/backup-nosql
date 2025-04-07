@@ -135,11 +135,69 @@ const WordSuggestions = ({
       );
       
       if (selectedItem) {
+        // Generate the actual sentence for this word and template
+        let sentenceText = "";
+        if (selectedItem.template) {
+          sentenceText = selectedItem.template.replace(
+            new RegExp(`\\$\\{${selectedItem.word}\\}`, 'g'), 
+            selectedItem.word
+          );
+        }
+        
+        // Get contributor name from localStorage
+        const contributor = localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
+        
+        // Save the sentence to the motivational sentences database
+        storeSentenceInDatabase(selectedItem.word, sentenceText, contributor);
+        
+        // Trigger the motivational sentence event so other components can update
+        const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
+          detail: { 
+            sentence: sentenceText, 
+            word: selectedItem.word,
+            contributor: contributor,
+            template: selectedItem.template
+          }
+        });
+        window.dispatchEvent(sentenceEvent);
+        
+        // Pass the word and template to the parent component
         onSelectWord(selectedItem.word, selectedItem.template);
         setSelectedOption("");
         generateSuggestions();
       }
     }
+  };
+  
+  // Store the sentence in the local database
+  const storeSentenceInDatabase = (word: string, sentence: string, contributor: string) => {
+    if (!sentence) return;
+    
+    const newEntry = {
+      sentence,
+      word,
+      contributor: contributor || 'ไม่ระบุชื่อ',
+      timestamp: new Date()
+    };
+    
+    let existingEntries = [];
+    try {
+      const stored = localStorage.getItem('motivation-sentences');
+      if (stored) {
+        existingEntries = JSON.parse(stored);
+        if (!Array.isArray(existingEntries)) {
+          existingEntries = [existingEntries];
+        }
+      }
+    } catch (error) {
+      console.error("Error parsing stored sentences:", error);
+      existingEntries = [];
+    }
+    
+    const updatedEntries = [newEntry, ...existingEntries];
+    localStorage.setItem('motivation-sentences', JSON.stringify(updatedEntries));
+    
+    window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
   };
 
   // Get polarity display class

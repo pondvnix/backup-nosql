@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getContributorStats } from "@/utils/wordModeration";
@@ -15,13 +16,14 @@ interface MotivationalSentence {
   word: string;
   sentence: string;
   contributor?: string;
-  timestamp?: number;
+  timestamp?: Date | number | string;
   polarity?: 'positive' | 'neutral' | 'negative';
 }
 
 interface LeaderboardProps {
   contributors?: Contributor[];
   refreshTrigger?: number;
+  allSentences?: MotivationalSentence[];
 }
 
 const fetchContributorStats = async (): Promise<Contributor[]> => {
@@ -73,7 +75,7 @@ const getSentimentIcon = (polarity: string | undefined) => {
   }
 };
 
-const Leaderboard = ({ contributors: propContributors, refreshTrigger }: LeaderboardProps) => {
+const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSentences: propSentences }: LeaderboardProps) => {
   const { data: fetchedContributors = [], isLoading, refetch } = useQuery({
     queryKey: ['contributor-stats'],
     queryFn: fetchContributorStats,
@@ -94,11 +96,19 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger }: Leaderb
   useEffect(() => {
     if (refreshTrigger && !propContributors) {
       refetch();
-      const sentences = fetchMotivationalSentences();
+      
+      const sentences = propSentences || fetchMotivationalSentences();
       setMotivationalSentences(sentences);
       calculateStatistics(sentences);
     }
-  }, [refreshTrigger, refetch, propContributors]);
+  }, [refreshTrigger, refetch, propContributors, propSentences]);
+
+  useEffect(() => {
+    if (propSentences) {
+      setMotivationalSentences(propSentences);
+      calculateStatistics(propSentences);
+    }
+  }, [propSentences]);
 
   const calculateStatistics = (sentences: MotivationalSentence[]) => {
     const uniqueUsers = new Set(sentences.map(s => s.contributor || 'Anonymous')).size;
@@ -113,7 +123,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger }: Leaderb
       else if (sentence.polarity === 'negative') negativeSentences++;
       else neutralSentences++;
       
-      if (sentence.sentence.length > longestSentence.length) {
+      if (sentence.sentence && sentence.sentence.length > longestSentence.length) {
         longestSentence = {
           text: sentence.sentence,
           length: sentence.sentence.length,
@@ -134,15 +144,19 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger }: Leaderb
 
   useEffect(() => {
     const fetchAndUpdateSentences = () => {
-      const sentences = fetchMotivationalSentences();
-      setMotivationalSentences(sentences);
-      calculateStatistics(sentences);
+      if (!propSentences) {
+        const sentences = fetchMotivationalSentences();
+        setMotivationalSentences(sentences);
+        calculateStatistics(sentences);
+      }
     };
     
     fetchAndUpdateSentences();
     
     const handleSentenceUpdate = () => {
-      fetchAndUpdateSentences();
+      if (!propSentences) {
+        fetchAndUpdateSentences();
+      }
     };
     
     window.addEventListener('motivationalSentenceGenerated', handleSentenceUpdate);
@@ -157,7 +171,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger }: Leaderb
       window.removeEventListener('motivation-billboard-updated', handleSentenceUpdate);
       window.removeEventListener('word-database-updated', handleSentenceUpdate);
     };
-  }, []);
+  }, [propSentences]);
 
   const contributors = propContributors || fetchedContributors;
   const sortedContributors = [...contributors].sort((a, b) => b.count - a.count);

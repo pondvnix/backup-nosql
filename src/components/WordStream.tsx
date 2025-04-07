@@ -19,6 +19,14 @@ interface Word {
   timestamp: Date;
 }
 
+interface MotivationalSentenceEntry {
+  sentence: string;
+  word: string;
+  contributor: string;
+  timestamp: Date;
+  polarity?: 'positive' | 'neutral' | 'negative';
+}
+
 const fetchWords = async (): Promise<Word[]> => {
   await new Promise(resolve => setTimeout(resolve, 500));
   
@@ -28,6 +36,19 @@ const fetchWords = async (): Promise<Word[]> => {
   }
   
   return [];
+};
+
+const fetchSentences = async (): Promise<MotivationalSentenceEntry[]> => {
+  try {
+    const storedSentences = localStorage.getItem('motivation-sentences');
+    if (storedSentences) {
+      return JSON.parse(storedSentences);
+    }
+    return [];
+  } catch (error) {
+    console.error("Error fetching sentences:", error);
+    return [];
+  }
 };
 
 const addNewWord = async (newWord: Omit<Word, 'id' | 'timestamp'>): Promise<Word> => {
@@ -55,6 +76,7 @@ const WordStream = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [motivationalSentence, setMotivationalSentence] = useState<string>("");
   const [shouldDisplaySentence, setShouldDisplaySentence] = useState(false);
+  const [allSentences, setAllSentences] = useState<MotivationalSentenceEntry[]>([]);
   const queryClient = useQueryClient();
   
   const { data: words = [], isLoading: isLoadingWords } = useQuery({
@@ -62,6 +84,17 @@ const WordStream = () => {
     queryFn: fetchWords,
     refetchInterval: 1000,
   });
+  
+  // Fetch all motivational sentences
+  const { data: sentences = [] } = useQuery({
+    queryKey: ['motivation-sentences'],
+    queryFn: fetchSentences,
+    refetchInterval: 1000,
+  });
+  
+  useEffect(() => {
+    setAllSentences(sentences);
+  }, [sentences]);
   
   useEffect(() => {
     if (words.length > 0) {
@@ -74,13 +107,16 @@ const WordStream = () => {
   useEffect(() => {
     const handleDatabaseUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ['encouragement-words'] });
+      queryClient.invalidateQueries({ queryKey: ['motivation-sentences'] });
       setRefreshTrigger(prev => prev + 1);
     };
     
     window.addEventListener('word-database-updated', handleDatabaseUpdate);
+    window.addEventListener('motivation-billboard-updated', handleDatabaseUpdate);
     
     return () => {
       window.removeEventListener('word-database-updated', handleDatabaseUpdate);
+      window.removeEventListener('motivation-billboard-updated', handleDatabaseUpdate);
     };
   }, [queryClient]);
   
@@ -131,6 +167,7 @@ const WordStream = () => {
     localStorage.setItem('motivation-sentences', JSON.stringify(updatedEntries));
     
     window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
+    queryClient.invalidateQueries({ queryKey: ['motivation-sentences'] });
   };
   
   const { mutate, isPending: isAddingWord } = useMutation({
@@ -158,7 +195,7 @@ const WordStream = () => {
     },
   });
   
-  const handleAddWord = (text: string, contributor: string) => {
+  const handleAddWord = (text: string, contributor: string, template?: string) => {
     mutate({ text, contributor: contributor || 'ไม่ระบุชื่อ' });
   };
 
@@ -222,7 +259,10 @@ const WordStream = () => {
         </div>
         
         <div className="w-full">
-          <Leaderboard refreshTrigger={refreshTrigger} />
+          <Leaderboard 
+            refreshTrigger={refreshTrigger} 
+            allSentences={allSentences}
+          />
         </div>
       </div>
     </div>

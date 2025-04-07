@@ -4,13 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Smile, Meh, Frown } from "lucide-react";
+import { getWordPolarity } from "@/utils/sentenceAnalysis";
 
 interface BillboardEntry {
   word: string;
   sentence: string;
   contributor: string;
-  timestamp: Date;
+  timestamp: Date | string;
+  polarity?: 'positive' | 'neutral' | 'negative';
 }
 
 const BillboardLog = () => {
@@ -28,19 +30,17 @@ const BillboardLog = () => {
           const parsedData = JSON.parse(stored);
           const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
           
-          // Deduplicate sentences based on sentence content and word
-          const uniqueSentences = sentences.reduce((acc: BillboardEntry[], current) => {
-            const isDuplicate = acc.find(
-              item => item.sentence === current.sentence && item.word === current.word
-            );
-            if (!isDuplicate) {
-              return [...acc, current];
-            }
-            return acc;
-          }, []);
+          // Process sentences to add polarity 
+          const processedSentences = sentences.map((sentence: BillboardEntry) => {
+            const { polarity } = getWordPolarity(sentence.word);
+            return {
+              ...sentence,
+              polarity
+            };
+          });
           
           // Sort by timestamp (newest first)
-          const sortedSentences = uniqueSentences.sort((a, b) => 
+          const sortedSentences = processedSentences.sort((a, b) => 
             new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
           );
           
@@ -140,6 +140,18 @@ const BillboardLog = () => {
     });
   };
   
+  // Get sentiment icon based on polarity
+  const getSentimentIcon = (polarity: string | undefined) => {
+    switch (polarity) {
+      case 'positive':
+        return <Smile className="h-4 w-4 text-green-500" />;
+      case 'negative':
+        return <Frown className="h-4 w-4 text-red-500" />;
+      default:
+        return <Meh className="h-4 w-4 text-blue-500" />;
+    }
+  };
+  
   return (
     <Card className="animate-fade-in">
       <CardHeader>
@@ -166,6 +178,7 @@ const BillboardLog = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="whitespace-nowrap">ความรู้สึก</TableHead>
                     <TableHead className="whitespace-nowrap">ผู้ให้กำลังใจ</TableHead>
                     <TableHead className="whitespace-nowrap">คำ</TableHead>
                     <TableHead>ประโยคกำลังใจ</TableHead>
@@ -175,6 +188,9 @@ const BillboardLog = () => {
                 <TableBody>
                   {currentEntries.map((entry, index) => (
                     <TableRow key={index} isHighlighted={index % 2 === 0}>
+                      <TableCell>
+                        {getSentimentIcon(entry.polarity)}
+                      </TableCell>
                       <TableCell className="font-medium whitespace-nowrap">
                         {entry.contributor || 'Anonymous'}
                       </TableCell>
