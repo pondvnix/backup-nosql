@@ -140,7 +140,7 @@ const WordForm = ({
         contributor: trimmedContributor,
         timestamp: new Date(),
         polarity: wordEntry.polarity,
-        score: wordEntry.score
+        score: wordEntry.score || (wordEntry.polarity === 'positive' ? 1 : wordEntry.polarity === 'negative' ? -1 : 0)
       };
       
       try {
@@ -165,7 +165,7 @@ const WordForm = ({
           contributor: trimmedContributor,
           template,
           polarity: wordEntry.polarity,
-          score: wordEntry.score
+          score: wordEntry.score || (wordEntry.polarity === 'positive' ? 1 : wordEntry.polarity === 'negative' ? -1 : 0)
         }
       });
       window.dispatchEvent(sentenceEvent);
@@ -207,7 +207,7 @@ const WordForm = ({
         contributor: trimmedContributor,
         timestamp: new Date(),
         polarity: wordEntry.polarity,
-        score: wordEntry.score
+        score: wordEntry.score || (wordEntry.polarity === 'positive' ? 1 : wordEntry.polarity === 'negative' ? -1 : 0)
       };
       
       try {

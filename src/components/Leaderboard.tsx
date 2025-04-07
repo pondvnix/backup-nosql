@@ -37,18 +37,8 @@ const fetchMotivationalSentences = (): MotivationalSentence[] => {
   if (stored) {
     try {
       const sentences = JSON.parse(stored);
-      return sentences.map((sentence: MotivationalSentence) => {
-        if (!sentence.polarity || sentence.score === undefined) {
-          // Only compute if values aren't already provided
-          const wordInfo = getWordPolarity(sentence.word);
-          return {
-            ...sentence,
-            polarity: wordInfo.polarity,
-            score: wordInfo.score
-          };
-        }
-        return sentence;
-      });
+      // ไม่ต้องคำนวณค่า polarity และ score ใหม่ถ้ามีอยู่แล้วในข้อมูล
+      return sentences;
     } catch (error) {
       console.error("Error processing sentences:", error);
       return [];
@@ -103,20 +93,33 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     longestSentence: { text: '', length: 0, contributor: '' }
   });
 
+  // กรองข้อมูลซ้ำซ้อนโดยใช้ Set เพื่อเก็บเฉพาะข้อมูลที่ไม่ซ้ำกัน
+  const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
+    const uniqueIds = new Set();
+    return sentences.filter(sentence => {
+      const id = `${sentence.word}-${sentence.sentence}-${sentence.contributor}`;
+      if (uniqueIds.has(id)) return false;
+      uniqueIds.add(id);
+      return true;
+    });
+  };
+
   useEffect(() => {
     if (refreshTrigger && !propContributors) {
       refetch();
       
       const sentences = propSentences || fetchMotivationalSentences();
-      setMotivationalSentences(sentences);
-      calculateStatistics(sentences);
+      const uniqueSentences = removeDuplicateSentences(sentences);
+      setMotivationalSentences(uniqueSentences);
+      calculateStatistics(uniqueSentences);
     }
   }, [refreshTrigger, refetch, propContributors, propSentences]);
 
   useEffect(() => {
     if (propSentences) {
-      setMotivationalSentences(propSentences);
-      calculateStatistics(propSentences);
+      const uniqueSentences = removeDuplicateSentences(propSentences);
+      setMotivationalSentences(uniqueSentences);
+      calculateStatistics(uniqueSentences);
     }
   }, [propSentences]);
 
@@ -129,7 +132,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     let longestSentence = { text: '', length: 0, contributor: '' };
     
     sentences.forEach(sentence => {
-      // Use the stored polarity if available
+      // ใช้ค่า polarity ที่มีอยู่แล้ว โดยไม่ต้องคำนวณใหม่
       if (sentence.polarity === 'positive') positiveSentences++;
       else if (sentence.polarity === 'negative') negativeSentences++;
       else neutralSentences++;
@@ -157,8 +160,9 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     const fetchAndUpdateSentences = () => {
       if (!propSentences) {
         const sentences = fetchMotivationalSentences();
-        setMotivationalSentences(sentences);
-        calculateStatistics(sentences);
+        const uniqueSentences = removeDuplicateSentences(sentences);
+        setMotivationalSentences(uniqueSentences);
+        calculateStatistics(uniqueSentences);
       }
     };
     

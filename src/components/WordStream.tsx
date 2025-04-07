@@ -91,8 +91,21 @@ const WordStream = () => {
     refetchInterval: 1000,
   });
   
+  const removeDuplicateSentences = (sentences: MotivationalSentenceEntry[]): MotivationalSentenceEntry[] => {
+    const uniqueIds = new Set();
+    return sentences.filter(sentence => {
+      const id = `${sentence.word}-${sentence.sentence}-${sentence.contributor}`;
+      if (uniqueIds.has(id)) return false;
+      uniqueIds.add(id);
+      return true;
+    });
+  };
+  
   useEffect(() => {
-    setAllSentences(sentences);
+    if (sentences.length > 0) {
+      const uniqueSentences = removeDuplicateSentences(sentences);
+      setAllSentences(uniqueSentences);
+    }
   }, [sentences]);
   
   useEffect(() => {
@@ -176,8 +189,8 @@ const WordStream = () => {
       existingEntries = [];
     }
     
-    const updatedEntries = [billboardEntry, ...existingEntries];
-    localStorage.setItem('motivation-sentences', JSON.stringify(updatedEntries));
+    const uniqueEntries = removeDuplicateSentences([billboardEntry, ...existingEntries]);
+    localStorage.setItem('motivation-sentences', JSON.stringify(uniqueEntries));
     
     window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
     queryClient.invalidateQueries({ queryKey: ['motivation-sentences'] });

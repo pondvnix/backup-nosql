@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import Leaderboard from "@/components/Leaderboard";
 import StatsDashboard from "@/components/StatsDashboard";
 import MoodReport from "@/components/MoodReport";
-import { getWordPolarity } from "@/utils/sentenceAnalysis";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Smile, Meh, Frown } from "lucide-react";
@@ -27,6 +26,17 @@ const LeaderboardPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
+  // กรองข้อมูลซ้ำซ้อน
+  const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
+    const uniqueIds = new Set();
+    return sentences.filter(sentence => {
+      const id = `${sentence.word}-${sentence.sentence}-${sentence.contributor}`;
+      if (uniqueIds.has(id)) return false;
+      uniqueIds.add(id);
+      return true;
+    });
+  };
+  
   useEffect(() => {
     const fetchSentences = () => {
       try {
@@ -35,21 +45,11 @@ const LeaderboardPage = () => {
           const parsedData = JSON.parse(stored);
           const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
           
-          // Use stored polarity and score if available, otherwise compute them
-          const processedSentences = sentences.map((sentence: MotivationalSentence) => {
-            if (!sentence.polarity || sentence.score === undefined) {
-              const wordInfo = getWordPolarity(sentence.word);
-              return {
-                ...sentence,
-                polarity: wordInfo.polarity,
-                score: wordInfo.score
-              };
-            }
-            return sentence;
-          });
+          // ใช้ polarity และ score ที่มาจากฐานข้อมูลเลย ไม่ต้องคำนวณใหม่
+          const uniqueSentences = removeDuplicateSentences(sentences);
           
           // Sort by timestamp (newest first)
-          const sortedSentences = processedSentences.sort((a, b) => {
+          const sortedSentences = uniqueSentences.sort((a, b) => {
             const timeA = new Date(a.timestamp).getTime();
             const timeB = new Date(b.timestamp).getTime();
             return timeB - timeA;

@@ -1,4 +1,3 @@
-
 // Word Polarity Database (Simple version)
 // In a production app, this would be loaded from a database
 export interface WordPolarity {
@@ -7,6 +6,7 @@ export interface WordPolarity {
   score: number;
   templates?: string[]; // Add templates to support the management page
 }
+
 /**
 export const wordPolarityDatabase: WordPolarity[] = [
   // Positive words
@@ -107,10 +107,22 @@ export const getWordPolarity = (word: string): {
   templates?: string[];
   database: WordPolarity[]; 
 } => {
-  const foundWord = wordPolarityDatabase.find(w => w.word === word);
+  // ดึงข้อมูลจาก localStorage แทนที่จะใช้ค่าคงที่ในโค้ด
+  let database: WordPolarity[] = [];
+  try {
+    const storedData = localStorage.getItem("word-polarity-database");
+    if (storedData) {
+      database = JSON.parse(storedData);
+    }
+  } catch (e) {
+    console.error("Error loading word database:", e);
+    database = [];
+  }
+  
+  const foundWord = database.find(w => w.word === word);
   return {
     ...(foundWord || { word, polarity: 'neutral', score: 0 }),
-    database: wordPolarityDatabase
+    database
   };
 };
 
