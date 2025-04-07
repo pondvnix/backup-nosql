@@ -26,15 +26,24 @@ const LeaderboardPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
-  // กรองข้อมูลซ้ำซ้อน
+  // กรองข้อมูลซ้ำซ้อน - ปรับปรุงเพื่อให้กรองได้ดีขึ้น
   const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
-    const uniqueIds = new Set();
-    return sentences.filter(sentence => {
-      const id = `${sentence.word}-${sentence.sentence}-${sentence.contributor}`;
-      if (uniqueIds.has(id)) return false;
-      uniqueIds.add(id);
-      return true;
+    const uniqueMap = new Map();
+    
+    sentences.forEach(sentence => {
+      // สร้าง unique key จากข้อมูลหลัก
+      const uniqueKey = `${sentence.word}-${sentence.sentence}`;
+      
+      // ถ้ายังไม่มีใน map หรือเป็นข้อมูลใหม่กว่า (timestamp มากกว่า) ให้เก็บไว้
+      if (!uniqueMap.has(uniqueKey) || 
+          new Date(sentence.timestamp).getTime() > 
+          new Date(uniqueMap.get(uniqueKey).timestamp).getTime()) {
+        uniqueMap.set(uniqueKey, sentence);
+      }
     });
+    
+    // แปลงจาก Map กลับเป็น Array
+    return Array.from(uniqueMap.values());
   };
   
   useEffect(() => {
@@ -191,15 +200,18 @@ const LeaderboardPage = () => {
                     <TableBody>
                       {currentSentences.length > 0 ? (
                         currentSentences.map((sentence, index) => (
-                          <TableRow key={`${sentence.sentence}-${index}`}>
+                          <TableRow 
+                            // ใช้ uniqueKey แทนที่จะใช้ index เพื่อป้องกันการแสดงซ้ำ
+                            key={`${sentence.word}-${sentence.sentence}-${sentence.contributor}-${index}`}
+                          >
                             <TableCell>{getPolarityIcon(sentence.polarity)}</TableCell>
                             <TableCell className="font-medium text-primary">{sentence.word || '-'}</TableCell>
                             <TableCell>{highlightWord(sentence.sentence, sentence.word)}</TableCell>
                             <TableCell>{sentence.contributor || 'ไม่ระบุชื่อ'}</TableCell>
                             <TableCell className={`font-medium ${
-                              sentence.score && sentence.score > 0 
+                              (sentence.score && sentence.score > 0) 
                                 ? 'text-green-600' 
-                                : sentence.score === 0 
+                                : (sentence.score === 0) 
                                   ? 'text-blue-600' 
                                   : 'text-red-600'
                             }`}>

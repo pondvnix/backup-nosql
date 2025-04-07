@@ -26,14 +26,21 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
       ? quotes 
       : quotes.filter(quote => quote.userId === currentUserId);
     
-    const uniqueTexts = new Set();
-    const uniqueQuotesList = filteredQuotes.filter(quote => {
-      if (uniqueTexts.has(quote.text)) {
-        return false;
+    // ปรับปรุงวิธีการกรองข้อมูลซ้ำซ้อนโดยใช้ Map เพื่อเก็บข้อมูลล่าสุดของแต่ละประโยค
+    const uniqueMap = new Map();
+    
+    filteredQuotes.forEach(quote => {
+      const uniqueKey = `${quote.word}-${quote.text}`;
+      
+      // เก็บข้อมูลล่าสุดของแต่ละประโยค (ตามวันที่)
+      if (!uniqueMap.has(uniqueKey) || 
+          new Date(quote.date).getTime() > new Date(uniqueMap.get(uniqueKey).date).getTime()) {
+        uniqueMap.set(uniqueKey, quote);
       }
-      uniqueTexts.add(quote.text);
-      return true;
     });
+    
+    // แปลงจาก Map กลับเป็น Array
+    const uniqueQuotesList = Array.from(uniqueMap.values());
     
     const sortedQuotes = [...uniqueQuotesList].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -112,7 +119,7 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
               </TableHeader>
               <TableBody>
                 {currentQuotes.map((quote, index) => (
-                  <TableRow key={`${quote.text}-${index}`}>
+                  <TableRow key={`${quote.word}-${quote.text}-${index}`}>
                     <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
                     <TableCell className="font-medium text-primary">{quote.word || '-'}</TableCell>
                     <TableCell>{highlightWord(quote.text, quote.word)}</TableCell>

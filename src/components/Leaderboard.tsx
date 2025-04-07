@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getContributorStats } from "@/utils/wordModeration";
@@ -93,15 +92,20 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     longestSentence: { text: '', length: 0, contributor: '' }
   });
 
-  // กรองข้อมูลซ้ำซ้อนโดยใช้ Set เพื่อเก็บเฉพาะข้อมูลที่ไม่ซ้ำกัน
   const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
-    const uniqueIds = new Set();
-    return sentences.filter(sentence => {
-      const id = `${sentence.word}-${sentence.sentence}-${sentence.contributor}`;
-      if (uniqueIds.has(id)) return false;
-      uniqueIds.add(id);
-      return true;
+    const uniqueMap = new Map();
+    
+    sentences.forEach(sentence => {
+      const uniqueKey = `${sentence.word}-${sentence.sentence}`;
+      
+      if (!uniqueMap.has(uniqueKey) || 
+          new Date(sentence.timestamp || new Date()).getTime() > 
+          new Date(uniqueMap.get(uniqueKey).timestamp || new Date()).getTime()) {
+        uniqueMap.set(uniqueKey, sentence);
+      }
     });
+    
+    return Array.from(uniqueMap.values());
   };
 
   useEffect(() => {
@@ -132,7 +136,6 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     let longestSentence = { text: '', length: 0, contributor: '' };
     
     sentences.forEach(sentence => {
-      // ใช้ค่า polarity ที่มีอยู่แล้ว โดยไม่ต้องคำนวณใหม่
       if (sentence.polarity === 'positive') positiveSentences++;
       else if (sentence.polarity === 'negative') negativeSentences++;
       else neutralSentences++;
@@ -312,7 +315,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
               </TableHeader>
               <TableBody>
                 {latestSentences.map((item, index) => (
-                  <TableRow key={index}>
+                  <TableRow key={`latest-${item.word}-${item.sentence}-${index}`}>
                     <TableCell>{getSentimentIcon(item.polarity)}</TableCell>
                     <TableCell className="font-medium">
                       {item.contributor || 'ไม่ระบุชื่อ'}

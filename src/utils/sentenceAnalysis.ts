@@ -1,3 +1,4 @@
+
 // Word Polarity Database (Simple version)
 // In a production app, this would be loaded from a database
 export interface WordPolarity {
@@ -7,6 +8,7 @@ export interface WordPolarity {
   templates?: string[]; // Add templates to support the management page
 }
 
+// Original database example kept commented out for reference
 /**
 export const wordPolarityDatabase: WordPolarity[] = [
   // Positive words
@@ -68,7 +70,22 @@ export const generatePositiveWordSuggestions = (
   existingWords: string[] = []
 ): string[] => {
   // Prioritize words from the database first
-  const allWords = wordPolarityDatabase.map(entry => entry.word);
+  
+  // ดึงข้อมูลจาก localStorage แทนที่จะใช้ค่าคงที่ในโค้ด
+  let database: WordPolarity[] = [];
+  try {
+    const storedData = localStorage.getItem("word-polarity-database");
+    if (storedData) {
+      database = JSON.parse(storedData);
+    } else {
+      database = wordPolarityDatabase; // ใช้ค่าเริ่มต้นถ้าไม่มีข้อมูลใน localStorage
+    }
+  } catch (e) {
+    console.error("Error loading word database:", e);
+    database = wordPolarityDatabase;
+  }
+  
+  const allWords = database.map(entry => entry.word);
   
   // Filter out words that are already in the sentence
   const availableWords = allWords.filter(
@@ -76,12 +93,12 @@ export const generatePositiveWordSuggestions = (
   );
   
   // Shuffle and get 5 random words, prioritize positive words
-  const positiveWords = wordPolarityDatabase
+  const positiveWords = database
     .filter(word => word.polarity === 'positive')
     .map(word => word.word)
     .filter(word => !existingWords.includes(word));
   
-  const neutralWords = wordPolarityDatabase
+  const neutralWords = database
     .filter(word => word.polarity === 'neutral')
     .map(word => word.word)
     .filter(word => !existingWords.includes(word));
@@ -113,10 +130,12 @@ export const getWordPolarity = (word: string): {
     const storedData = localStorage.getItem("word-polarity-database");
     if (storedData) {
       database = JSON.parse(storedData);
+    } else {
+      database = wordPolarityDatabase; // ใช้ค่าเริ่มต้นถ้าไม่มีข้อมูลใน localStorage
     }
   } catch (e) {
     console.error("Error loading word database:", e);
-    database = [];
+    database = wordPolarityDatabase;
   }
   
   const foundWord = database.find(w => w.word === word);
