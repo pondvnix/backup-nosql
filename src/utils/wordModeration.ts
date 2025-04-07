@@ -7,6 +7,9 @@ const forbiddenWords = [
   // Add more words as needed
 ];
 
+// Template sentiment types
+export type TemplateSentiment = 'positive' | 'neutral' | 'negative';
+
 // Default words for the management page
 export const DEFAULT_WORDS = [
   {
@@ -28,6 +31,12 @@ export const DEFAULT_WORDS = [
     score: 1
   }
 ];
+
+// Interface for template with sentiment
+export interface Template {
+  text: string;
+  sentiment: TemplateSentiment;
+}
 
 export const isWordAppropriate = (word: string): boolean => {
   // Convert to lowercase to make checking case-insensitive
@@ -133,24 +142,80 @@ export const getContributorStats = (): Record<string, number> => {
 
 /**
  * Checks if template array contains duplicate templates
- * @param templates Array of templates to check
+ * @param templates Array of templates or template objects to check
  * @returns boolean indicating if duplicates exist
  */
-export const hasDuplicateTemplates = (templates: string[]): boolean => {
-  const uniqueTemplates = new Set(templates.map(t => t.trim()).filter(t => t !== ''));
-  return uniqueTemplates.size !== templates.filter(t => t.trim() !== '').length;
+export const hasDuplicateTemplates = (templates: (string | Template)[]): boolean => {
+  const uniqueTemplates = new Set(
+    templates.map(t => typeof t === 'string' ? t.trim() : t.text.trim()).filter(t => t !== '')
+  );
+  return uniqueTemplates.size !== templates.filter(t => 
+    typeof t === 'string' ? t.trim() !== '' : t.text.trim() !== ''
+  ).length;
 };
 
 /**
- * Parse a comma-separated template string into an array of templates
+ * Parse a comma-separated template string into an array of template objects with sentiment
  * @param templateText The template text to parse
- * @returns Array of individual templates
+ * @param defaultSentiment The default sentiment to use if not specified
+ * @returns Array of template objects
  */
-export const parseTemplates = (templateText: string): string[] => {
+export const parseTemplates = (
+  templateText: string,
+  defaultSentiment: TemplateSentiment = 'positive'
+): Template[] => {
   return templateText
     .split(/[,\n]/)  // Split by commas or newlines
     .map(t => t.trim())  // Trim whitespace
-    .filter(t => t !== '');  // Remove empty entries
+    .filter(t => t !== '')  // Remove empty entries
+    .map(text => {
+      // Check for sentiment placeholders
+      if (text.includes('${บวก}')) {
+        return { text: text.replace('${บวก}', ''), sentiment: 'positive' };
+      }
+      if (text.includes('${กลาง}')) {
+        return { text: text.replace('${กลาง}', ''), sentiment: 'neutral' };
+      }
+      if (text.includes('${ลบ}')) {
+        return { text: text.replace('${ลบ}', ''), sentiment: 'negative' };
+      }
+      return { text, sentiment: defaultSentiment };
+    });
+};
+
+/**
+ * Convert template objects to strings for storage compatibility
+ * @param templates Array of template objects
+ * @returns Array of template strings
+ */
+export const templateObjectsToStrings = (templates: Template[]): string[] => {
+  return templates.map(template => {
+    const sentimentPrefix = 
+      template.sentiment === 'positive' ? '${บวก}' :
+      template.sentiment === 'negative' ? '${ลบ}' :
+      '${กลาง}';
+    return `${sentimentPrefix}${template.text}`;
+  });
+};
+
+/**
+ * Convert template strings with sentiment markers to template objects
+ * @param templateStrings Array of template strings with sentiment markers
+ * @returns Array of template objects
+ */
+export const stringToTemplateObjects = (templateStrings: string[]): Template[] => {
+  return templateStrings.map(text => {
+    if (text.startsWith('${บวก}')) {
+      return { text: text.replace('${บวก}', ''), sentiment: 'positive' };
+    }
+    if (text.startsWith('${กลาง}')) {
+      return { text: text.replace('${กลาง}', ''), sentiment: 'neutral' };
+    }
+    if (text.startsWith('${ลบ}')) {
+      return { text: text.replace('${ลบ}', ''), sentiment: 'negative' };
+    }
+    return { text, sentiment: 'positive' };
+  });
 };
 
 /**
@@ -158,13 +223,13 @@ export const parseTemplates = (templateText: string): string[] => {
  * @param word The word to add
  * @param polarity The polarity of the word (positive, neutral, negative)
  * @param score The score value associated with the polarity
- * @param templates Optional array of template sentences for this word
+ * @param templates Optional array of template objects for this word
  */
 export const addWordToDatabase = (
   word: string,
   polarity: 'positive' | 'neutral' | 'negative',
   score: number,
-  templates?: string[]
+  templates?: Template[]
 ): void => {
   try {
     // Get existing database from localStorage
@@ -176,7 +241,7 @@ export const addWordToDatabase = (
       word: word,
       polarity: polarity,
       score: score,
-      templates: templates || []
+      templates: templates ? templateObjectsToStrings(templates) : []
     });
     
     // Save updated database back to localStorage
@@ -195,13 +260,13 @@ export const addWordToDatabase = (
  * @param word The word to update
  * @param polarity The new polarity value
  * @param score The new score value
- * @param templates Optional array of template sentences
+ * @param templates Optional array of template objects
  */
 export const updateWordPolarity = (
   word: string,
   polarity: 'positive' | 'neutral' | 'negative',
   score: number,
-  templates?: string[]
+  templates?: Template[]
 ): void => {
   try {
     // Get existing database from localStorage
@@ -217,7 +282,7 @@ export const updateWordPolarity = (
           ...entry,
           polarity: polarity,
           score: score,
-          templates: templates || entry.templates || []
+          templates: templates ? templateObjectsToStrings(templates) : entry.templates || []
         };
       }
       return entry;
@@ -259,3 +324,4 @@ export const deleteWord = (word: string): void => {
     console.error("Error deleting word:", error);
   }
 };
+

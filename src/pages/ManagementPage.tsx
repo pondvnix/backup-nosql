@@ -11,6 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { 
   Plus, Trash, Edit, ChevronDown, ChevronUp, 
   Smile, Meh, Frown, Check, AlertTriangle, RefreshCcw,
@@ -29,7 +30,11 @@ import {
   updateWordPolarity, 
   deleteWord, 
   hasDuplicateTemplates,
-  parseTemplates
+  parseTemplates,
+  Template,
+  TemplateSentiment,
+  templateObjectsToStrings,
+  stringToTemplateObjects
 } from "../utils/wordModeration";
 import { getWordPolarity } from "../utils/sentenceAnalysis";
 
@@ -54,6 +59,7 @@ const ManagementPage = () => {
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
   const [hasTemplateError, setHasTemplateError] = useState(false);
   const [templateErrorMessage, setTemplateErrorMessage] = useState("");
+  const [templateSentiment, setTemplateSentiment] = useState<TemplateSentiment>('positive');
 
   // Load all words
   useEffect(() => {
@@ -113,13 +119,27 @@ const ManagementPage = () => {
     
     // Set template text from word if it exists - join with commas
     if (word.templates && word.templates.length > 0) {
-      setTemplateText(word.templates.join(',\n'));
+      const templates = stringToTemplateObjects(word.templates);
+      const templateLines = templates.map(t => {
+        const sentimentPrefix = 
+          t.sentiment === 'positive' ? '${บวก}' :
+          t.sentiment === 'negative' ? '${ลบ}' :
+          '${กลาง}';
+        return `${sentimentPrefix}${t.text}`;
+      });
+      setTemplateText(templateLines.join(',\n'));
+      
+      // Set default template sentiment from the first template
+      if (templates.length > 0) {
+        setTemplateSentiment(templates[0].sentiment);
+      }
     } else {
       setTemplateText('');
+      setTemplateSentiment('positive');
     }
   };
 
-  const checkTemplates = (templates: string[]): boolean => {
+  const checkTemplates = (templates: Template[]): boolean => {
     if (hasDuplicateTemplates(templates)) {
       setHasTemplateError(true);
       setTemplateErrorMessage("มีแม่แบบประโยคที่ซ้ำกัน กรุณาตรวจสอบ");
@@ -153,7 +173,10 @@ const ManagementPage = () => {
     // Update state
     const updatedWords = allWords.map(w => {
       if (w.word === currentEditWord.word) {
-        return { ...currentEditWord, templates };
+        return { 
+          ...currentEditWord, 
+          templates: templateObjectsToStrings(templates) 
+        };
       }
       return w;
     });
@@ -251,6 +274,35 @@ const ManagementPage = () => {
     }, 0);
   };
 
+  const insertSentimentPlaceholder = (sentiment: TemplateSentiment) => {
+    if (!textareaRef) return;
+    
+    const startPos = textareaRef.selectionStart || 0;
+    const endPos = textareaRef.selectionEnd || 0;
+    
+    // Insert sentiment placeholder at cursor position
+    const placeholder = 
+      sentiment === 'positive' ? '${บวก}' :
+      sentiment === 'negative' ? '${ลบ}' :
+      '${กลาง}';
+      
+    const newText = 
+      templateText.substring(0, startPos) + 
+      placeholder + 
+      templateText.substring(endPos);
+    
+    setTemplateText(newText);
+    
+    // Set cursor position after inserted placeholder
+    setTimeout(() => {
+      if (textareaRef) {
+        const newCursorPos = startPos + placeholder.length;
+        textareaRef.focus();
+        textareaRef.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
   // Group words by their base name (without suffixes)
   const getGroupedWords = () => {
     const wordGroups: Record<string, WordEntry[]> = {};
@@ -272,6 +324,19 @@ const ManagementPage = () => {
     });
 
     return wordGroups;
+  };
+  
+  const getSentimentInfo = (template: string): { text: string, sentiment: TemplateSentiment } => {
+    if (template.startsWith('${บวก}')) {
+      return { text: template.replace('${บวก}', ''), sentiment: 'positive' };
+    }
+    if (template.startsWith('${กลาง}')) {
+      return { text: template.replace('${กลาง}', ''), sentiment: 'neutral' };
+    }
+    if (template.startsWith('${ลบ}')) {
+      return { text: template.replace('${ลบ}', ''), sentiment: 'negative' };
+    }
+    return { text: template, sentiment: 'positive' };
   };
 
   const wordGroups = getGroupedWords();
@@ -405,11 +470,38 @@ const ManagementPage = () => {
                                 </div>
                               </td>
                               <td className="py-2 px-3">
-                                <span className="text-sm text-muted-foreground">
-                                  {wordEntry.templates && wordEntry.templates.length > 0 
-                                    ? `${wordEntry.templates.length} แม่แบบ` 
-                                    : "ไม่มี"}
-                                </span>
+                                <div className="flex flex-wrap gap-1">
+                                  {wordEntry.templates && wordEntry.templates.length > 0 ? (
+                                    <div className="text-sm flex flex-col gap-1">
+                                      <span className="text-muted-foreground">{wordEntry.templates.length} แม่แบบ</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {wordEntry.templates.slice(0, 2).map((template, idx) => {
+                                          const { sentiment } = getSentimentInfo(template);
+                                          return (
+                                            <Badge 
+                                              key={idx}
+                                              variant={
+                                                sentiment === 'positive' ? 'success' : 
+                                                sentiment === 'negative' ? 'destructive' : 'secondary'
+                                              }
+                                              className="text-[0.65rem] h-5 truncate max-w-24"
+                                            >
+                                              {sentiment === 'positive' ? 'บวก' : 
+                                               sentiment === 'negative' ? 'ลบ' : 'กลาง'}
+                                            </Badge>
+                                          );
+                                        })}
+                                        {wordEntry.templates.length > 2 && (
+                                          <Badge variant="outline" className="text-[0.65rem] h-5">
+                                            +{wordEntry.templates.length - 2}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground">ไม่มี</span>
+                                  )}
+                                </div>
                               </td>
                               <td className="py-2 px-3">
                                 <div className="flex justify-center gap-2">
@@ -520,6 +612,9 @@ const ManagementPage = () => {
                     <Label htmlFor="templates">
                       แม่แบบประโยค (คั่นด้วย , หรือขึ้นบรรทัดใหม่)
                     </Label>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mb-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -529,10 +624,73 @@ const ManagementPage = () => {
                       <Plus className="h-3 w-3 mr-1" />
                       เพิ่มคำอัตโนมัติ ${"{"}คำ{"}"}
                     </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200"
+                      onClick={() => insertSentimentPlaceholder('positive')}
+                    >
+                      <Smile className="h-3 w-3 mr-1" />
+                      เพิ่ม ${"{"}บวก{"}"}
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border-blue-200"
+                      onClick={() => insertSentimentPlaceholder('neutral')}
+                    >
+                      <Meh className="h-3 w-3 mr-1" />
+                      เพิ่ม ${"{"}กลาง{"}"}
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border-red-200"
+                      onClick={() => insertSentimentPlaceholder('negative')}
+                    >
+                      <Frown className="h-3 w-3 mr-1" />
+                      เพิ่ม ${"{"}ลบ{"}"}
+                    </Button>
                   </div>
+                  
+                  <div className="space-y-2">
+                    <Label>ความรู้สึกแม่แบบประโยคเริ่มต้น</Label>
+                    <RadioGroup 
+                      value={templateSentiment}
+                      onValueChange={(value) => setTemplateSentiment(value as TemplateSentiment)}
+                      className="flex space-x-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="positive" id="sentiment-positive" />
+                        <Label htmlFor="sentiment-positive" className="flex items-center text-green-700">
+                          <Smile className="h-4 w-4 mr-1" />
+                          <span>บวก</span>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="neutral" id="sentiment-neutral" />
+                        <Label htmlFor="sentiment-neutral" className="flex items-center text-blue-700">
+                          <Meh className="h-4 w-4 mr-1" />
+                          <span>กลาง</span>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="negative" id="sentiment-negative" />
+                        <Label htmlFor="sentiment-negative" className="flex items-center text-red-700">
+                          <Frown className="h-4 w-4 mr-1" />
+                          <span>ลบ</span>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                    <p className="text-xs text-muted-foreground">ความรู้สึกนี้จะถูกใช้กับแม่แบบประโยคใหม่ที่ไม่มีการเพิ่ม ${"{"}บวก{"}"}, ${"{"}กลาง{"}"}, หรือ ${"{"}ลบ{"}"} ไว้</p>
+                  </div>
+                  
                   <Textarea 
                     id="templates" 
-                    placeholder={`ตัวอย่าง:\n${currentEditWord.word}ทำให้ชีวิตสดใส,\nการมี${currentEditWord.word}ทำให้เรามีกำลังใจ`}
+                    placeholder={`ตัวอย่าง:\n\${บวก}${currentEditWord.word}ทำให้ชีวิตสดใส,\n\${กลาง}การมี${currentEditWord.word}ทำให้เรามีกำลังใจ,\n\${ลบ}ขาดซึ่ง${currentEditWord.word}ทำให้ท้อแท้`}
                     value={templateText}
                     onChange={handleTextareaChange}
                     rows={6}
@@ -550,10 +708,11 @@ const ManagementPage = () => {
                     </div>
                   )}
                   
-                  <p className="text-xs text-muted-foreground flex flex-col gap-1">
+                  <div className="text-xs text-muted-foreground flex flex-col gap-1">
                     <span>ใช้ ${"{"}คำ{"}"} สำหรับแทรกคำอัตโนมัติ เช่น ${"{" + currentEditWord.word + "}"} จะถูกแทนที่ด้วย {currentEditWord.word}</span>
+                    <span>ใช้ ${"{"}บวก{"}"}, ${"{"}กลาง{"}"}, ${"{"}ลบ{"}"} เพื่อกำหนดความรู้สึกให้กับแม่แบบประโยค</span>
                     <span>ใช้เครื่องหมายคอมม่า (,) หรือการขึ้นบรรทัดใหม่เพื่อแยกแม่แบบประโยคหลายประโยค</span>
-                  </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -597,3 +756,4 @@ const ManagementPage = () => {
 };
 
 export default ManagementPage;
+

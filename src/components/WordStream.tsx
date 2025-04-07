@@ -10,6 +10,8 @@ import { analyzeSentence } from "@/utils/sentenceAnalysis";
 import Leaderboard from "./Leaderboard";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { stringToTemplateObjects } from "@/utils/wordModeration";
 
 interface Word {
   id: string;
@@ -25,6 +27,7 @@ interface MotivationalSentenceEntry {
   timestamp: Date;
   polarity?: 'positive' | 'neutral' | 'negative';
   score?: number;
+  sentiment?: 'positive' | 'neutral' | 'negative';
 }
 
 const fetchWords = async (): Promise<Word[]> => {
@@ -42,7 +45,30 @@ const fetchSentences = async (): Promise<MotivationalSentenceEntry[]> => {
   try {
     const storedSentences = localStorage.getItem('motivation-sentences');
     if (storedSentences) {
-      return JSON.parse(storedSentences);
+      const sentences = JSON.parse(storedSentences);
+      
+      return sentences.map((sentence: MotivationalSentenceEntry) => {
+        if (sentence.sentence.startsWith('${บวก}')) {
+          return {
+            ...sentence,
+            sentence: sentence.sentence.replace('${บวก}', ''),
+            sentiment: 'positive'
+          };
+        } else if (sentence.sentence.startsWith('${กลาง}')) {
+          return {
+            ...sentence,
+            sentence: sentence.sentence.replace('${กลาง}', ''),
+            sentiment: 'neutral'
+          };
+        } else if (sentence.sentence.startsWith('${ลบ}')) {
+          return {
+            ...sentence,
+            sentence: sentence.sentence.replace('${ลบ}', ''),
+            sentiment: 'negative'
+          };
+        }
+        return sentence;
+      });
     }
     return [];
   } catch (error) {
@@ -135,15 +161,30 @@ const WordStream = () => {
   useEffect(() => {
     const handleSentenceGenerated = (event: CustomEvent) => {
       if (event.detail && event.detail.sentence) {
-        setMotivationalSentence(event.detail.sentence);
+        let sentence = event.detail.sentence;
+        let sentiment: 'positive' | 'neutral' | 'negative' | undefined = undefined;
+        
+        if (sentence.startsWith('${บวก}')) {
+          sentiment = 'positive';
+          sentence = sentence.replace('${บวก}', '');
+        } else if (sentence.startsWith('${กลาง}')) {
+          sentiment = 'neutral';
+          sentence = sentence.replace('${กลาง}', '');
+        } else if (sentence.startsWith('${ลบ}')) {
+          sentiment = 'negative';
+          sentence = sentence.replace('${ลบ}', '');
+        }
+        
+        setMotivationalSentence(sentence);
         setShouldDisplaySentence(true);
         
         storeSentenceForBillboard(
-          event.detail.sentence, 
+          sentence, 
           event.detail.word, 
           event.detail.contributor, 
           event.detail.polarity, 
-          event.detail.score
+          event.detail.score,
+          sentiment
         );
       }
     };
@@ -162,7 +203,8 @@ const WordStream = () => {
     word: string, 
     contributor: string, 
     polarity?: 'positive' | 'neutral' | 'negative',
-    score?: number
+    score?: number,
+    sentiment?: 'positive' | 'neutral' | 'negative'
   ) => {
     if (!word) return;
     
@@ -172,7 +214,8 @@ const WordStream = () => {
       contributor: contributor || 'ไม่ระบุชื่อ',
       timestamp: new Date(),
       polarity,
-      score
+      score,
+      sentiment
     };
     
     let existingEntries = [];
@@ -225,6 +268,27 @@ const WordStream = () => {
     mutate({ text, contributor: contributor || 'ไม่ระบุชื่อ' });
   };
 
+  const renderSentimentBadge = (sentiment?: 'positive' | 'neutral' | 'negative') => {
+    if (!sentiment) return null;
+    
+    let variant: 'success' | 'destructive' | 'secondary' = 'secondary';
+    let text = 'กลาง';
+    
+    if (sentiment === 'positive') {
+      variant = 'success';
+      text = 'บวก';
+    } else if (sentiment === 'negative') {
+      variant = 'destructive';
+      text = 'ลบ';
+    }
+    
+    return (
+      <Badge variant={variant} className="ml-2 text-xs">
+        {text}
+      </Badge>
+    );
+  };
+
   const wordTexts = words.map(word => word.text);
 
   return (
@@ -255,7 +319,11 @@ const WordStream = () => {
 
       <div className="grid grid-cols-1 gap-6">
         <div className="space-y-6">
-          <h3 className="text-xl font-semibold">ประโยคกำลังใจปัจจุบัน</h3>
+          <h3 className="text-xl font-semibold flex items-center">
+            ประโยคกำลังใจปัจจุบัน
+            {shouldDisplaySentence && motivationalSentence && allSentences.length > 0 && 
+              renderSentimentBadge(allSentences[0].sentiment)}
+          </h3>
           
           <MotivationalSentence 
             selectedWords={wordTexts} 
