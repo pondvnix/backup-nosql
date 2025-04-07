@@ -48,6 +48,23 @@ const fetchMotivationalSentences = (): MotivationalSentence[] => {
   return [];
 };
 
+// Function to remove duplicates based on word and sentence combination
+const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
+  const uniqueMap = new Map<string, MotivationalSentence>();
+  
+  sentences.forEach(sentence => {
+    const uniqueKey = `${sentence.word}-${sentence.sentence}`;
+    
+    if (!uniqueMap.has(uniqueKey) || 
+        new Date(sentence.timestamp || new Date()).getTime() > 
+        new Date(uniqueMap.get(uniqueKey)!.timestamp || new Date()).getTime()) {
+      uniqueMap.set(uniqueKey, sentence);
+    }
+  });
+  
+  return Array.from(uniqueMap.values());
+};
+
 const analyzeSentencesByTemplate = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
   return sentences.map(sentence => {
     let polarity: 'positive' | 'neutral' | 'negative';
@@ -133,22 +150,6 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     negativeSentences: 0,
     longestSentence: { text: '', length: 0, contributor: '' }
   });
-
-  const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
-    const uniqueMap = new Map();
-    
-    sentences.forEach(sentence => {
-      const uniqueKey = `${sentence.word}-${sentence.sentence}`;
-      
-      if (!uniqueMap.has(uniqueKey) || 
-          new Date(sentence.timestamp || new Date()).getTime() > 
-          new Date(uniqueMap.get(uniqueKey).timestamp || new Date()).getTime()) {
-        uniqueMap.set(uniqueKey, sentence);
-      }
-    });
-    
-    return Array.from(uniqueMap.values());
-  };
 
   useEffect(() => {
     if (refreshTrigger && !propContributors) {
@@ -243,7 +244,9 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
   const sortedContributors = [...contributors].sort((a, b) => b.count - a.count);
   const topContributors = sortedContributors.slice(0, 10);
 
-  const latestSentences = motivationalSentences.slice(-5).reverse();
+  // Make sure we only get unique sentences for display
+  const uniqueLatestSentences = motivationalSentences.length > 0 ? 
+    removeDuplicateSentences(motivationalSentences).slice(-5).reverse() : [];
 
   const getPolarityText = (item: MotivationalSentence): string => {
     const score = item.score !== undefined ? item.score : 0;
@@ -341,7 +344,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
         </CardContent>
       </Card>
 
-      {latestSentences.length > 0 && (
+      {uniqueLatestSentences.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-center">ประโยคกำลังใจล่าสุด</CardTitle>
@@ -358,8 +361,8 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {latestSentences.map((item, index) => (
-                  <TableRow key={`latest-${item.word}-${item.sentence}-${index}`}>
+                {uniqueLatestSentences.map((item, index) => (
+                  <TableRow key={`latest-${index}-${item.word}-${item.timestamp}`}>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {getSentimentIcon(item)}

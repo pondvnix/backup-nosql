@@ -6,6 +6,7 @@ import { wordPolarityDatabase } from "@/utils/sentenceAnalysis";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Smile, Meh, Frown } from "lucide-react";
 import { extractSentimentFromTemplate, analyzeSentimentFromSentence } from "@/utils/sentimentConsistency";
+import { isTemplateUsed, markTemplateAsUsed, getAvailableTemplatesForWord } from "@/utils/templateTracker";
 
 interface MotivationalSentenceProps {
   selectedWords: string[];
@@ -24,44 +25,7 @@ const MotivationalSentence = ({
   const [sentimentType, setSentimentType] = useState<'positive' | 'neutral' | 'negative'>('positive');
   const [generatedSentences, setGeneratedSentences] = useState<{word: string, sentence: string, contributor?: string, template?: string}[]>([]);
   const [showSentence, setShowSentence] = useState(shouldDisplay);
-  const [usedWordTemplates, setUsedWordTemplates] = useState<Set<string>>(new Set());
   const { toast } = useToast();
-  
-  // Load used word-template combinations
-  useEffect(() => {
-    const loadUsedWordTemplates = () => {
-      try {
-        const storedSentences = localStorage.getItem('motivation-sentences');
-        if (storedSentences) {
-          const sentences = JSON.parse(storedSentences);
-          
-          // Track used word-template combinations
-          const usedCombinations = new Set<string>();
-          sentences.forEach((item: any) => {
-            if (item.word && item.sentence) {
-              usedCombinations.add(`${item.word}_${item.sentence}`);
-              if (item.template) {
-                usedCombinations.add(`${item.word}_${item.template}`);
-              }
-            }
-          });
-          setUsedWordTemplates(usedCombinations);
-        }
-      } catch (e) {
-        console.error("Error loading used word-templates:", e);
-      }
-    };
-    
-    loadUsedWordTemplates();
-    
-    window.addEventListener('motivationalSentenceGenerated', loadUsedWordTemplates);
-    window.addEventListener('motivation-billboard-updated', loadUsedWordTemplates);
-    
-    return () => {
-      window.removeEventListener('motivationalSentenceGenerated', loadUsedWordTemplates);
-      window.removeEventListener('motivation-billboard-updated', loadUsedWordTemplates);
-    };
-  }, []);
   
   // Initialize with provided sentence if available
   useEffect(() => {
@@ -105,14 +69,9 @@ const MotivationalSentence = ({
           setSentimentType(event.detail.sentiment);
         }
         
-        // Track the used word-template combination
+        // Mark the template as used if available
         if (event.detail.word && event.detail.template) {
-          setUsedWordTemplates(prev => {
-            const newSet = new Set(prev);
-            newSet.add(`${event.detail.word}_${event.detail.template}`);
-            newSet.add(`${event.detail.word}_${event.detail.sentence}`);
-            return newSet;
-          });
+          markTemplateAsUsed(event.detail.word, event.detail.template);
         }
       }
     };
@@ -154,19 +113,20 @@ const MotivationalSentence = ({
     
     // Get templates for this word if available, otherwise use default templates
     if (wordEntry?.templates && wordEntry.templates.length > 0) {
-      // Filter out already used templates
-      const unusedTemplates = wordEntry.templates.filter(template => 
-        !usedWordTemplates.has(`${word}_${template}`)
-      );
+      // Get available templates (not used yet)
+      const availableTemplates = wordEntry.templates.filter(template => !isTemplateUsed(word, template));
       
       // If there are unused templates, pick one randomly
-      if (unusedTemplates.length > 0) {
-        const randomIndex = Math.floor(Math.random() * unusedTemplates.length);
-        const selectedTemplate = unusedTemplates[randomIndex];
+      if (availableTemplates.length > 0) {
+        const randomIndex = Math.floor(Math.random() * availableTemplates.length);
+        const selectedTemplate = availableTemplates[randomIndex];
         
         // Extract sentiment from the template
         const { sentiment, text } = extractSentimentFromTemplate(selectedTemplate);
         setSentimentType(sentiment);
+        
+        // Mark this template as used
+        markTemplateAsUsed(word, selectedTemplate);
         
         return text.replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
       }
@@ -201,20 +161,40 @@ const MotivationalSentence = ({
       "${ลบ}อย่าให้${word}มาหยุดความฝันของเรา",
     ];
     
-    // เลือกประเภทแม่แบบแบบสุ่ม
-    const templateTypes = [positiveTemplates, neutralTemplates, negativeTemplates];
-    const randomTypeIndex = Math.floor(Math.random() * templateTypes.length);
-    const templates = templateTypes[randomTypeIndex];
+    // Get all available templates
+    const allTemplateTypes = [positiveTemplates, neutralTemplates, negativeTemplates];
+    const allTemplates = allTemplateTypes.flat();
     
-    // เลือกแม่แบบแบบสุ่ม
+    // Filter out used templates
+    const availableTemplates = allTemplates.filter(template => !isTemplateUsed(word, template));
+    
+    // If there are unused templates, pick one randomly
+    if (availableTemplates.length > 0) {
+      const randomIndex = Math.floor(Math.random() * availableTemplates.length);
+      const selectedTemplate = availableTemplates[randomIndex];
+      
+      // Extract sentiment from the template
+      const { sentiment, text } = extractSentimentFromTemplate(selectedTemplate);
+      setSentimentType(sentiment);
+      
+      // Mark this template as used
+      markTemplateAsUsed(word, selectedTemplate);
+      
+      // Replace word placeholder with actual word
+      return text.replace(/\$\{word\}/g, word);
+    }
+    
+    // If all templates are used, fall back to a random one
+    const randomTypeIndex = Math.floor(Math.random() * allTemplateTypes.length);
+    const templates = allTemplateTypes[randomTypeIndex];
     const randomIndex = Math.floor(Math.random() * templates.length);
     const selectedTemplate = templates[randomIndex];
     
-    // วิเคราะห์ความรู้สึกจากแม่แบบ
+    // Extract sentiment from the template
     const { sentiment, text } = extractSentimentFromTemplate(selectedTemplate);
     setSentimentType(sentiment);
     
-    // แทนที่คำในแม่แบบ
+    // Replace word placeholder with actual word
     return text.replace(/\$\{word\}/g, word);
   };
 
@@ -272,6 +252,9 @@ const MotivationalSentence = ({
         
         // Replace word placeholder with actual word
         sentence = text.replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+        
+        // Mark this template as used
+        markTemplateAsUsed(word, template);
       } else {
         // Get the sentence from the generated sentences or generate a new one
         const sentenceEntry = generatedSentences.find(s => s.word === word);

@@ -1,5 +1,5 @@
 
-import { Home, Award, Info, Settings } from "lucide-react";
+import { Home, Award, Info, Settings, HistoryIcon } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +28,16 @@ const MobileFooter = () => {
       >
         <Award size={20} />
         <span className="text-xs mt-1">อันดับ</span>
+      </Link>
+      <Link 
+        to="/logs" 
+        className={cn(
+          "flex flex-col items-center text-muted-foreground hover:text-primary",
+          path === "/logs" && "text-primary"
+        )}
+      >
+        <HistoryIcon size={20} />
+        <span className="text-xs mt-1">บันทึก</span>
       </Link>
       <Link 
         to="/about" 

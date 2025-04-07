@@ -1,5 +1,5 @@
 
-import { Heart, ListPlus } from "lucide-react";
+import { Heart, ListPlus, HistoryIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -18,6 +18,7 @@ const Header = () => {
         <nav className="hidden md:flex gap-2">
           <Button variant="ghost" onClick={() => navigate("/")}>หน้าหลัก</Button>
           <Button variant="ghost" onClick={() => navigate("/leaderboard")}>อันดับ</Button>
+          <Button variant="ghost" onClick={() => navigate("/logs")}>บันทึก</Button>
           <Button variant="ghost" onClick={() => navigate("/about")}>เกี่ยวกับ</Button>
           <Button variant="outline" onClick={() => navigate("/management")} className="flex items-center gap-1">
             <ListPlus className="h-4 w-4" />

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +10,7 @@ import Index from "./pages/Index";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import AboutPage from "./pages/AboutPage";
 import ManagementPage from "./pages/ManagementPage";
+import LogsPage from "./pages/LogsPage";
 import NotFound from "./pages/NotFound";
 import { MetaTags } from './components/MetaTags';
 
@@ -30,6 +32,7 @@ const App = () => {
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/management" element={<ManagementPage />} />
+                <Route path="/logs" element={<LogsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
