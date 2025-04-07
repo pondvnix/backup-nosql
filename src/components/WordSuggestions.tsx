@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +34,22 @@ const WordSuggestions = ({
   const [wordTemplateOptions, setWordTemplateOptions] = useState<WordTemplateOption[]>([]);
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [globalUsedWords, setGlobalUsedWords] = useState<string[]>([]);
+
+  // Load all globally used words from localStorage
+  const loadGlobalUsedWords = () => {
+    try {
+      const storedSentences = localStorage.getItem('motivation-sentences');
+      if (storedSentences) {
+        const sentences = JSON.parse(storedSentences);
+        const allUsedWords = sentences.map((item: any) => item.word || "");
+        setGlobalUsedWords(allUsedWords.filter(Boolean));
+      }
+    } catch (e) {
+      console.error("Error loading used words:", e);
+      setGlobalUsedWords([]);
+    }
+  };
 
   // Generate a list of suggested words
   const generateSuggestions = () => {
@@ -57,9 +72,11 @@ const WordSuggestions = ({
         wordDatabase = response.database || [];
       }
       
-      // Filter out words that are already in existingWords
+      // Filter out words that are already in existingWords or globally used
       const filteredWords = wordDatabase.filter(
-        (word: any) => !existingWords.includes(word.word)
+        (word: any) => 
+          !existingWords.includes(word.word) && 
+          !globalUsedWords.includes(word.word)
       );
       
       // Shuffle and take the first few words
@@ -69,6 +86,7 @@ const WordSuggestions = ({
       setSuggestedWords(selected);
       setSelectedOption("");
       generateWordTemplateOptions(selected);
+      setIsRefreshing(false);
     }, 500);
   };
 
@@ -110,7 +128,24 @@ const WordSuggestions = ({
     setIsRefreshing(false);
   };
 
-  // Initialize suggestions on component mount
+  // Initialize suggestions on component mount and when global used words change
+  useEffect(() => {
+    loadGlobalUsedWords();
+    
+    const handleMotivationalSentenceGenerated = () => {
+      loadGlobalUsedWords();
+    };
+    
+    window.addEventListener('motivationalSentenceGenerated', handleMotivationalSentenceGenerated);
+    window.addEventListener('motivation-billboard-updated', loadGlobalUsedWords);
+    
+    return () => {
+      window.removeEventListener('motivationalSentenceGenerated', handleMotivationalSentenceGenerated);
+      window.removeEventListener('motivation-billboard-updated', loadGlobalUsedWords);
+    };
+  }, []);
+  
+  // Generate suggestions when component mounts or global used words change
   useEffect(() => {
     generateSuggestions();
     
@@ -119,7 +154,7 @@ const WordSuggestions = ({
       const refreshInterval = setInterval(generateSuggestions, 60000);
       return () => clearInterval(refreshInterval);
     }
-  }, [disableAutoRefresh, existingWords]);
+  }, [disableAutoRefresh, existingWords, globalUsedWords]);
 
   // Handle option selection from radio group
   const handleOptionSelect = (optionId: string) => {
@@ -149,6 +184,9 @@ const WordSuggestions = ({
         
         // Save the sentence to the motivational sentences database
         storeSentenceInDatabase(selectedItem.word, sentenceText, contributor);
+        
+        // Add the selected word to the global used words
+        setGlobalUsedWords(prev => [...prev, selectedItem.word]);
         
         // Trigger the motivational sentence event so other components can update
         const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
@@ -286,8 +324,12 @@ const WordSuggestions = ({
             </Button>
           </div>
         ) : (
-          <div className="text-center p-4 text-muted-foreground animate-pulse">
-            กำลังโหลดคำแนะนำ...
+          <div className="text-center p-4 text-muted-foreground">
+            {isRefreshing ? (
+              <div className="animate-pulse">กำลังโหลดคำแนะนำ...</div>
+            ) : (
+              <div>ไม่พบคำแนะนำที่ยังไม่ถูกใช้ กรุณากดปุ่ม "สุ่มใหม่"</div>
+            )}
           </div>
         )}
       </CardContent>

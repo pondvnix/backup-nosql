@@ -56,10 +56,12 @@ const WordForm = ({
     
     window.addEventListener('word-database-updated', handleDatabaseUpdate);
     window.addEventListener('motivationalSentenceGenerated', handleBillboardUpdate);
+    window.addEventListener('motivation-billboard-updated', handleBillboardUpdate);
     
     return () => {
       window.removeEventListener('word-database-updated', handleDatabaseUpdate);
       window.removeEventListener('motivationalSentenceGenerated', handleBillboardUpdate);
+      window.removeEventListener('motivation-billboard-updated', handleBillboardUpdate);
     };
   }, []);
 
@@ -119,12 +121,23 @@ const WordForm = ({
     if (wordEntry) {
       const sentence = generateEncouragingSentence(trimmedWord, wordEntry);
       
-      localStorage.setItem('motivation-sentences', JSON.stringify([{
+      // Create a new sentence entry
+      const newSentenceEntry = {
         word: trimmedWord,
         sentence: sentence,
         contributor: trimmedContributor,
         timestamp: new Date()
-      }]));
+      };
+      
+      // Update the list of sentences in localStorage
+      try {
+        const storedSentences = localStorage.getItem('motivation-sentences');
+        const existingSentences = storedSentences ? JSON.parse(storedSentences) : [];
+        const updatedSentences = [newSentenceEntry, ...existingSentences];
+        localStorage.setItem('motivation-sentences', JSON.stringify(updatedSentences));
+      } catch (error) {
+        console.error("Error updating sentences:", error);
+      }
       
       const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
         detail: { 
@@ -135,6 +148,7 @@ const WordForm = ({
       });
       window.dispatchEvent(sentenceEvent);
       
+      // Add to used words
       setUsedWords(prev => [...prev, trimmedWord]);
       
       toast({
@@ -193,6 +207,10 @@ const WordForm = ({
   const handleSelectSuggestion = (selectedWord: string, template?: string) => {
     const contributorName = contributor.trim() || "ไม่ระบุชื่อ";
     localStorage.setItem("contributor-name", contributorName);
+    
+    // Add to used words
+    setUsedWords(prev => [...prev, selectedWord]);
+    
     onAddWord(selectedWord, contributorName, template);
   };
 

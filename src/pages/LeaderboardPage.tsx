@@ -30,7 +30,7 @@ const LeaderboardPage = () => {
           
           // Process sentences to add polarity if not present
           const processedSentences = sentences.map((sentence: MotivationalSentence) => {
-            if (!sentence.polarity) {
+            if (!sentence.polarity && sentence.word) {
               const { polarity } = getWordPolarity(sentence.word);
               return {
                 ...sentence,
