@@ -9,6 +9,7 @@ import MoodReport from "@/components/MoodReport";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Smile, Meh, Frown } from "lucide-react";
+import MotivationQuoteTable from "@/components/MotivationQuoteTable";
 
 interface MotivationalSentence {
   word: string;
@@ -23,15 +24,13 @@ interface MotivationalSentence {
 const LeaderboardPage = () => {
   const [sentences, setSentences] = useState<MotivationalSentence[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
   
   // ปรับปรุงวิธีการกรองข้อมูลซ้ำซ้อนโดยใช้ Map เพื่อเก็บข้อมูลล่าสุดของแต่ละประโยค
   const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     const uniqueMap = new Map();
     
     sentences.forEach(sentence => {
-      // สร้าง unique key จากข้อมูลหลัก
+      // สร้าง unique key จากข้อมูลหลัก - ปรับปรุงให้รัดกุมขึ้น
       const uniqueKey = `${sentence.word}-${sentence.sentence}`;
       
       // เก็บข้อมูลล่าสุดของแต่ละประโยค (ตามวันที่)
@@ -91,90 +90,18 @@ const LeaderboardPage = () => {
     };
   }, []);
 
-  // Function to get polarity icon
-  const getPolarityIcon = (polarity?: string) => {
-    switch (polarity) {
-      case 'positive':
-        return <Smile className="h-4 w-4 text-green-500" />;
-      case 'negative':
-        return <Frown className="h-4 w-4 text-red-500" />;
-      default:
-        return <Meh className="h-4 w-4 text-blue-500" />;
-    }
-  };
-  
-  // Function to format date
-  const formatDate = (date: Date | string | number) => {
-    return new Date(date).toLocaleString('th-TH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Asia/Bangkok'
-    });
-  };
-  
-  // Function to highlight word in sentence
-  const highlightWord = (sentence: string, word: string): React.ReactNode => {
-    if (!sentence || !word) return sentence;
-    
-    const parts = sentence.split(new RegExp(`(${word})`, 'gi'));
-    
-    return parts.map((part, index) => {
-      if (part.toLowerCase() === word.toLowerCase()) {
-        return (
-          <span key={index} className="text-[#F97316] font-semibold">
-            {part}
-          </span>
-        );
-      }
-      return part;
-    });
-  };
-  
-  // Function to get score based on polarity
-  const getScoreFromPolarity = (polarity?: string): number => {
-    switch (polarity) {
-      case 'positive':
-        return 1;
-      case 'negative':
-        return -1;
-      default:
-        return 0; // neutral
-    }
-  };
-  
-  // Pagination logic
-  const totalPages = Math.ceil(sentences.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentSentences = sentences.slice(indexOfFirstItem, indexOfLastItem);
-  
-  // Page numbers for pagination
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxPagesToShow = 5;
-    
-    if (totalPages <= maxPagesToShow) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-    } else {
-      let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-      let endPage = startPage + maxPagesToShow - 1;
-      
-      if (endPage > totalPages) {
-        endPage = totalPages;
-        startPage = Math.max(1, endPage - maxPagesToShow + 1);
-      }
-      
-      for (let i = startPage; i <= endPage; i++) {
-        pageNumbers.push(i);
-      }
-    }
-    
-    return pageNumbers;
+  // Convert MotivationalSentence to the Quote format expected by MotivationQuoteTable
+  const convertSentencesToQuotes = (sentences: MotivationalSentence[]) => {
+    return sentences.map(sentence => ({
+      text: sentence.sentence,
+      date: new Date(sentence.timestamp),
+      userId: sentence.contributor || "",
+      word: sentence.word,
+      polarity: sentence.polarity as 'positive' | 'neutral' | 'negative',
+      score: sentence.score !== undefined ? sentence.score : 
+             sentence.polarity === 'positive' ? 1 :
+             sentence.polarity === 'negative' ? -1 : 0
+    }));
   };
 
   return (
@@ -196,90 +123,7 @@ const LeaderboardPage = () => {
                 <CardTitle className="text-center">ตารางประโยคกำลังใจ</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto border rounded-md">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ความรู้สึก</TableHead>
-                        <TableHead>คำ</TableHead>
-                        <TableHead>ประโยคกำลังใจ</TableHead>
-                        <TableHead>ผู้ให้กำลังใจ</TableHead>
-                        <TableHead>คะแนน</TableHead>
-                        <TableHead>วันที่</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {currentSentences.length > 0 ? (
-                        currentSentences.map((sentence, index) => {
-                          // ใช้ score จากข้อมูล หรือคำนวณจาก polarity ถ้าไม่มี
-                          const score = sentence.score !== undefined 
-                            ? sentence.score 
-                            : getScoreFromPolarity(sentence.polarity);
-                          
-                          return (
-                            <TableRow 
-                              // ใช้ค่าที่เป็นเอกลักษณ์เป็น key เพื่อป้องกันการแสดงซ้ำ
-                              key={`${sentence.word}-${sentence.sentence}-${new Date(sentence.timestamp).getTime()}`}
-                            >
-                              <TableCell>{getPolarityIcon(sentence.polarity)}</TableCell>
-                              <TableCell className="font-medium text-primary">{sentence.word || '-'}</TableCell>
-                              <TableCell>{highlightWord(sentence.sentence, sentence.word)}</TableCell>
-                              <TableCell>{sentence.contributor || 'ไม่ระบุชื่อ'}</TableCell>
-                              <TableCell className={`font-medium ${
-                                score > 0 
-                                  ? 'text-green-600' 
-                                  : score === 0 
-                                    ? 'text-blue-600' 
-                                    : 'text-red-600'
-                              }`}>
-                                {score}
-                              </TableCell>
-                              <TableCell className="text-xs whitespace-nowrap">{formatDate(sentence.timestamp)}</TableCell>
-                            </TableRow>
-                          );
-                        })
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-4">ไม่พบข้อมูลประโยคกำลังใจ</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-                
-                {totalPages > 1 && (
-                  <div className="mt-4">
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious 
-                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                        
-                        {getPageNumbers().map(number => (
-                          <PaginationItem key={number}>
-                            <PaginationLink 
-                              isActive={currentPage === number}
-                              onClick={() => setCurrentPage(number)}
-                              className="cursor-pointer"
-                            >
-                              {number}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        
-                        <PaginationItem>
-                          <PaginationNext 
-                            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  </div>
-                )}
+                <MotivationQuoteTable quotes={convertSentencesToQuotes(sentences)} showAllUsers={true} />
               </CardContent>
             </Card>
           </TabsContent>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Smile, Meh, Frown } from "lucide-react";
 
 interface Quote {
   text: string;
@@ -117,6 +118,17 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
     }
   };
   
+  // Function to get polarity icon
+  const getPolarityIcon = (score: number) => {
+    if (score > 0) {
+      return <Smile className="h-4 w-4 text-green-500" />;
+    } else if (score < 0) {
+      return <Frown className="h-4 w-4 text-red-500" />;
+    } else {
+      return <Meh className="h-4 w-4 text-blue-500" />;
+    }
+  };
+  
   return (
     <div className="space-y-4">
       {uniqueQuotes.length > 0 ? (
@@ -125,6 +137,7 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>ความรู้สึก</TableHead>
                   <TableHead>ผู้ให้กำลังใจ</TableHead>
                   <TableHead>คำ</TableHead>
                   <TableHead>ประโยคกำลังใจ</TableHead>
@@ -141,6 +154,7 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
                   
                   return (
                     <TableRow key={`${quote.word}-${quote.text}-${new Date(quote.date).getTime()}`}>
+                      <TableCell>{getPolarityIcon(score)}</TableCell>
                       <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
                       <TableCell className="font-medium text-primary">{quote.word || '-'}</TableCell>
                       <TableCell>{highlightWord(quote.text, quote.word)}</TableCell>
