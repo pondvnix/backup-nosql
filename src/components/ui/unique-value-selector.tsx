@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -32,6 +33,18 @@ export function UniqueValueSelector({
 }: UniqueValueSelectorProps) {
   const [selectedValue, setSelectedValue] = useState<string | undefined>(selected?.value);
   const { toast } = useToast();
+  // Add a state to store unique IDs for options
+  const [optionIds, setOptionIds] = useState<Map<string, string>>(new Map());
+
+  // Generate unique IDs for all options once when component mounts or options change
+  useEffect(() => {
+    const newOptionIds = new Map<string, string>();
+    options.forEach(option => {
+      // Create a unique ID for each option
+      newOptionIds.set(option.value, `${option.value}-${Math.random().toString(36).substring(2, 9)}`);
+    });
+    setOptionIds(newOptionIds);
+  }, [options]);
 
   // Update selectedValue when selected prop changes
   useEffect(() => {
@@ -39,10 +52,15 @@ export function UniqueValueSelector({
   }, [selected]);
 
   const handleValueChange = (value: string) => {
+    // Find the actual option value from our map of unique IDs
+    const actualValue = Array.from(optionIds.entries()).find(([_, id]) => id === value)?.[0];
+    
+    if (!actualValue) return;
+    
     // Check if the value is already used elsewhere (but not by the current selection)
-    if (usedValues.includes(value) && value !== selected?.value) {
+    if (usedValues.includes(actualValue) && actualValue !== selected?.value) {
       // Find the option text
-      const optionText = options.find(opt => opt.value === value)?.text || value;
+      const optionText = options.find(opt => opt.value === actualValue)?.text || actualValue;
       
       toast({
         title: "Selection Error",
@@ -58,11 +76,11 @@ export function UniqueValueSelector({
       });
     }
 
-    // Update internal state
-    setSelectedValue(value);
+    // Update internal state with the actual value
+    setSelectedValue(actualValue);
     
     // Find the selected option and send it to parent
-    const selectedOption = options.find(option => option.value === value);
+    const selectedOption = options.find(option => option.value === actualValue);
     if (selectedOption) {
       onSelect(selectedOption);
     }
@@ -105,6 +123,12 @@ export function UniqueValueSelector({
   // Get unique options based on text value
   const uniqueOptions = getUniqueTextOptions();
 
+  // Get the unique ID for the selected value
+  const getSelectedUniqueId = () => {
+    if (!selectedValue) return "";
+    return optionIds.get(selectedValue) || "";
+  };
+
   return (
     <div className={cn("space-y-4", className)}>
       <div className="flex justify-between items-center">
@@ -136,7 +160,7 @@ export function UniqueValueSelector({
       </div>
       
       <RadioGroup 
-        value={selectedValue} 
+        value={getSelectedUniqueId()} 
         onValueChange={handleValueChange}
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"
         name={`radio-group-${getSafeTitle()}`} // Add a name attribute for proper radio button grouping
@@ -144,21 +168,21 @@ export function UniqueValueSelector({
         {uniqueOptions.map((option) => {
           // A value is disabled if it's used elsewhere (but not by this selector)
           const isDisabled = usedValues.includes(option.value) && option.value !== selected?.value;
-          // Create a unique ID for each radio item
-          const uniqueId = `option-${option.value}-${getSafeTitle()}`;
+          // Get the unique ID for this option
+          const uniqueId = optionIds.get(option.value) || `option-${option.value}-${Math.random().toString(36).substring(2, 9)}`;
           
           return (
             <div 
-              key={option.value}
+              key={uniqueId}
               className={cn(
                 "flex items-center space-x-2 rounded-md border p-3 transition-colors",
                 isDisabled ? "opacity-50 cursor-not-allowed bg-muted" : "hover:bg-accent cursor-pointer",
                 selectedValue === option.value && "border-primary bg-accent"
               )}
-              onClick={() => !isDisabled && handleValueChange(option.value)}
+              onClick={() => !isDisabled && handleValueChange(uniqueId)}
             >
               <RadioGroupItem 
-                value={option.value}
+                value={uniqueId}
                 id={uniqueId}
                 disabled={isDisabled}
               />

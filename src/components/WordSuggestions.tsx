@@ -22,6 +22,7 @@ interface WordEntry {
 interface WordSuggestion {
   word: string;
   templateIndex: number; // Track which template would be used
+  uniqueId: string; // Add a unique ID for each suggestion
 }
 
 const WordSuggestions = ({
@@ -126,9 +127,13 @@ const WordSuggestions = ({
         
         // If this specific template hasn't been used, add it as an option
         if (!usedTemplates.includes(processedTemplate)) {
+          // Create a truly unique ID by combining word, template index, and timestamp
+          const uniqueId = `${entry.word}-${index}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+          
           availableWordTemplates.push({
             word: entry.word,
-            templateIndex: index
+            templateIndex: index,
+            uniqueId
           });
         }
       });
@@ -263,16 +268,36 @@ const WordSuggestions = ({
 
   const getSelectedSuggestionValue = () => {
     if (!selectedSuggestion) return "";
-    // Create a unique ID for each suggestion by combining word and template index
-    return `${selectedSuggestion.word}-${selectedSuggestion.templateIndex}`;
+    // Use the uniqueId as the value for the radio group
+    return selectedSuggestion.uniqueId;
   };
 
   const handleSuggestionChange = (value: string) => {
-    const [word, templateIndex] = value.split('-');
-    setSelectedSuggestion({
-      word,
-      templateIndex: parseInt(templateIndex, 10)
-    });
+    // Find the suggestion by its uniqueId
+    const suggestion = suggestions.find(s => s.uniqueId === value);
+    if (suggestion) {
+      setSelectedSuggestion(suggestion);
+    }
+  };
+
+  const getTemplatePreview = (word: string, templateIndex: number): string => {
+    // Find the word entry in the database
+    const wordEntry = wordDatabase.find(entry => entry.word === word);
+    
+    if (!wordEntry || !wordEntry.templates || templateIndex >= wordEntry.templates.length) {
+      return word;
+    }
+    
+    // Get the template and replace placeholders with the word
+    const template = wordEntry.templates[templateIndex];
+    const preview = template.replace(/\$\{[^}]*\}/g, word);
+    
+    // Truncate if too long
+    if (preview.length > 40) {
+      return preview.substring(0, 37) + '...';
+    }
+    
+    return preview;
   };
 
   return (
@@ -299,33 +324,32 @@ const WordSuggestions = ({
           className="space-y-2"
         >
           {suggestions.length > 0 ? (
-            suggestions.map((suggestion, index) => {
-              const { word, templateIndex } = suggestion;
-              const value = `${word}-${templateIndex}`;
-              return (
-                <div 
-                  key={value} 
-                  className="flex items-center space-x-2 p-2 rounded-md transition-all duration-300 hover:bg-muted cursor-pointer"
-                  style={{ 
-                    animationDelay: `${index * 100}ms`,
-                    animation: isRefreshing ? "none" : "fadeIn 0.5s ease-out forwards" 
-                  }}
-                  onClick={() => handleSuggestionChange(value)}
+            suggestions.map((suggestion, index) => (
+              <div 
+                key={suggestion.uniqueId} 
+                className="flex items-center space-x-2 p-2 rounded-md transition-all duration-300 hover:bg-muted cursor-pointer"
+                style={{ 
+                  animationDelay: `${index * 100}ms`,
+                  animation: isRefreshing ? "none" : "fadeIn 0.5s ease-out forwards" 
+                }}
+                onClick={() => handleSuggestionChange(suggestion.uniqueId)}
+              >
+                <RadioGroupItem 
+                  value={suggestion.uniqueId} 
+                  id={`word-${suggestion.uniqueId}`} 
+                  className="transition-all duration-300"
+                />
+                <Label 
+                  htmlFor={`word-${suggestion.uniqueId}`} 
+                  className="font-medium cursor-pointer w-full flex flex-col"
                 >
-                  <RadioGroupItem 
-                    value={value} 
-                    id={`word-${value}`} 
-                    className="transition-all duration-300"
-                  />
-                  <Label 
-                    htmlFor={`word-${value}`} 
-                    className="font-medium cursor-pointer w-full flex items-center justify-between"
-                  >
-                    <span className="text-[#F97316]">{word}</span>
-                  </Label>
-                </div>
-              );
-            })
+                  <span className="text-[#F97316] font-semibold">{suggestion.word}</span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    {getTemplatePreview(suggestion.word, suggestion.templateIndex)}
+                  </span>
+                </Label>
+              </div>
+            ))
           ) : (
             <div className="text-center p-4 text-muted-foreground">
               {isRefreshing ? 'กำลังโหลด...' : 'ไม่พบคำแนะนำที่ยังไม่ได้ใช้ กรุณาเพิ่มคำใหม่ในหน้าจัดการคำ'}
