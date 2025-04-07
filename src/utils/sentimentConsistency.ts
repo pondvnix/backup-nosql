@@ -1,101 +1,41 @@
+
 export interface SentimentItem {
   word?: string;
   sentence?: string;
-  polarity?: 'positive' | 'neutral' | 'negative';
-  score?: number;
+  sentiment?: 'positive' | 'neutral' | 'negative'; // Template sentiment
   contributor?: string;
   timestamp?: Date | string | number;
-  sentiment?: 'positive' | 'neutral' | 'negative'; // Template sentiment
+  templates?: string[];
   [key: string]: any;
 }
 
 /**
- * Ensures consistent polarity and score values across the application
- * This utility normalizes scores and polarities to avoid discrepancies
- */
-export const normalizeScoreAndPolarity = (item: SentimentItem): SentimentItem => {
-  let score = item.score;
-  let polarity = item.polarity;
-  
-  // If we have a score but no polarity, derive polarity from score
-  if (score !== undefined && !polarity) {
-    if (score > 0) polarity = 'positive';
-    else if (score < 0) polarity = 'negative';
-    else polarity = 'neutral';
-  }
-  // If we have polarity but no score, derive score from polarity
-  else if (polarity && score === undefined) {
-    if (polarity === 'positive') score = 1;
-    else if (polarity === 'negative') score = -1;
-    else score = 0;
-  }
-  // If we have neither, set defaults
-  else if (polarity === undefined && score === undefined) {
-    polarity = 'neutral';
-    score = 0;
-  }
-  
-  // Ensure consistency between score and polarity
-  // If score is positive, polarity should be positive, etc.
-  if (score !== undefined) {
-    if (score > 0 && polarity !== 'positive') {
-      polarity = 'positive';
-    } else if (score < 0 && polarity !== 'negative') {
-      polarity = 'negative';
-    } else if (score === 0 && polarity !== 'neutral') {
-      polarity = 'neutral';
-    }
-  }
-  
-  return {
-    ...item,
-    polarity,
-    score
-  };
-};
-
-/**
- * Normalizes an array of sentiment items
- */
-export const normalizeItemsConsistency = (items: SentimentItem[]): SentimentItem[] => {
-  return items.map(normalizeScoreAndPolarity);
-};
-
-/**
- * Gets the appropriate badge variant based on score, polarity, or template sentiment
+ * Gets the appropriate badge variant based on template sentiment
  */
 export const getSentimentBadgeVariant = (item: SentimentItem): 'success' | 'destructive' | 'secondary' => {
-  // Check template sentiment first if available
+  // Check template sentiment
   if (item.sentiment) {
     if (item.sentiment === 'positive') return 'success';
     if (item.sentiment === 'negative') return 'destructive';
     if (item.sentiment === 'neutral') return 'secondary';
   }
   
-  // Fall back to score/polarity
-  const normalized = normalizeScoreAndPolarity(item);
-  
-  if (normalized.score! > 0) return 'success';
-  if (normalized.score! < 0) return 'destructive';
+  // Default to neutral if no sentiment is provided
   return 'secondary';
 };
 
 /**
- * Gets the polarity text in Thai based on sentiment or polarity
+ * Gets the polarity text in Thai based on sentiment
  */
 export const getPolarityText = (item: SentimentItem): string => {
-  // Check template sentiment first if available
+  // Check template sentiment
   if (item.sentiment) {
     if (item.sentiment === 'positive') return 'เชิงบวก';
     if (item.sentiment === 'negative') return 'เชิงลบ';
     if (item.sentiment === 'neutral') return 'กลาง';
   }
   
-  // Fall back to score/polarity
-  const normalized = normalizeScoreAndPolarity(item);
-  
-  if (normalized.score! > 0) return 'เชิงบวก';
-  if (normalized.score! < 0) return 'เชิงลบ';
+  // Default to neutral if no sentiment is provided
   return 'กลาง';
 };
 

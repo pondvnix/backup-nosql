@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -35,20 +36,17 @@ import {
   templateObjectsToStrings,
   stringToTemplateObjects
 } from "../utils/wordModeration";
-import { getWordPolarity } from "../utils/sentenceAnalysis";
 import { extractSentimentFromTemplate } from "../utils/sentimentConsistency";
 
 interface WordEntry {
   word: string;
-  polarity: 'positive' | 'neutral' | 'negative';
-  score: number;
   templates?: string[];
 }
 
 const ManagementPage = () => {
   const { toast } = useToast();
   const [word, setWord] = useState("");
-  const [wordPolarity, setWordPolarity] = useState<'positive' | 'neutral' | 'negative'>('neutral');
+  const [templateSentiment, setTemplateSentiment] = useState<TemplateSentiment>('positive');
   const [allWords, setAllWords] = useState<WordEntry[]>([]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [currentEditWord, setCurrentEditWord] = useState<WordEntry | null>(null);
@@ -59,7 +57,6 @@ const ManagementPage = () => {
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
   const [hasTemplateError, setHasTemplateError] = useState(false);
   const [templateErrorMessage, setTemplateErrorMessage] = useState("");
-  const [templateSentiment, setTemplateSentiment] = useState<TemplateSentiment>('positive');
 
   useEffect(() => {
     const loadWords = () => {
@@ -85,12 +82,27 @@ const ManagementPage = () => {
 
   const addWord = () => {
     if (word.trim()) {
-      const score = wordPolarity === 'positive' ? 1 : wordPolarity === 'negative' ? -1 : 0;
-      addWordToDatabase(word.trim(), wordPolarity, score);
+      // Create a default template with the selected sentiment
+      const sentimentPrefix = 
+        templateSentiment === 'positive' ? '${บวก}' :
+        templateSentiment === 'negative' ? '${ลบ}' :
+        '${กลาง}';
+      
+      const defaultTemplate: Template = {
+        text: `${word.trim()} คือสิ่งสำคัญในชีวิต`,
+        sentiment: templateSentiment
+      };
+      
+      // Add word with default template
+      addWordToDatabase(word.trim(), templateSentiment, 0, [defaultTemplate]);
       
       setWord("");
       
-      const updatedWords = [...allWords, { word: word.trim(), polarity: wordPolarity, score }];
+      const updatedWords = [...allWords, { 
+        word: word.trim(), 
+        templates: [sentimentPrefix + defaultTemplate.text]
+      }];
+      
       setAllWords(updatedWords);
       
       toast({
@@ -153,10 +165,15 @@ const ManagementPage = () => {
       return;
     }
     
+    // Use the first template's sentiment for the word polarity
+    const firstTemplateSentiment = templates.length > 0 ? templates[0].sentiment : 'positive';
+    const score = firstTemplateSentiment === 'positive' ? 1 : 
+                 firstTemplateSentiment === 'negative' ? -1 : 0;
+    
     updateWordPolarity(
       currentEditWord.word,
-      currentEditWord.polarity,
-      currentEditWord.score,
+      firstTemplateSentiment, // Use template sentiment for word polarity
+      score,
       templates
     );
     
@@ -196,19 +213,16 @@ const ManagementPage = () => {
     setWordToDelete(null);
   };
 
-  const getPolarityColor = (polarity: string): string => {
-    switch (polarity) {
-      case 'positive':
-        return 'text-green-500';
-      case 'negative':
-        return 'text-red-500';
-      default:
-        return 'text-blue-500';
+  // Get template sentiment badge
+  const getTemplateSentimentBadge = (templates?: string[]): React.ReactNode => {
+    if (!templates || templates.length === 0) {
+      return <Badge variant="secondary" className="ml-2">กลาง</Badge>;
     }
-  };
-  
-  const getPolarityBadge = (polarity: string): React.ReactNode => {
-    switch (polarity) {
+    
+    // Use the first template's sentiment
+    const { sentiment } = extractSentimentFromTemplate(templates[0]);
+    
+    switch (sentiment) {
       case 'positive':
         return <Badge variant="success" className="ml-2">เชิงบวก</Badge>;
       case 'negative':
@@ -218,8 +232,16 @@ const ManagementPage = () => {
     }
   };
 
-  const getPolarityIcon = (polarity: string): React.ReactNode => {
-    switch (polarity) {
+  // Get template sentiment icon
+  const getTemplateSentimentIcon = (templates?: string[]): React.ReactNode => {
+    if (!templates || templates.length === 0) {
+      return <Meh className="h-4 w-4 text-blue-500" />;
+    }
+    
+    // Use the first template's sentiment
+    const { sentiment } = extractSentimentFromTemplate(templates[0]);
+    
+    switch (sentiment) {
       case 'positive':
         return <Smile className="h-4 w-4 text-green-500" />;
       case 'negative':
@@ -343,12 +365,12 @@ const ManagementPage = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="polarity">ความรู้สึกของคำ</Label>
+                    <Label htmlFor="template-sentiment">ความรู้สึกแม่แบบประโยค</Label>
                     <ToggleGroup 
                       type="single" 
-                      value={wordPolarity} 
+                      value={templateSentiment} 
                       onValueChange={(value) => {
-                        if (value) setWordPolarity(value as 'positive' | 'neutral' | 'negative');
+                        if (value) setTemplateSentiment(value as TemplateSentiment);
                       }}
                       className="border rounded-md justify-start p-1"
                     >
@@ -356,7 +378,7 @@ const ManagementPage = () => {
                         value="positive" 
                         className={cn(
                           "flex items-center gap-1",
-                          wordPolarity === 'positive' && "bg-green-50 text-green-700"
+                          templateSentiment === 'positive' && "bg-green-50 text-green-700"
                         )}
                       >
                         <Smile className="h-4 w-4" />
@@ -366,7 +388,7 @@ const ManagementPage = () => {
                         value="neutral"
                         className={cn(
                           "flex items-center gap-1",
-                          wordPolarity === 'neutral' && "bg-blue-50 text-blue-700"
+                          templateSentiment === 'neutral' && "bg-blue-50 text-blue-700"
                         )}
                       >
                         <Meh className="h-4 w-4" />
@@ -376,7 +398,7 @@ const ManagementPage = () => {
                         value="negative"
                         className={cn(
                           "flex items-center gap-1",
-                          wordPolarity === 'negative' && "bg-red-50 text-red-700"
+                          templateSentiment === 'negative' && "bg-red-50 text-red-700"
                         )}
                       >
                         <Frown className="h-4 w-4" />
@@ -404,7 +426,7 @@ const ManagementPage = () => {
                       <thead className="bg-muted/50 sticky top-0">
                         <tr>
                           <th className="text-left py-2 px-3">คำ</th>
-                          <th className="text-left py-2 px-3">ความรู้สึก</th>
+                          <th className="text-left py-2 px-3">ความรู้สึกแม่แบบ</th>
                           <th className="text-left py-2 px-3">แม่แบบ</th>
                           <th className="text-center py-2 px-3">จัดการ</th>
                         </tr>
@@ -434,11 +456,14 @@ const ManagementPage = () => {
                               </td>
                               <td className="py-2 px-3">
                                 <div className="flex items-center">
-                                  {getPolarityIcon(wordEntry.polarity)}
-                                  <span className={`ml-2 ${getPolarityColor(wordEntry.polarity)}`}>
-                                    {wordEntry.polarity === 'positive' ? 'บวก' : 
-                                     wordEntry.polarity === 'negative' ? 'ลบ' : 
-                                     'กลาง'}
+                                  {getTemplateSentimentIcon(wordEntry.templates)}
+                                  <span className="ml-2">
+                                    {wordEntry.templates && wordEntry.templates.length > 0 ? 
+                                      getSentimentInfo(wordEntry.templates[0]).sentiment === 'positive' ? 'บวก' : 
+                                      getSentimentInfo(wordEntry.templates[0]).sentiment === 'negative' ? 'ลบ' : 
+                                      'กลาง'
+                                      : 'กลาง'
+                                    }
                                   </span>
                                 </div>
                               </td>
@@ -525,58 +550,42 @@ const ManagementPage = () => {
                 แก้ไขคำ: {currentEditWord?.word}
               </DialogTitle>
               <DialogDescription>
-                แก้ไขความรู้สึกของคำและแม่แบบประโยค คั่นแม่แบบด้วยเครื่องหมายคอมม่า (,) หรือการขึ้นบรรทัดใหม่
+                แก้ไขแม่แบบประโยค คั่นแม่แบบด้วยเครื่องหมายคอมม่า (,) หรือการขึ้นบรรทัดใหม่
               </DialogDescription>
             </DialogHeader>
             
             {currentEditWord && (
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label>ความรู้สึกของคำ</Label>
-                  <ToggleGroup 
-                    type="single" 
-                    value={currentEditWord.polarity} 
-                    onValueChange={(value) => {
-                      if (!value) return;
-                      const polarity = value as 'positive' | 'neutral' | 'negative';
-                      const score = polarity === 'positive' ? 1 : 
-                                   polarity === 'negative' ? -1 : 0;
-                      
-                      setCurrentEditWord({...currentEditWord, polarity, score});
-                    }}
-                    className="border rounded-md justify-start p-1"
+                  <Label>ความรู้สึกแม่แบบประโยคเริ่มต้น</Label>
+                  <RadioGroup 
+                    value={templateSentiment}
+                    onValueChange={(value) => setTemplateSentiment(value as TemplateSentiment)}
+                    className="flex space-x-4"
                   >
-                    <ToggleGroupItem 
-                      value="positive" 
-                      className={cn(
-                        "flex items-center gap-1",
-                        currentEditWord.polarity === 'positive' && "bg-green-50 text-green-700"
-                      )}
-                    >
-                      <Smile className="h-4 w-4" />
-                      <span>บวก</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem 
-                      value="neutral"
-                      className={cn(
-                        "flex items-center gap-1",
-                        currentEditWord.polarity === 'neutral' && "bg-blue-50 text-blue-700"
-                      )}
-                    >
-                      <Meh className="h-4 w-4" />
-                      <span>กลาง</span>
-                    </ToggleGroupItem>
-                    <ToggleGroupItem 
-                      value="negative"
-                      className={cn(
-                        "flex items-center gap-1",
-                        currentEditWord.polarity === 'negative' && "bg-red-50 text-red-700"
-                      )}
-                    >
-                      <Frown className="h-4 w-4" />
-                      <span>ลบ</span>
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="positive" id="sentiment-positive" />
+                      <Label htmlFor="sentiment-positive" className="flex items-center text-green-700">
+                        <Smile className="h-4 w-4 mr-1" />
+                        <span>บวก</span>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="neutral" id="sentiment-neutral" />
+                      <Label htmlFor="sentiment-neutral" className="flex items-center text-blue-700">
+                        <Meh className="h-4 w-4 mr-1" />
+                        <span>กลาง</span>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="negative" id="sentiment-negative" />
+                      <Label htmlFor="sentiment-negative" className="flex items-center text-red-700">
+                        <Frown className="h-4 w-4 mr-1" />
+                        <span>ลบ</span>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  <p className="text-xs text-muted-foreground">ความรู้สึกนี้จะถูกใช้กับแม่แบบประโยคใหม่ที่ไม่มีการเพิ่ม ${"{"}บวก{"}"}, ${"{"}กลาง{"}"}, หรือ ${"{"}ลบ{"}"} ไว้</p>
                 </div>
                 
                 <div className="grid gap-2">
@@ -628,38 +637,6 @@ const ManagementPage = () => {
                     </Button>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label>ความรู้สึกแม่แบบประโยคเริ่มต้น</Label>
-                    <RadioGroup 
-                      value={templateSentiment}
-                      onValueChange={(value) => setTemplateSentiment(value as TemplateSentiment)}
-                      className="flex space-x-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="positive" id="sentiment-positive" />
-                        <Label htmlFor="sentiment-positive" className="flex items-center text-green-700">
-                          <Smile className="h-4 w-4 mr-1" />
-                          <span>บวก</span>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="neutral" id="sentiment-neutral" />
-                        <Label htmlFor="sentiment-neutral" className="flex items-center text-blue-700">
-                          <Meh className="h-4 w-4 mr-1" />
-                          <span>กลาง</span>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="negative" id="sentiment-negative" />
-                        <Label htmlFor="sentiment-negative" className="flex items-center text-red-700">
-                          <Frown className="h-4 w-4 mr-1" />
-                          <span>ลบ</span>
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                    <p className="text-xs text-muted-foreground">ความรู้สึกนี้จะถูกใช้กับแม่แบบประโยคใหม่ที่ไม่มีการเพิ่ม ${"{"}บวก{"}"}, ${"{"}กลาง{"}"}, หรือ ${"{"}ลบ{"}"} ไว้</p>
-                  </div>
-                  
                   <Textarea 
                     id="templates" 
                     placeholder={`ตัวอย่าง:\n\${บวก}${currentEditWord.word}ทำให้ชีวิตสดใส,\n\${กลาง}การมี${currentEditWord.word}ทำให้เรามีกำลังใจ,\n\${ลบ}ขาดซึ่ง${currentEditWord.word}ทำให้ท้อแท้`}
@@ -681,7 +658,7 @@ const ManagementPage = () => {
                   )}
                   
                   <div className="text-xs text-muted-foreground flex flex-col gap-1">
-                    <span>ใช้ ${"{"}คำ{"}"} สำหรับแทรกคำอัตโนมัติ เช่น ${"{" + currentEditWord.word + "}"} จะถูกแทนที่ด้วย {currentEditWord.word}</span>
+                    <span>ใช้ ${"{"}คำ{"}"} สำหรับแทรกคำอัตโนมัติ เช่น ${"{" + (currentEditWord?.word || "คำ") + "}"} จะถูกแทนที่ด้วย {currentEditWord?.word || "คำ"}</span>
                     <span>ใช้ ${"{"}บวก{"}"}, ${"{"}กลาง{"}"}, ${"{"}ลบ{"}"} เพื่อกำหนดความรู้สึกให้กับแม่แบบประโยค</span>
                     <span>ใช้เครื่องหมายคอมม่า (,) หรือการขึ้นบรรทัดใหม่เพื่อแยกแม่แบบประโยคหลายประโยค</span>
                   </div>

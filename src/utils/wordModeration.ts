@@ -1,4 +1,7 @@
 
+// Template sentiment types
+export type TemplateSentiment = 'positive' | 'neutral' | 'negative';
+
 // List of possible inappropriate words to filter (this is a simple example)
 // In a production environment, this should be on the server side
 const forbiddenWords = [
@@ -7,28 +10,19 @@ const forbiddenWords = [
   // Add more words as needed
 ];
 
-// Template sentiment types
-export type TemplateSentiment = 'positive' | 'neutral' | 'negative';
-
 // Default words for the management page
 export const DEFAULT_WORDS = [
   {
     word: "กำลังใจ",
-    polarity: "positive" as const,
-    templates: ["${กำลังใจ}คือสิ่งสำคัญที่ทำให้เราเดินต่อไปได้"],
-    score: 1
+    templates: ["${บวก}${กำลังใจ}คือสิ่งสำคัญที่ทำให้เราเดินต่อไปได้"]
   },
   {
     word: "อดทน",
-    polarity: "positive" as const,
-    templates: ["การ${อดทน}จะนำไปสู่ความสำเร็จ"],
-    score: 1
+    templates: ["${บวก}การ${อดทน}จะนำไปสู่ความสำเร็จ"]
   },
   {
     word: "สู้",
-    polarity: "positive" as const,
-    templates: ["${สู้}ต่อไป แม้จะเหนื่อยแค่ไหนก็ตาม"],
-    score: 1
+    templates: ["${บวก}${สู้}ต่อไป แม้จะเหนื่อยแค่ไหนก็ตาม"]
   }
 ];
 
@@ -219,16 +213,16 @@ export const stringToTemplateObjects = (templateStrings: string[]): Template[] =
 };
 
 /**
- * Add a word to the word polarity database in localStorage
+ * Add a word to the word database in localStorage
  * @param word The word to add
- * @param polarity The polarity of the word (positive, neutral, negative)
- * @param score The score value associated with the polarity
+ * @param sentiment The sentiment of the template (positive, neutral, negative)
+ * @param score The score value (not used anymore, kept for compatibility)
  * @param templates Optional array of template objects for this word
  */
 export const addWordToDatabase = (
   word: string,
-  polarity: 'positive' | 'neutral' | 'negative',
-  score: number,
+  sentiment: TemplateSentiment,
+  score: number = 0,
   templates?: Template[]
 ): void => {
   try {
@@ -236,12 +230,15 @@ export const addWordToDatabase = (
     const storedData = localStorage.getItem("word-polarity-database");
     const database = storedData ? JSON.parse(storedData) : [];
     
+    // Create default template if none provided
+    const finalTemplates = templates || [
+      { text: `${word} คือสิ่งสำคัญ`, sentiment }
+    ];
+    
     // Add new word
     database.push({
       word: word,
-      polarity: polarity,
-      score: score,
-      templates: templates ? templateObjectsToStrings(templates) : []
+      templates: templateObjectsToStrings(finalTemplates)
     });
     
     // Save updated database back to localStorage
@@ -256,16 +253,16 @@ export const addWordToDatabase = (
 };
 
 /**
- * Update a word's polarity in the word database
+ * Update a word's templates in the database
  * @param word The word to update
- * @param polarity The new polarity value
- * @param score The new score value
+ * @param sentiment The sentiment for new templates (if no sentiment markers present)
+ * @param score The score value (not used anymore, kept for compatibility)
  * @param templates Optional array of template objects
  */
 export const updateWordPolarity = (
   word: string,
-  polarity: 'positive' | 'neutral' | 'negative',
-  score: number,
+  sentiment: TemplateSentiment,
+  score: number = 0,
   templates?: Template[]
 ): void => {
   try {
@@ -280,8 +277,6 @@ export const updateWordPolarity = (
       if (entry.word === word) {
         return {
           ...entry,
-          polarity: polarity,
-          score: score,
           templates: templates ? templateObjectsToStrings(templates) : entry.templates || []
         };
       }
@@ -295,7 +290,7 @@ export const updateWordPolarity = (
     window.dispatchEvent(new Event('word-database-updated'));
     
   } catch (error) {
-    console.error("Error updating word polarity:", error);
+    console.error("Error updating word:", error);
   }
 };
 
@@ -324,4 +319,3 @@ export const deleteWord = (word: string): void => {
     console.error("Error deleting word:", error);
   }
 };
-
