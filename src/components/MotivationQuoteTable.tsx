@@ -1,4 +1,3 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useState, useEffect } from "react";
@@ -39,7 +38,42 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     
-    setDisplayedQuotes(sortedQuotes);
+    // Normalize scores to ensure consistency
+    const normalizedQuotes = sortedQuotes.map(quote => {
+      let score: number;
+      
+      // If score is defined, use it directly
+      if (quote.score !== undefined) {
+        score = quote.score;
+      } 
+      // Otherwise derive from polarity
+      else if (quote.polarity) {
+        score = quote.polarity === 'positive' ? 1 : 
+                quote.polarity === 'negative' ? -1 : 0;
+      }
+      // Default to neutral if neither exists
+      else {
+        score = 0;
+      }
+      
+      // Ensure polarity matches score for consistency
+      let polarity: 'positive' | 'neutral' | 'negative';
+      if (score > 0) {
+        polarity = 'positive';
+      } else if (score < 0) {
+        polarity = 'negative';
+      } else {
+        polarity = 'neutral';
+      }
+      
+      return {
+        ...quote,
+        score,
+        polarity
+      };
+    });
+    
+    setDisplayedQuotes(normalizedQuotes);
   }, [quotes]);
   
   // Calculate pagination
@@ -83,9 +117,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   
   // Get sentiment icon based on score
   const getSentimentIcon = (quote: Quote) => {
-    const score = quote.score !== undefined ? quote.score : 
-                 quote.polarity === 'positive' ? 1 :
-                 quote.polarity === 'negative' ? -1 : 0;
+    const score = quote.score !== undefined ? quote.score : 0;
     
     if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
     if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
@@ -94,9 +126,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   
   // Get polarity text based on score
   const getPolarityText = (quote: Quote): string => {
-    const score = quote.score !== undefined ? quote.score : 
-                 quote.polarity === 'positive' ? 1 :
-                 quote.polarity === 'negative' ? -1 : 0;
+    const score = quote.score !== undefined ? quote.score : 0;
     
     if (score > 0) return 'เชิงบวก';
     if (score < 0) return 'เชิงลบ';
@@ -105,9 +135,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   
   // Get badge variant based on score
   const getBadgeVariant = (quote: Quote) => {
-    const score = quote.score !== undefined ? quote.score : 
-                 quote.polarity === 'positive' ? 1 :
-                 quote.polarity === 'negative' ? -1 : 0;
+    const score = quote.score !== undefined ? quote.score : 0;
     
     if (score > 0) return 'success';
     if (score < 0) return 'destructive';
@@ -159,7 +187,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell>{quote.score !== undefined ? quote.score : (quote.polarity === 'positive' ? 1 : quote.polarity === 'negative' ? -1 : 0)}</TableCell>
+                    <TableCell>{quote.score}</TableCell>
                     {showAllUsers && (
                       <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
                     )}

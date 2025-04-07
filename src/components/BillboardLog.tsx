@@ -34,18 +34,26 @@ const BillboardLog = () => {
           
           // Process sentences to add polarity and score
           const processedSentences = sentences.map((sentence: BillboardEntry) => {
-            // Get the polarity and score from the database
-            const { polarity, score } = getWordPolarity(sentence.word);
+            // Get the polarity and score from the database if not already provided
+            const wordInfo = getWordPolarity(sentence.word);
             
-            // If sentence already has score, use it. Otherwise calculate from polarity
-            const sentenceScore = sentence.score !== undefined ? sentence.score : 
-                                  (polarity === 'positive' ? 1 : 
-                                   polarity === 'negative' ? -1 : 0);
+            // If sentence already has explicit score, use it
+            const score = sentence.score !== undefined ? sentence.score : wordInfo.score;
+            
+            // Ensure polarity matches score for consistency
+            let polarity: 'positive' | 'neutral' | 'negative';
+            if (score > 0) {
+              polarity = 'positive';
+            } else if (score < 0) {
+              polarity = 'negative';
+            } else {
+              polarity = 'neutral';
+            }
             
             return {
               ...sentence,
               polarity,
-              score: sentenceScore
+              score
             };
           });
           
@@ -152,9 +160,7 @@ const BillboardLog = () => {
   
   // Get sentiment icon based on score
   const getSentimentIcon = (entry: BillboardEntry) => {
-    const score = entry.score !== undefined ? entry.score : 
-                 entry.polarity === 'positive' ? 1 :
-                 entry.polarity === 'negative' ? -1 : 0;
+    const score = entry.score !== undefined ? entry.score : 0;
     
     if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
     if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
@@ -163,9 +169,7 @@ const BillboardLog = () => {
   
   // Get polarity text based on score
   const getPolarityText = (entry: BillboardEntry): string => {
-    const score = entry.score !== undefined ? entry.score : 
-                 entry.polarity === 'positive' ? 1 :
-                 entry.polarity === 'negative' ? -1 : 0;
+    const score = entry.score !== undefined ? entry.score : 0;
     
     if (score > 0) return 'เชิงบวก';
     if (score < 0) return 'เชิงลบ';
@@ -174,9 +178,7 @@ const BillboardLog = () => {
   
   // Get badge variant based on score
   const getBadgeVariant = (entry: BillboardEntry) => {
-    const score = entry.score !== undefined ? entry.score : 
-                 entry.polarity === 'positive' ? 1 :
-                 entry.polarity === 'negative' ? -1 : 0;
+    const score = entry.score !== undefined ? entry.score : 0;
     
     if (score > 0) return 'success';
     if (score < 0) return 'destructive';
@@ -228,11 +230,7 @@ const BillboardLog = () => {
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {entry.score !== undefined ? entry.score : 
-                         entry.polarity === 'positive' ? 1 : 
-                         entry.polarity === 'negative' ? -1 : 0}
-                      </TableCell>
+                      <TableCell>{entry.score}</TableCell>
                       <TableCell className="font-medium whitespace-nowrap">
                         {entry.contributor || 'Anonymous'}
                       </TableCell>

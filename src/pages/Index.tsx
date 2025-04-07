@@ -72,12 +72,34 @@ const Index = () => {
     try {
       const storedSentences = localStorage.getItem('motivation-sentences');
       if (storedSentences) {
-        return JSON.parse(storedSentences).map((sentence: any) => ({
-          text: sentence.sentence,
-          date: new Date(sentence.timestamp),
-          userId: sentence.contributor,
-          word: sentence.word
-        }));
+        const parsedSentences = JSON.parse(storedSentences);
+        
+        // Normalize scores for consistency
+        return parsedSentences.map((sentence: any) => {
+          // If score exists, use it; otherwise derive from polarity
+          const score = sentence.score !== undefined ? sentence.score :
+                        sentence.polarity === 'positive' ? 1 :
+                        sentence.polarity === 'negative' ? -1 : 0;
+          
+          // Ensure polarity matches score
+          let polarity: 'positive' | 'neutral' | 'negative';
+          if (score > 0) {
+            polarity = 'positive';
+          } else if (score < 0) {
+            polarity = 'negative';
+          } else {
+            polarity = 'neutral';
+          }
+                  
+          return {
+            text: sentence.sentence,
+            date: new Date(sentence.timestamp),
+            userId: sentence.contributor,
+            word: sentence.word,
+            polarity: polarity,
+            score: score
+          };
+        });
       }
       return [];
     } catch (error) {

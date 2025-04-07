@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import Layout from "@/layouts/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,20 +39,27 @@ const LeaderboardPage = () => {
   
   const normalizeScoreByPolarity = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     return sentences.map(sentence => {
+      // If score is already defined, ensure it matches polarity (or fix polarity to match score)
       if (sentence.score !== undefined) {
-        if (sentence.polarity) {
-          const expectedScore = 
-            sentence.polarity === 'positive' ? 1 : 
-            sentence.polarity === 'negative' ? -1 : 0;
-          
-          if (sentence.score !== expectedScore) {
-            return { ...sentence, score: expectedScore };
-          }
+        let expectedPolarity: 'positive' | 'neutral' | 'negative';
+        
+        if (sentence.score > 0) {
+          expectedPolarity = 'positive';
+        } else if (sentence.score < 0) {
+          expectedPolarity = 'negative';
+        } else {
+          expectedPolarity = 'neutral';
+        }
+        
+        // If polarity doesn't match score, update polarity to match score
+        if (sentence.polarity !== expectedPolarity) {
+          return { ...sentence, polarity: expectedPolarity };
         }
         
         return sentence;
       }
       
+      // If no score but polarity exists, derive score from polarity
       if (sentence.polarity) {
         const normalizedScore = 
           sentence.polarity === 'positive' ? 1 : 
@@ -60,6 +68,7 @@ const LeaderboardPage = () => {
         return { ...sentence, score: normalizedScore };
       }
       
+      // Default to neutral if neither score nor polarity exists
       return { ...sentence, polarity: 'neutral', score: 0 };
     });
   };
@@ -112,20 +121,17 @@ const LeaderboardPage = () => {
 
   const convertSentencesToQuotes = (sentences: MotivationalSentence[]) => {
     return sentences.map(sentence => {
-      let score = 0;
+      // Use the score property directly if available
+      const score = sentence.score !== undefined ? sentence.score : 0;
       
-      if (sentence.score !== undefined) {
-        score = sentence.score;
-      } else if (sentence.polarity) {
-        score = sentence.polarity === 'positive' ? 1 :
-                sentence.polarity === 'negative' ? -1 : 0;
-      }
-      
-      let polarity: 'positive' | 'neutral' | 'negative' = 'neutral';
+      // Derive polarity from score (for consistency)
+      let polarity: 'positive' | 'neutral' | 'negative';
       if (score > 0) {
         polarity = 'positive';
       } else if (score < 0) {
         polarity = 'negative';
+      } else {
+        polarity = 'neutral';
       }
       
       return {
