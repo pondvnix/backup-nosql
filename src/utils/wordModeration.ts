@@ -1,3 +1,4 @@
+
 // List of possible inappropriate words to filter (this is a simple example)
 // In a production environment, this should be on the server side
 const forbiddenWords = [
@@ -127,5 +128,112 @@ export const getContributorStats = (): Record<string, number> => {
   } catch (error) {
     console.error("Error getting contributor stats:", error);
     return {};
+  }
+};
+
+/**
+ * Add a word to the word polarity database in localStorage
+ * @param word The word to add
+ * @param polarity The polarity of the word (positive, neutral, negative)
+ * @param score The score value associated with the polarity
+ * @param templates Optional array of template sentences for this word
+ */
+export const addWordToDatabase = (
+  word: string,
+  polarity: 'positive' | 'neutral' | 'negative',
+  score: number,
+  templates?: string[]
+): void => {
+  try {
+    // Get existing database from localStorage
+    const storedData = localStorage.getItem("word-polarity-database");
+    const database = storedData ? JSON.parse(storedData) : [];
+    
+    // Add new word
+    database.push({
+      word: word,
+      polarity: polarity,
+      score: score,
+      templates: templates || []
+    });
+    
+    // Save updated database back to localStorage
+    localStorage.setItem("word-polarity-database", JSON.stringify(database));
+    
+    // Dispatch event to notify other components of the update
+    window.dispatchEvent(new Event('word-database-updated'));
+    
+  } catch (error) {
+    console.error("Error adding word to database:", error);
+  }
+};
+
+/**
+ * Update a word's polarity in the word database
+ * @param word The word to update
+ * @param polarity The new polarity value
+ * @param score The new score value
+ * @param templates Optional array of template sentences
+ */
+export const updateWordPolarity = (
+  word: string,
+  polarity: 'positive' | 'neutral' | 'negative',
+  score: number,
+  templates?: string[]
+): void => {
+  try {
+    // Get existing database from localStorage
+    const storedData = localStorage.getItem("word-polarity-database");
+    if (!storedData) return;
+    
+    const database = JSON.parse(storedData);
+    
+    // Find and update the word
+    const updatedDatabase = database.map((entry: any) => {
+      if (entry.word === word) {
+        return {
+          ...entry,
+          polarity: polarity,
+          score: score,
+          templates: templates || entry.templates || []
+        };
+      }
+      return entry;
+    });
+    
+    // Save updated database back to localStorage
+    localStorage.setItem("word-polarity-database", JSON.stringify(updatedDatabase));
+    
+    // Dispatch event to notify other components of the update
+    window.dispatchEvent(new Event('word-database-updated'));
+    
+  } catch (error) {
+    console.error("Error updating word polarity:", error);
+  }
+};
+
+/**
+ * Delete a word from the database
+ * @param word The word to delete
+ */
+export const deleteWord = (word: string): void => {
+  try {
+    // Get existing database from localStorage
+    const storedData = localStorage.getItem("word-polarity-database");
+    if (!storedData) return;
+    
+    const database = JSON.parse(storedData);
+    
+    // Filter out the word to delete
+    const updatedDatabase = database.filter((entry: any) => entry.word !== word);
+    
+    // Save updated database back to localStorage
+    localStorage.setItem("word-polarity-database", JSON.stringify(updatedDatabase));
+    
+    // Dispatch event to notify other components of the update
+    window.dispatchEvent(new Event('word-database-updated'));
+    
+  } catch (error) {
+    console.error("Error deleting word:", error);
   }
 };
