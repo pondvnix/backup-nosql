@@ -53,11 +53,18 @@ const removeDuplicateSentences = (sentences: MotivationalSentence[]): Motivation
   const uniqueMap = new Map<string, MotivationalSentence>();
   
   sentences.forEach(sentence => {
-    const uniqueKey = `${sentence.word}-${sentence.sentence}`;
+    // Create a truly unique key that includes word, sentence and contributor
+    const uniqueKey = `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'ไม่ระบุชื่อ'}`;
     
     if (!uniqueMap.has(uniqueKey) || 
         new Date(sentence.timestamp || new Date()).getTime() > 
         new Date(uniqueMap.get(uniqueKey)!.timestamp || new Date()).getTime()) {
+      
+      // Standardize contributor name
+      if (!sentence.contributor || sentence.contributor.trim() === '') {
+        sentence.contributor = 'ไม่ระบุชื่อ';
+      }
+      
       uniqueMap.set(uniqueKey, sentence);
     }
   });

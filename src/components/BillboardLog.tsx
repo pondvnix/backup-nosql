@@ -47,8 +47,8 @@ const BillboardLog = () => {
     const uniqueMap = new Map<string, MotivationalSentence>();
     
     sentences.forEach(sentence => {
-      // Create a unique key using word, sentence, and contributor
-      const uniqueKey = `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'anonymous'}`;
+      // Create a unique key using word, sentence content, and contributor 
+      const uniqueKey = `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'ไม่ระบุชื่อ'}`;
       
       if (!uniqueMap.has(uniqueKey) || 
           new Date(sentence.timestamp).getTime() > new Date(uniqueMap.get(uniqueKey)!.timestamp).getTime()) {
@@ -215,8 +215,11 @@ const BillboardLog = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentSentences.map((sentence, index) => (
-                    <TableRow key={`sentence-${index}-${sentence.word}-${sentence.timestamp}`}>
+                  {currentSentences.map((sentence, index) => {
+                    // Create a truly unique key for each row
+                    const rowKey = `sentence-${index}-${sentence.word}-${sentence.timestamp}-${sentence.contributor}`;
+                    return (
+                    <TableRow key={rowKey}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {getSentimentIcon(sentence.sentiment)}
@@ -240,7 +243,7 @@ const BillboardLog = () => {
                         })}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
             </div>

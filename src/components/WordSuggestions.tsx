@@ -199,9 +199,10 @@ const WordSuggestions = ({
         }
         
         // Standardize empty contributor as "ไม่ระบุชื่อ"
-        const contributor = localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
+        const contributor = localStorage.getItem('contributor-name');
+        const safeContributor = contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
         
-        storeSentenceInDatabase(selectedItem.word, sentenceText, contributor, selectedItem.template);
+        storeSentenceInDatabase(selectedItem.word, sentenceText, safeContributor, selectedItem.template);
         
         setUsedWordTemplates(prev => {
           const newSet = new Set(prev);
@@ -213,7 +214,7 @@ const WordSuggestions = ({
           detail: { 
             sentence: sentenceText, 
             word: selectedItem.word,
-            contributor: contributor,
+            contributor: safeContributor,
             template: selectedItem.template,
             sentiment: selectedItem.sentiment
           }
@@ -237,7 +238,7 @@ const WordSuggestions = ({
     }
     
     // Ensure contributor is never empty
-    const safeContributor = contributor ? contributor.trim() : 'ไม่ระบุชื่อ';
+    const safeContributor = contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
     
     const newEntry = {
       sentence,

@@ -75,9 +75,12 @@ const Index = () => {
         setSelectedWords(prev => [...prev, word]);
       }
       
+      // Ensure contributor is never empty
+      const safeContributor = contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
+      
       // Update current word and contributor
       setCurrentWord(word);
-      setCurrentContributor(contributor || 'ไม่ระบุชื่อ');
+      setCurrentContributor(safeContributor);
       
       // Trigger refresh for components that depend on word updates
       setRefreshTrigger(prev => prev + 1);
@@ -160,8 +163,6 @@ const Index = () => {
             </div>
             
             <div className="space-y-6">
-              {/* Removed redundant WordForm section here */}
-              
               <div className="w-full">
                 <Leaderboard refreshTrigger={refreshTrigger} />
               </div>

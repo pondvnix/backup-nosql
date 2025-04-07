@@ -77,7 +77,7 @@ export const analyzeMotivationalSentence = (sentence: string, template?: string)
 export const saveMotivationalSentence = (
   word: string, 
   sentence: string, 
-  contributor: string = 'Anonymous',
+  contributor: string = 'ไม่ระบุชื่อ',
   template?: string
 ): boolean => {
   try {
@@ -89,11 +89,14 @@ export const saveMotivationalSentence = (
     // วิเคราะห์ความรู้สึกจากแม่แบบหรือประโยค
     const { sentiment, score } = analyzeMotivationalSentence(sentence, template);
     
+    // Standardize contributor - never allow empty contributor
+    const safeContributor = contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
+    
     // สร้างรายการใหม่
     const newEntry = {
       word,
       sentence,
-      contributor,
+      contributor: safeContributor,
       timestamp: new Date(),
       polarity: sentiment,
       score: score,
@@ -110,17 +113,28 @@ export const saveMotivationalSentence = (
       }
     }
     
-    // เพิ่มรายการใหม่
-    existingEntries.push(newEntry);
+    // Check for duplicates before adding
+    const isDuplicate = existingEntries.some(
+      (entry: any) => entry.word === word && 
+                     entry.sentence === sentence && 
+                     entry.contributor === safeContributor
+    );
     
-    // บันทึกลง localStorage
-    localStorage.setItem('motivation-sentences', JSON.stringify(existingEntries));
+    // เพิ่มรายการใหม่ถ้าไม่ซ้ำ
+    if (!isDuplicate) {
+      existingEntries.push(newEntry);
+      
+      // บันทึกลง localStorage
+      localStorage.setItem('motivation-sentences', JSON.stringify(existingEntries));
+      
+      // แจ้งเตือนคอมโพเนนต์อื่นๆ ว่ามีการเพิ่มประโยคใหม่
+      const event = new CustomEvent('motivation-billboard-updated');
+      window.dispatchEvent(event);
+      
+      return true;
+    }
     
-    // แจ้งเตือนคอมโพเนนต์อื่นๆ ว่ามีการเพิ่มประโยคใหม่
-    const event = new CustomEvent('motivation-billboard-updated');
-    window.dispatchEvent(event);
-    
-    return true;
+    return false;
   } catch (error) {
     console.error("Error saving motivational sentence:", error);
     return false;
