@@ -13,19 +13,19 @@ export const DEFAULT_WORDS = [
     word: "กำลังใจ",
     polarity: "positive" as const,
     templates: ["${กำลังใจ}คือสิ่งสำคัญที่ทำให้เราเดินต่อไปได้"],
-    score: 2
+    score: 1
   },
   {
     word: "อดทน",
     polarity: "positive" as const,
     templates: ["การ${อดทน}จะนำไปสู่ความสำเร็จ"],
-    score: 2
+    score: 1
   },
   {
     word: "สู้",
     polarity: "positive" as const,
     templates: ["${สู้}ต่อไป แม้จะเหนื่อยแค่ไหนก็ตาม"],
-    score: 2
+    score: 1
   }
 ];
 

@@ -10,38 +10,38 @@ export interface WordPolarity {
 /**
 export const wordPolarityDatabase: WordPolarity[] = [
   // Positive words
-  { word: "ใจ", polarity: "positive", score: 2, templates: [] },
-  { word: "ก้าว", polarity: "positive", score: 2, templates: [] },
-  { word: "หวัง", polarity: "positive", score: 2, templates: [] },
-  { word: "ยิ้ม", polarity: "positive", score: 2, templates: [] },
-  { word: "หายใจ", polarity: "positive", score: 2, templates: [] },
-  { word: "เชื่อ", polarity: "positive", score: 2, templates: [] },
-  { word: "เริ่มใหม่", polarity: "positive", score: 2, templates: [] },
-  { word: "อ่อนโยน", polarity: "positive", score: 2, templates: [] },
-  { word: "ดูแล", polarity: "positive", score: 2, templates: [] },
-  { word: "ให้อุ่น", polarity: "positive", score: 2, templates: [] },
-  { word: "พัก", polarity: "positive", score: 2, templates: [] },
-  { word: "ค่อย ๆ", polarity: "positive", score: 2, templates: [] },
-  { word: "ไปต่อ", polarity: "positive", score: 2, templates: [] },
-  { word: "รัก", polarity: "positive", score: 2, templates: [] },
-  { word: "สู้", polarity: "positive", score: 2, templates: [] },
-  { word: "ฝัน", polarity: "positive", score: 2, templates: [] },
-  { word: "เข้มแข็ง", polarity: "positive", score: 2, templates: [] },
-  { word: "พรุ่งนี้", polarity: "positive", score: 2, templates: [] },
-  { word: "ใหม่", polarity: "positive", score: 2, templates: [] },
-  { word: "สวย", polarity: "positive", score: 2, templates: [] },
+  { word: "ใจ", polarity: "positive", score: 1, templates: [] },
+  { word: "ก้าว", polarity: "positive", score: 1, templates: [] },
+  { word: "หวัง", polarity: "positive", score: 1, templates: [] },
+  { word: "ยิ้ม", polarity: "positive", score: 1, templates: [] },
+  { word: "หายใจ", polarity: "positive", score: 1, templates: [] },
+  { word: "เชื่อ", polarity: "positive", score: 1, templates: [] },
+  { word: "เริ่มใหม่", polarity: "positive", score: 1, templates: [] },
+  { word: "อ่อนโยน", polarity: "positive", score: 1, templates: [] },
+  { word: "ดูแล", polarity: "positive", score: 1, templates: [] },
+  { word: "ให้อุ่น", polarity: "positive", score: 1, templates: [] },
+  { word: "พัก", polarity: "positive", score: 1, templates: [] },
+  { word: "ค่อย ๆ", polarity: "positive", score: 1, templates: [] },
+  { word: "ไปต่อ", polarity: "positive", score: 1, templates: [] },
+  { word: "รัก", polarity: "positive", score: 1, templates: [] },
+  { word: "สู้", polarity: "positive", score: 1, templates: [] },
+  { word: "ฝัน", polarity: "positive", score: 1, templates: [] },
+  { word: "เข้มแข็ง", polarity: "positive", score: 1, templates: [] },
+  { word: "พรุ่งนี้", polarity: "positive", score: 1, templates: [] },
+  { word: "ใหม่", polarity: "positive", score: 1, templates: [] },
+  { word: "สวย", polarity: "positive", score: 1, templates: [] },
   
   // Neutral words
-  { word: "และ", polarity: "neutral", score: 1, templates: [] },
-  { word: "ที่", polarity: "neutral", score: 1, templates: [] },
-  { word: "ของ", polarity: "neutral", score: 1, templates: [] },
-  { word: "เรา", polarity: "neutral", score: 1, templates: [] },
-  { word: "แล้ว", polarity: "neutral", score: 1, templates: [] },
-  { word: "คน", polarity: "neutral", score: 1, templates: [] },
-  { word: "ตัวเอง", polarity: "neutral", score: 1, templates: [] },
-  { word: "อย่าง", polarity: "neutral", score: 1, templates: [] },
-  { word: "มี", polarity: "neutral", score: 1, templates: [] },
-  { word: "ทุกคน", polarity: "neutral", score: 1, templates: [] },
+  { word: "และ", polarity: "neutral", score: 0, templates: [] },
+  { word: "ที่", polarity: "neutral", score: 0, templates: [] },
+  { word: "ของ", polarity: "neutral", score: 0, templates: [] },
+  { word: "เรา", polarity: "neutral", score: 0, templates: [] },
+  { word: "แล้ว", polarity: "neutral", score: 0, templates: [] },
+  { word: "คน", polarity: "neutral", score: 0, templates: [] },
+  { word: "ตัวเอง", polarity: "neutral", score: 0, templates: [] },
+  { word: "อย่าง", polarity: "neutral", score: 0, templates: [] },
+  { word: "มี", polarity: "neutral", score: 0, templates: [] },
+  { word: "ทุกคน", polarity: "neutral", score: 0, templates: [] },
   
   // Negative words
   { word: "หมดหวัง", polarity: "negative", score: -1, templates: [] },
@@ -59,7 +59,7 @@ export const wordPolarityDatabase: WordPolarity[] = [
 
 export const wordPolarityDatabase: WordPolarity[] = [
   // Positive words
-  { word: "ใจ", polarity: "positive", score: 2, templates: [] }
+  { word: "ใจ", polarity: "positive", score: 1, templates: [] }
 ];
 
 
@@ -109,7 +109,7 @@ export const getWordPolarity = (word: string): {
 } => {
   const foundWord = wordPolarityDatabase.find(w => w.word === word);
   return {
-    ...(foundWord || { word, polarity: 'neutral', score: 1 }),
+    ...(foundWord || { word, polarity: 'neutral', score: 0 }),
     database: wordPolarityDatabase
   };
 };
@@ -134,18 +134,18 @@ export const calculateEnergySentenceScore = (words: string[]): {
     
     if (polarity === 'positive') {
       positiveCount++;
-      totalScore += 2; // Updated to reflect the standard scoring (positive = 2)
+      totalScore += 1; // Updated to reflect the standard scoring (positive = 1)
     } else if (polarity === 'neutral') {
       neutralCount++;
-      totalScore += 1; // Updated to reflect the standard scoring (neutral = 1)
+      totalScore += 0; // Updated to reflect the standard scoring (neutral = 0)
     } else {
       negativeCount++;
-      totalScore += -1; // Updated to reflect the standard scoring (negative = -1)
+      totalScore += -1; // Already matches the standard scoring (negative = -1)
     }
   });
   
   // Calculate score using the updated formula
-  const energyScore = (positiveCount * 2) + (neutralCount * 1) + (negativeCount * -1);
+  const energyScore = (positiveCount * 1) + (neutralCount * 0) + (negativeCount * -1);
   
   // Calculate confidence (simplified version)
   // Higher proportion of classified words = higher confidence

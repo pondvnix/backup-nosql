@@ -51,11 +51,12 @@ const SentenceAnalysis = ({
   } = analysisResult;
 
   // Normalize energy score for progress display (0-100)
-  const normalizedScore = Math.max(0, Math.min(100, (energyScore / 20) * 100));
+  // Assuming the max score would be all positive words (words.length)
+  const normalizedScore = Math.max(0, Math.min(100, ((energyScore + words.length) / (words.length * 2)) * 100));
 
   // Determine score text color
   let scoreColorClass = "text-amber-500";
-  if (energyScore > 10) {
+  if (energyScore > words.length / 2) {
     scoreColorClass = "text-green-500";
   } else if (energyScore < 0) {
     scoreColorClass = "text-red-500";
@@ -71,7 +72,7 @@ const SentenceAnalysis = ({
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">พลังบวกของประโยค</span>
             <span className={`font-bold ${scoreColorClass}`}>
-              {energyScore} / 20
+              {energyScore} / {words.length}
             </span>
           </div>
           <Progress value={normalizedScore} className="h-2" />

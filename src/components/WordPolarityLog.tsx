@@ -82,9 +82,9 @@ const WordPolarityLog = ({ words }: WordPolarityLogProps) => {
   const getScoreText = (polarity: string): string => {
     switch (polarity) {
       case 'positive':
-        return '2 คะแนน';
-      case 'neutral':
         return '1 คะแนน';
+      case 'neutral':
+        return '0 คะแนน';
       case 'negative':
         return '-1 คะแนน';
       default:
