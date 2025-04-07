@@ -19,7 +19,7 @@ const MotivationalSentence = ({
   sentence = ""
 }: MotivationalSentenceProps) => {
   const [displaySentence, setDisplaySentence] = useState<string>("");
-  const [generatedSentences, setGeneratedSentences] = useState<{word: string, sentence: string, contributor?: string}[]>([]);
+  const [generatedSentences, setGeneratedSentences] = useState<{word: string, sentence: string, contributor?: string, template?: string}[]>([]);
   const [showSentence, setShowSentence] = useState(shouldDisplay);
   const { toast } = useToast();
   
@@ -186,30 +186,39 @@ const MotivationalSentence = ({
   // Expose method to be called from WordSuggestions
   React.useEffect(() => {
     // Attach the method to window object to make it globally accessible
-    (window as any).showMotivationalSentence = (word: string, contributor?: string) => {
-      const sentenceEntry = generatedSentences.find(s => s.word === word);
-      if (sentenceEntry) {
-        setDisplaySentence(sentenceEntry.sentence);
-        setShowSentence(true);
-        
-        // Get contributor name from localStorage or use provided value or default
-        const contributorName = contributor || localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
-        
-        // Dispatch event so other components can listen - include contributor info
-        const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
-          detail: { 
-            sentence: sentenceEntry.sentence, 
-            word,
-            contributor: contributorName
-          }
-        });
-        window.dispatchEvent(sentenceEvent);
-        
-        toast({
-          title: "ประโยคให้กำลังใจ",
-          description: `แสดงประโยคให้กำลังใจที่มีคำว่า "${word}"`,
-        });
+    (window as any).showMotivationalSentence = (word: string, contributor?: string, template?: string) => {
+      let sentence = "";
+      
+      if (template) {
+        // Use the provided template to generate the sentence
+        sentence = template.replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+      } else {
+        // Get the sentence from the generated sentences or generate a new one
+        const sentenceEntry = generatedSentences.find(s => s.word === word);
+        sentence = sentenceEntry ? sentenceEntry.sentence : generateEncouragingSentence(word);
       }
+      
+      setDisplaySentence(sentence);
+      setShowSentence(true);
+      
+      // Get contributor name from localStorage or use provided value or default
+      const contributorName = contributor || localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
+      
+      // Dispatch event so other components can listen - include contributor info
+      const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
+        detail: { 
+          sentence: sentence, 
+          word,
+          contributor: contributorName,
+          template
+        }
+      });
+      window.dispatchEvent(sentenceEvent);
+      
+      toast({
+        title: "ประโยคให้กำลังใจ",
+        description: `แสดงประโยคให้กำลังใจที่มีคำว่า "${word}"`,
+      });
     };
     
     return () => {

@@ -1,259 +1,150 @@
-import Header from "@/components/Header";
-import WordStream from "@/components/WordStream";
-import { Heart } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { getContributorStats } from "@/utils/wordModeration";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useEffect, useState } from "react";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+
+import { useState, useEffect } from "react";
+import { Container } from "@/components/ui/container";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import MobileFooter from "@/components/MobileFooter";
-
-const useContributorStats = () => {
-  return useQuery({
-    queryKey: ['contributor-stats'],
-    queryFn: async () => {
-      const stats = getContributorStats();
-      return Object.entries(stats).map(([name, count]) => ({ name, count }));
-    },
-    refetchInterval: 1000,
-  });
-};
-
-const highlightWord = (sentence: string, word: string): React.ReactNode => {
-  if (!sentence || !word) return sentence;
-  
-  const processedSentence = sentence.replace(/\{word\}/g, word);
-  
-  const parts = processedSentence.split(new RegExp(`(${word})`, 'gi'));
-  
-  return parts.map((part, index) => {
-    if (part.toLowerCase() === word.toLowerCase()) {
-      return (
-        <span key={index} className="text-[#F97316] font-semibold">
-          {part}
-        </span>
-      );
-    }
-    return part;
-  });
-};
+import Header from "@/components/Header";
+import WordForm from "@/components/WordForm";
+import MotivationalSentence from "@/components/MotivationalSentence";
+import TomatoBox from "@/components/TomatoBox";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
-  const { data: contributors = [] } = useContributorStats();
-  const [allSentences, setAllSentences] = useState<any[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const entriesPerPage = 30;
+  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentWord, setCurrentWord] = useState("");
+  const [currentContributor, setCurrentContributor] = useState("");
+  const [currentSentence, setCurrentSentence] = useState("");
+  const { toast } = useToast();
 
+  // Listen for motivational sentence events
   useEffect(() => {
-    const fetchAllSentences = () => {
-      try {
-        const stored = localStorage.getItem('motivation-sentences');
-        if (stored) {
-          const parsedData = JSON.parse(stored);
-          const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
-          
-          const uniqueSentences = sentences.reduce((acc: any[], current) => {
-            const isDuplicate = acc.find(
-              item => item.sentence === current.sentence && item.word === current.word
-            );
-            if (!isDuplicate) {
-              return [...acc, current];
-            }
-            return acc;
-          }, []);
-          
-          const sortedSentences = uniqueSentences.sort((a, b) => 
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          );
-          
-          setAllSentences(sortedSentences);
-        } else {
-          setAllSentences([]);
+    const handleSentenceGenerated = (event: CustomEvent) => {
+      if (event.detail) {
+        const { word, sentence, contributor } = event.detail;
+        
+        if (word && !selectedWords.includes(word)) {
+          setSelectedWords(prev => [...prev, word]);
         }
-      } catch (error) {
-        console.error("Error fetching sentences:", error);
-        setAllSentences([]);
+        
+        if (sentence) {
+          setCurrentSentence(sentence);
+        }
+        
+        if (word) {
+          setCurrentWord(word);
+        }
+        
+        if (contributor) {
+          setCurrentContributor(contributor);
+        }
       }
     };
     
-    fetchAllSentences();
-    
-    const handleSentenceGenerated = () => {
-      fetchAllSentences();
-    };
-    
-    window.addEventListener('motivationalSentenceGenerated', handleSentenceGenerated);
-    window.addEventListener('word-database-updated', handleSentenceGenerated);
-    window.addEventListener('motivation-billboard-updated', handleSentenceGenerated);
-    
-    const intervalId = setInterval(fetchAllSentences, 1000);
+    window.addEventListener('motivationalSentenceGenerated', 
+      handleSentenceGenerated as EventListener);
     
     return () => {
-      clearInterval(intervalId);
-      window.removeEventListener('motivationalSentenceGenerated', handleSentenceGenerated);
-      window.removeEventListener('word-database-updated', handleSentenceGenerated);
-      window.removeEventListener('motivation-billboard-updated', handleSentenceGenerated);
+      window.removeEventListener('motivationalSentenceGenerated', 
+        handleSentenceGenerated as EventListener);
     };
-  }, []);
+  }, [selectedWords]);
 
-  const indexOfLastEntry = currentPage * entriesPerPage;
-  const indexOfFirstEntry = indexOfLastEntry - entriesPerPage;
-  const currentEntries = allSentences.slice(indexOfFirstEntry, indexOfLastEntry);
-  const totalPages = Math.ceil(allSentences.length / entriesPerPage);
-  
-  const recentSentences = allSentences.slice(0, 10);
-  
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxPagesToShow = 5;
+  const handleAddWord = (word: string, contributor: string, template?: string) => {
+    setIsLoading(true);
     
-    if (totalPages <= maxPagesToShow) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-    } else {
-      let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-      let endPage = startPage + maxPagesToShow - 1;
-      
-      if (endPage > totalPages) {
-        endPage = totalPages;
-        startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    try {
+      // Add word to selected words list if not already present
+      if (!selectedWords.includes(word)) {
+        setSelectedWords(prev => [...prev, word]);
       }
       
-      for (let i = startPage; i <= endPage; i++) {
-        pageNumbers.push(i);
-      }
+      // Update current word and contributor
+      setCurrentWord(word);
+      setCurrentContributor(contributor);
+      
+      // If a specific template is provided, we'll use it directly
+      // The MotivationalSentence component will handle the actual sentence generation
+      
+      toast({
+        title: "เพิ่มคำสำเร็จ",
+        description: `เพิ่มคำ "${word}" เรียบร้อยแล้ว`,
+      });
+    } catch (error) {
+      console.error("Error adding word:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเพิ่มคำได้ในขณะนี้",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    return pageNumbers;
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white pb-16 md:pb-0">
+    <div className="min-h-screen bg-gray-50 pb-16 md:pb-0">
       <Header />
       
-      <main className="flex-1 container mx-auto py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex flex-col items-center justify-center text-center mb-12">
-            <div className="inline-flex items-center gap-3 mb-4">
-              <Heart className="h-8 w-8 text-primary animate-pulse" />
-              <h1 className="text-4xl md:text-5xl font-bold text-primary font-mitr">
-                "คำ" <span className="text-foreground">ลังใจ</span>
-              </h1>
-              <Heart className="h-8 w-8 text-primary animate-pulse" />
-            </div>
+      <Container className="py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-8">
+          <div className="space-y-8">
+            <MotivationalSentence 
+              selectedWords={selectedWords}
+              shouldDisplay={currentSentence !== ""}
+              currentSentence={currentSentence}
+            />
             
-            <p className="text-lg max-w-2xl mb-6">
-              ร่วมสร้างประโยคกำลังใจที่ยาวที่สุด โดยเพิ่มคำของคุณต่อท้ายคำอื่นๆ 
-              เพื่อส่งต่อกำลังใจให้กับผู้ป่วยและบุคลากรทางการแพทย์
-            </p>
+            <TomatoBox 
+              word={currentWord} 
+              contributor={currentContributor} 
+              sentence={currentSentence}
+              selectedWords={selectedWords}
+            />
+            
+            <Card className="mb-8 border overflow-hidden">
+              <div className="overflow-hidden">
+                <iframe
+                  title="Animation"
+                  src="https://lottie.host/embed/5a0b3ca9-38f4-475c-984b-5f12fd883f6a/nE3yGTbAR9.json"
+                  width="100%"
+                  height="300"
+                  className="border-none"
+                ></iframe>
+              </div>
+              <CardContent className="p-6">
+                <h2 className="text-xl font-semibold mb-2">เกี่ยวกับ "คำ"ลังใจ</h2>
+                <p className="text-muted-foreground">
+                  แพลตฟอร์มแห่งการแบ่งปันกำลังใจและแรงบันดาลใจ
+                  ที่ชวนให้ทุกคนมาร่วมสร้างประโยคให้กำลังใจซึ่งกันและกัน
+                  ด้วยการเลือกคำที่มีพลัง เพื่อสร้างประโยคที่จะช่วยเติมเต็มพลังใจให้ทุกคน
+                </p>
+              </CardContent>
+            </Card>
           </div>
           
-          <WordStream />
-          
-          <Card className="mt-12 hover:shadow-lg transition-all duration-300 mb-8">
-            <CardHeader>
-              <CardTitle className="text-center">ประโยคกำลังใจล่าสุด</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {recentSentences.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap">ผู้ให้กำลังใจ</TableHead>
-                        <TableHead className="whitespace-nowrap">คำ</TableHead>
-                        <TableHead>ประโยคกำลังใจ</TableHead>
-                        <TableHead className="whitespace-nowrap">วันที่เวลา</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentSentences.map((entry, index) => (
-                        <TableRow key={index} isHighlighted={index % 2 === 0}>
-                          <TableCell className="font-medium whitespace-nowrap">
-                            {entry.contributor || 'ไม่ระบุชื่อ'}
-                          </TableCell>
-                          <TableCell className="font-medium text-primary whitespace-nowrap">
-                            {entry.word}
-                          </TableCell>
-                          <TableCell>
-                            {highlightWord(entry.sentence, entry.word)}
-                          </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap">
-                            {new Date(entry.timestamp).toLocaleString('th-TH', {
-                              timeZone: 'Asia/Bangkok'
-                            })}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground p-4">
-                  ยังไม่มีประโยคกำลังใจ กดปุ่ม "ใช้คำนี้" เพื่อสร้างประโยคแรกของคุณ
+          <div className="space-y-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>เพิ่มคำของคุณ</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <WordForm 
+                  onAddWord={handleAddWord}
+                  isLoading={isLoading}
+                  existingWords={selectedWords}
+                  showMultipleTemplates={true}
+                />
+              </CardContent>
+              <CardFooter className="flex justify-center border-t p-4">
+                <p className="text-xs text-muted-foreground text-center">
+                  เพิ่มคำของคุณเพื่อสร้างประโยคให้กำลังใจที่มีความหมาย
                 </p>
-              )}
-            </CardContent>
-          </Card>
-          
-          <Card className="mt-12 hover:shadow-lg transition-all duration-300 mb-20 md:mb-8">
-            <CardHeader>
-              <CardTitle className="text-center">ประวัติประโยคกำลังใจทั้งหมด</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {allSentences.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap">ผู้ให้กำลังใจ</TableHead>
-                        <TableHead className="whitespace-nowrap">คำ</TableHead>
-                        <TableHead>ประโยคกำลังใจ</TableHead>
-                        <TableHead className="whitespace-nowrap">วันที่เวลา (GMT+7)</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {currentEntries.map((entry, index) => (
-                        <TableRow key={index} isHighlighted={index % 2 === 0}>
-                          <TableCell className="font-medium whitespace-nowrap">
-                            {entry.contributor || 'ไม่ระบุชื่อ'}
-                          </TableCell>
-                          <TableCell className="font-medium text-primary whitespace-nowrap">
-                            {entry.word}
-                          </TableCell>
-                          <TableCell>
-                            {highlightWord(entry.sentence, entry.word)}
-                          </TableCell>
-                          <TableCell className="text-xs whitespace-nowrap">
-                            {new Date(entry.timestamp).toLocaleString('th-TH', {
-                              timeZone: 'Asia/Bangkok'
-                            })}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground p-4">
-                  ยังไม่มีประวัติประโยคกำลังใจ
-                </p>
-              )}
-            </CardContent>
-          </Card>
+              </CardFooter>
+            </Card>
+          </div>
         </div>
-      </main>
-      
-      <footer className="bg-white py-6 border-t hidden md:block">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-muted-foreground">
-            &copy; {new Date().getFullYear()} "คำ"ลังใจ - 
-            โครงการสร้างกำลังใจร่วมกัน
-          </p>
-        </div>
-      </footer>
+      </Container>
       
       <MobileFooter />
     </div>

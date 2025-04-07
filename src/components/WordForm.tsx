@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +9,11 @@ import { validateWordInput } from "@/utils/wordModeration";
 import WordSuggestions from "./WordSuggestions";
 
 interface WordFormProps {
-  onAddWord: (word: string, contributor: string) => void;
+  onAddWord: (word: string, contributor: string, template?: string) => void;
   isLoading: boolean;
   existingWords?: string[];
   disableSuggestionRefresh?: boolean;
+  showMultipleTemplates?: boolean;
 }
 
 interface WordEntry {
@@ -21,7 +23,13 @@ interface WordEntry {
   score?: number;
 }
 
-const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionRefresh = false }: WordFormProps) => {
+const WordForm = ({ 
+  onAddWord, 
+  isLoading, 
+  existingWords = [], 
+  disableSuggestionRefresh = false,
+  showMultipleTemplates = true
+}: WordFormProps) => {
   const [word, setWord] = useState("");
   const [contributor, setContributor] = useState("");
   const [inputMethod, setInputMethod] = useState<"manual" | "suggestions">("suggestions");
@@ -170,8 +178,8 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
       `แม้จะมี${word} แต่เราจะผ่านมันไปได้`,
       `${word}เป็นบทเรียนที่ทำให้เราเติบโต`,
       `อย่าให้${word}มาหยุดความฝันของเรา`,
-      `${word}จะกลายเป็นแรงผลักดันให้���ราไปต่อ`,
-      `${word}เราจะเปลี่ยน${word}ให้เป็นพลัง`,
+      `${word}จะกลายเป็นแรงผลักดันให้เราไปต่อ`,
+      `เราจะเปลี่ยน${word}ให้เป็นพลัง`,
     ];
     
     const templates = wordEntry.polarity === "positive" ? positiveTemplates : 
@@ -182,10 +190,10 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
     return templates[randomIndex];
   };
 
-  const handleSelectSuggestion = (selectedWord: string) => {
+  const handleSelectSuggestion = (selectedWord: string, template?: string) => {
     const contributorName = contributor.trim() || "ไม่ระบุชื่อ";
     localStorage.setItem("contributor-name", contributorName);
-    onAddWord(selectedWord, contributorName);
+    onAddWord(selectedWord, contributorName, template);
   };
 
   const isWordAvailable = (wordText: string) => {
@@ -238,6 +246,7 @@ const WordForm = ({ onAddWord, isLoading, existingWords = [], disableSuggestionR
               existingWords={existingWords}
               onSelectWord={handleSelectSuggestion}
               disableAutoRefresh={disableSuggestionRefresh}
+              showMultipleTemplates={showMultipleTemplates}
             />
           ) : (
             <div className="text-center p-4 bg-muted rounded-md animate-pulse">
