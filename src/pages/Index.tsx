@@ -62,6 +62,7 @@ const Index = () => {
   // Update analysis when selected words change
   useEffect(() => {
     if (selectedWords.length > 0) {
+      // Pass the array of words directly to analyzeSentence
       const result = analyzeSentence(selectedWords);
       setAnalysisResult(result);
     }

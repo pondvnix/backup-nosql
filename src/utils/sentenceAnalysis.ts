@@ -50,13 +50,98 @@ export const getWordPolarity = (word: string): { polarity: 'positive' | 'neutral
 export const analyzeSentence = (sentence: string | string[]): { 
   polarity: 'positive' | 'neutral' | 'negative'; 
   score: number;
+  breakdown: {
+    positive: number;
+    neutral: number;
+    negative: number;
+  };
+  emotionFlow: {
+    quality: 'excellent' | 'good' | 'poor';
+    consistency: boolean;
+  };
+  confidence: number;
+  needsModeration: boolean;
+  suggestion: string;
 } => {
   // Convert array of words to a single string if needed
   const sentenceText = Array.isArray(sentence) ? sentence.join(' ') : sentence;
   
   const result = analyzeSentimentFromSentence(sentenceText);
+  
+  // Count positive, neutral, and negative words
+  let positiveCount = 0;
+  let neutralCount = 0;
+  let negativeCount = 0;
+  
+  // If sentence is an array of words, analyze each word
+  if (Array.isArray(sentence)) {
+    sentence.forEach(word => {
+      const wordPolarity = getWordPolarity(word);
+      if (wordPolarity.polarity === 'positive') positiveCount++;
+      else if (wordPolarity.polarity === 'negative') negativeCount++;
+      else neutralCount++;
+    });
+  } else {
+    // For a single string, estimate based on the overall sentiment
+    const words = sentence.split(/\s+/).filter(word => word.length > 0);
+    const totalWords = words.length || 1;
+    
+    if (result.sentiment === 'positive') {
+      positiveCount = Math.ceil(totalWords * 0.7);
+      neutralCount = totalWords - positiveCount - 1;
+      negativeCount = 1; // At least one for balance
+    } else if (result.sentiment === 'negative') {
+      negativeCount = Math.ceil(totalWords * 0.7);
+      neutralCount = totalWords - negativeCount - 1;
+      positiveCount = 1; // At least one for balance
+    } else {
+      neutralCount = Math.ceil(totalWords * 0.7);
+      positiveCount = Math.floor((totalWords - neutralCount) / 2);
+      negativeCount = totalWords - neutralCount - positiveCount;
+    }
+  }
+  
+  // Determine quality of emotion flow
+  let quality: 'excellent' | 'good' | 'poor' = 'good';
+  if (positiveCount > negativeCount * 2) {
+    quality = 'excellent';
+  } else if (negativeCount > positiveCount) {
+    quality = 'poor';
+  }
+  
+  // Determine if there's a consistency in sentiment
+  const consistency = Math.abs(positiveCount - negativeCount) > neutralCount;
+  
+  // Calculate confidence based on clarity of sentiment
+  const totalWords = positiveCount + neutralCount + negativeCount || 1;
+  const dominantSentiment = Math.max(positiveCount, neutralCount, negativeCount);
+  const confidence = dominantSentiment / totalWords;
+  
+  // Determine if moderation is needed
+  const needsModeration = negativeCount > totalWords * 0.5;
+  
+  // Generate a suggestion based on analysis
+  let suggestion = "ประโยคมีความสมดุลดี ทั้งแง่บวกและลบ";
+  if (quality === 'excellent') {
+    suggestion = "ประโยคมีพลังบวกสูง เหมาะแก่การสร้างกำลังใจ";
+  } else if (quality === 'poor') {
+    suggestion = "ควรเพิ่มคำที่มีความหมายเชิงบวกมากขึ้น";
+  }
+  
   return {
     polarity: result.sentiment,
-    score: result.score
+    score: result.score,
+    breakdown: {
+      positive: positiveCount,
+      neutral: neutralCount,
+      negative: negativeCount
+    },
+    emotionFlow: {
+      quality,
+      consistency
+    },
+    confidence,
+    needsModeration,
+    suggestion
   };
 };

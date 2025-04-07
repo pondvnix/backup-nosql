@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -137,7 +138,8 @@ const WordStream = () => {
   useEffect(() => {
     if (words.length > 0) {
       const wordTexts = words.map(word => word.text);
-      const result = analyzeSentence(wordTexts.join(' '));
+      // Pass the array of words directly to analyzeSentence
+      const result = analyzeSentence(wordTexts);
       setAnalysisResult(result);
     }
   }, [words]);

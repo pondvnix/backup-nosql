@@ -43,11 +43,11 @@ const SentenceAnalysis = ({
 
   const {
     energyScore,
-    breakdown,
-    emotionFlow,
-    confidence,
-    needsModeration,
-    suggestion,
+    breakdown = { positive: 0, neutral: 0, negative: 0 },
+    emotionFlow = { quality: 'good', consistency: true },
+    confidence = 0.5,
+    needsModeration = false,
+    suggestion = "ไม่มีคำแนะนำ",
   } = analysisResult;
 
   // Normalize energy score for progress display (0-100)
