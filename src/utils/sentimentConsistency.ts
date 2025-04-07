@@ -65,3 +65,29 @@ export const analyzeSentimentFromSentence = (sentence: string, template?: string
 
   return { sentiment, score };
 };
+
+// Add the missing functions that are being imported in WordPolarityLog.tsx
+
+// Get sentiment badge variant based on sentiment
+export const getSentimentBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative'): 'success' | 'secondary' | 'destructive' => {
+  switch (sentiment) {
+    case 'positive':
+      return 'success';
+    case 'negative':
+      return 'destructive';
+    default:
+      return 'secondary';
+  }
+};
+
+// Get polarity text based on sentiment
+export const getPolarityText = (sentiment?: 'positive' | 'neutral' | 'negative'): string => {
+  switch (sentiment) {
+    case 'positive':
+      return 'เชิงบวก';
+    case 'negative':
+      return 'เชิงลบ';
+    default:
+      return 'กลาง';
+  }
+};
