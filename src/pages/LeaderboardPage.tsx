@@ -35,14 +35,14 @@ const LeaderboardPage = () => {
           const parsedData = JSON.parse(stored);
           const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
           
-          // Process sentences to add polarity and score if not present
+          // Use stored polarity and score if available, otherwise compute them
           const processedSentences = sentences.map((sentence: MotivationalSentence) => {
-            if (sentence.word) {
-              const { polarity, score } = getWordPolarity(sentence.word);
+            if (!sentence.polarity || sentence.score === undefined) {
+              const wordInfo = getWordPolarity(sentence.word);
               return {
                 ...sentence,
-                polarity,
-                score
+                polarity: wordInfo.polarity,
+                score: wordInfo.score
               };
             }
             return sentence;
@@ -203,7 +203,7 @@ const LeaderboardPage = () => {
                                   ? 'text-blue-600' 
                                   : 'text-red-600'
                             }`}>
-                              {sentence.score || 0}
+                              {sentence.score !== undefined ? sentence.score : 0}
                             </TableCell>
                             <TableCell className="text-xs whitespace-nowrap">{formatDate(sentence.timestamp)}</TableCell>
                           </TableRow>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -138,7 +139,8 @@ const WordForm = ({
         template: template,
         contributor: trimmedContributor,
         timestamp: new Date(),
-        polarity: wordEntry.polarity
+        polarity: wordEntry.polarity,
+        score: wordEntry.score
       };
       
       try {
@@ -162,7 +164,8 @@ const WordForm = ({
           word: trimmedWord,
           contributor: trimmedContributor,
           template,
-          polarity: wordEntry.polarity
+          polarity: wordEntry.polarity,
+          score: wordEntry.score
         }
       });
       window.dispatchEvent(sentenceEvent);
@@ -194,8 +197,30 @@ const WordForm = ({
       });
     }
     
+    // Get word entry from database to ensure we have correct polarity and score
+    const wordEntry = wordDatabase.find(entry => entry.word === selectedWord);
+    if (wordEntry && template) {
+      const newSentenceEntry = {
+        word: selectedWord,
+        sentence: template.replace(new RegExp(`\\$\\{${selectedWord}\\}`, 'g'), selectedWord),
+        template: template,
+        contributor: trimmedContributor,
+        timestamp: new Date(),
+        polarity: wordEntry.polarity,
+        score: wordEntry.score
+      };
+      
+      try {
+        const storedSentences = localStorage.getItem('motivation-sentences');
+        const existingSentences = storedSentences ? JSON.parse(storedSentences) : [];
+        const updatedSentences = [newSentenceEntry, ...existingSentences];
+        localStorage.setItem('motivation-sentences', JSON.stringify(updatedSentences));
+      } catch (error) {
+        console.error("Error updating sentences:", error);
+      }
+    }
+    
     onAddWord(selectedWord, trimmedContributor, template);
-    setWord("");
   };
 
   const handleSelectSuggestion = (selectedWord: string, template?: string) => {

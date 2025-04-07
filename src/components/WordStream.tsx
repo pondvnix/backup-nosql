@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +24,7 @@ interface MotivationalSentenceEntry {
   contributor: string;
   timestamp: Date;
   polarity?: 'positive' | 'neutral' | 'negative';
+  score?: number;
 }
 
 const fetchWords = async (): Promise<Word[]> => {
@@ -85,7 +85,6 @@ const WordStream = () => {
     refetchInterval: 1000,
   });
   
-  // Fetch all motivational sentences
   const { data: sentences = [] } = useQuery({
     queryKey: ['motivation-sentences'],
     queryFn: fetchSentences,
@@ -126,7 +125,13 @@ const WordStream = () => {
         setMotivationalSentence(event.detail.sentence);
         setShouldDisplaySentence(true);
         
-        storeSentenceForBillboard(event.detail.sentence, event.detail.word, event.detail.contributor);
+        storeSentenceForBillboard(
+          event.detail.sentence, 
+          event.detail.word, 
+          event.detail.contributor, 
+          event.detail.polarity, 
+          event.detail.score
+        );
       }
     };
     
@@ -139,14 +144,22 @@ const WordStream = () => {
     };
   }, []);
   
-  const storeSentenceForBillboard = (sentence: string, word: string, contributor: string) => {
+  const storeSentenceForBillboard = (
+    sentence: string, 
+    word: string, 
+    contributor: string, 
+    polarity?: 'positive' | 'neutral' | 'negative',
+    score?: number
+  ) => {
     if (!word) return;
     
     const billboardEntry = {
       sentence,
       word,
       contributor: contributor || 'ไม่ระบุชื่อ',
-      timestamp: new Date()
+      timestamp: new Date(),
+      polarity,
+      score
     };
     
     let existingEntries = [];

@@ -18,6 +18,7 @@ interface MotivationalSentence {
   contributor?: string;
   timestamp?: Date | number | string;
   polarity?: 'positive' | 'neutral' | 'negative';
+  score?: number;
 }
 
 interface LeaderboardProps {
@@ -34,15 +35,24 @@ const fetchContributorStats = async (): Promise<Contributor[]> => {
 const fetchMotivationalSentences = (): MotivationalSentence[] => {
   const stored = localStorage.getItem('motivation-sentences');
   if (stored) {
-    const sentences = JSON.parse(stored);
-    return sentences.map((sentence: MotivationalSentence) => {
-      const { polarity } = getWordPolarity(sentence.word);
-      return {
-        ...sentence,
-        polarity,
-        timestamp: sentence.timestamp || Date.now()
-      };
-    });
+    try {
+      const sentences = JSON.parse(stored);
+      return sentences.map((sentence: MotivationalSentence) => {
+        if (!sentence.polarity || sentence.score === undefined) {
+          // Only compute if values aren't already provided
+          const wordInfo = getWordPolarity(sentence.word);
+          return {
+            ...sentence,
+            polarity: wordInfo.polarity,
+            score: wordInfo.score
+          };
+        }
+        return sentence;
+      });
+    } catch (error) {
+      console.error("Error processing sentences:", error);
+      return [];
+    }
   }
   return [];
 };
@@ -119,6 +129,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     let longestSentence = { text: '', length: 0, contributor: '' };
     
     sentences.forEach(sentence => {
+      // Use the stored polarity if available
       if (sentence.polarity === 'positive') positiveSentences++;
       else if (sentence.polarity === 'negative') negativeSentences++;
       else neutralSentences++;
