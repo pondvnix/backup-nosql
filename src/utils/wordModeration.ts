@@ -13,12 +13,20 @@ export interface Template {
 export const standardizeContributorName = (contributor?: string): string => {
   // ตรวจสอบว่าเป็น null หรือ undefined
   if (contributor === null || contributor === undefined) {
-    return 'ไม่ระบุชื่อ';
+    // ลองดึงจาก localStorage ก่อน ถ้าไม่มีจึงใช้ค่าเริ่มต้น
+    const storedContributor = localStorage.getItem('contributor-name');
+    return storedContributor && storedContributor.trim() ? storedContributor.trim() : 'ไม่ระบุชื่อ';
   }
   
   // ตรวจสอบว่าเป็นสตริงที่มีความยาวมากกว่า 0 หรือไม่
   const trimmedContributor = contributor.trim();
-  return trimmedContributor.length > 0 ? trimmedContributor : 'ไม่ระบุชื่อ';
+  if (trimmedContributor.length > 0) {
+    return trimmedContributor;
+  } else {
+    // ลองดึงจาก localStorage ถ้าค่าที่รับมาเป็นสตริงว่าง
+    const storedContributor = localStorage.getItem('contributor-name');
+    return storedContributor && storedContributor.trim() ? storedContributor.trim() : 'ไม่ระบุชื่อ';
+  }
 };
 
 // ฟังก์ชั่นตรวจสอบความถูกต้องของคำที่ป้อนเข้ามา
@@ -76,7 +84,7 @@ export const analyzeMotivationalSentence = (sentence: string, template?: string)
     return analyzeSentimentFromSentence("", template);
   }
   
-  // ถ้าไม่มี template วิเคราะห์จากประโยค
+  // ถ้าไม่มี template วิเคราะห์จากป��ะโยค
   return analyzeSentimentFromSentence(sentence);
 };
 
@@ -126,9 +134,11 @@ export const saveMotivationalSentence = (
     
     // Check for duplicates before adding - using a more stringent check
     const isDuplicate = existingEntries.some(
-      (entry: any) => entry.word === word && 
+      (entry: any) => entry.id === uniqueId || 
+                     (entry.word === word && 
                      entry.sentence === sentence && 
-                     standardizeContributorName(entry.contributor) === safeContributor
+                     standardizeContributorName(entry.contributor) === safeContributor &&
+                     Math.abs(new Date(entry.timestamp).getTime() - timestamp.getTime()) < 5000) // ถ้ามีการบันทึกในช่วงเวลาใกล้กัน (5 วินาที) ถือว่าเป็นข้อมูลซ้ำ
     );
     
     // เพิ่มรายการใหม่ถ้าไม่ซ้ำ

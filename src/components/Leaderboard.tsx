@@ -66,9 +66,9 @@ const removeDuplicateSentences = (sentences: MotivationalSentence[]): Motivation
         new Date(sentence.timestamp || 0).getTime() > 
         new Date(uniqueMap.get(uniqueId)!.timestamp || 0).getTime()) {
       
-      // ตรวจสอบและตั้งค่าชื่อผู้ร่วมสร้างที่ถูกต้อง
-      const contributor = sentence.contributor && sentence.contributor.trim() ? 
-                         sentence.contributor.trim() : 'ไม่ระบุชื่อ';
+      // ดึงชื่อผู้ร่วมสร้างจาก localStorage หากข้อมูลที่มีไม่สมบูรณ์
+      const contributor = sentence.contributor ? sentence.contributor : 
+                         localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
       
       uniqueMap.set(uniqueId, {
         ...sentence,
@@ -154,9 +154,9 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     queryKey: ['contributor-stats'],
     queryFn: fetchContributorStats,
     enabled: !propContributors,
-    // เพิ่ม staleTime เพื่อลดความถี่ในการโหลดข้อมูล
-    staleTime: 2000,
-    refetchInterval: 5000, // ปรับเป็น 5 วินาที
+    // เพิ่ม staleTime และ cacheTime เพื่อลดความถี่ในการโหลดข้อมูล
+    staleTime: 5000, // 5 วินาที
+    cacheTime: 10000, // 10 วินาที
   });
 
   const [motivationalSentences, setMotivationalSentences] = useState<MotivationalSentence[]>([]);
@@ -207,7 +207,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     });
   }, []);
 
-  // สร้างฟังก์ชันแยกเพื่อโหลดและอัปเดตข้อมูล
+  // สร้างฟังก์ชันแยกเพื่อโหลดและอัปเดตข้อมูล โดยใช้ debounce
   const fetchAndUpdateSentences = useCallback(() => {
     if (!propSentences) {
       const sentences = fetchMotivationalSentences();
@@ -220,12 +220,17 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
   // ปรับปรุง useEffect ให้มี dependencies ที่ถูกต้อง
   useEffect(() => {
     if (refreshTrigger && !propContributors) {
-      refetch();
+      // ใช้ setTimeout เพื่อทำ debounce สำหรับการ refetch
+      const debounceRefetch = setTimeout(() => {
+        refetch();
+        
+        const sentences = propSentences ? analyzeSentencesByTemplate(propSentences) : fetchMotivationalSentences();
+        const uniqueSentences = removeDuplicateSentences(sentences);
+        setMotivationalSentences(uniqueSentences);
+        calculateStatistics(uniqueSentences);
+      }, 300);
       
-      const sentences = propSentences ? analyzeSentencesByTemplate(propSentences) : fetchMotivationalSentences();
-      const uniqueSentences = removeDuplicateSentences(sentences);
-      setMotivationalSentences(uniqueSentences);
-      calculateStatistics(uniqueSentences);
+      return () => clearTimeout(debounceRefetch);
     }
   }, [refreshTrigger, refetch, propContributors, propSentences, calculateStatistics]);
 
@@ -241,9 +246,16 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
   useEffect(() => {
     fetchAndUpdateSentences();
     
+    // สร้างฟังก์ชันที่มี debounce เพื่อป้องกันการโหลดข้อมูลซ้ำซ้อน
+    let debounceTimer: NodeJS.Timeout | null = null;
+    
     const handleSentenceUpdate = () => {
       if (!propSentences) {
-        fetchAndUpdateSentences();
+        if (debounceTimer) clearTimeout(debounceTimer);
+        
+        debounceTimer = setTimeout(() => {
+          fetchAndUpdateSentences();
+        }, 500); // delay 500ms to avoid multiple fetches
       }
     };
     
@@ -256,6 +268,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     
     return () => {
       clearInterval(intervalId);
+      if (debounceTimer) clearTimeout(debounceTimer);
       window.removeEventListener('motivationalSentenceGenerated', handleSentenceUpdate);
       window.removeEventListener('motivation-billboard-updated', handleSentenceUpdate);
       window.removeEventListener('word-database-updated', handleSentenceUpdate);

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent } from "@/components/ui/card";
 import MobileFooter from "@/components/MobileFooter";
@@ -25,41 +25,41 @@ const Index = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { toast } = useToast();
 
-  // Listen for motivational sentence events
-  useEffect(() => {
-    const handleSentenceGenerated = (event: CustomEvent) => {
-      if (event.detail) {
-        const { word, sentence, contributor } = event.detail;
-        
-        if (word && !selectedWords.includes(word)) {
-          setSelectedWords(prev => [...prev, word]);
-        }
-        
-        if (sentence) {
-          setCurrentSentence(sentence);
-        }
-        
-        if (word) {
-          setCurrentWord(word);
-        }
-        
-        // ปรับปรุงการจัดการ contributor เพื่อให้มั่นใจว่าจะถูกส่งไปอย่างถูกต้อง
-        if (contributor) {
-          // ใช้การทำให้ชื่อเป็นมาตรฐาน
-          const safeContributor = standardizeContributorName(contributor);
-          setCurrentContributor(safeContributor);
-        }
+  // ปรับปรุงให้ใช้ useCallback สำหรับฟังก์ชันที่ถูกใช้ใน dependencies
+  const handleSentenceGenerated = useCallback((event: CustomEvent) => {
+    if (event.detail) {
+      const { word, sentence, contributor } = event.detail;
+      
+      if (word && !selectedWords.includes(word)) {
+        setSelectedWords(prev => [...prev, word]);
       }
-    };
-    
-    window.addEventListener('motivationalSentenceGenerated', 
-      handleSentenceGenerated as EventListener);
+      
+      if (sentence) {
+        setCurrentSentence(sentence);
+      }
+      
+      if (word) {
+        setCurrentWord(word);
+      }
+      
+      // ปรับปรุงการจัดการ contributor เพื่อให้มั่นใจว่าจะถูกส่งไปอย่างถูกต้อง
+      if (contributor) {
+        // ใช้การทำให้ชื่อเป็นมาตรฐานและบันทึกลงใน localStorage เพื่อความต่อเนื่อง
+        const safeContributor = standardizeContributorName(contributor);
+        setCurrentContributor(safeContributor);
+        localStorage.setItem('contributor-name', safeContributor);
+      }
+    }
+  }, [selectedWords]);
+  
+  // Listen for motivational sentence events with useCallback
+  useEffect(() => {
+    window.addEventListener('motivationalSentenceGenerated', handleSentenceGenerated as EventListener);
     
     return () => {
-      window.removeEventListener('motivationalSentenceGenerated', 
-        handleSentenceGenerated as EventListener);
+      window.removeEventListener('motivationalSentenceGenerated', handleSentenceGenerated as EventListener);
     };
-  }, [selectedWords]);
+  }, [handleSentenceGenerated]);
 
   // Update analysis when selected words change
   useEffect(() => {
@@ -79,20 +79,39 @@ const Index = () => {
         setSelectedWords(prev => [...prev, word]);
       }
       
-      // Standardize contributor name เพื่อให้มั่นใจว่าจะไม่เป็นค่าว่าง
+      // Standardize contributor name และบันทึกลงใน localStorage
       const safeContributor = standardizeContributorName(contributor);
+      localStorage.setItem('contributor-name', safeContributor);
       
       // Update current word and contributor
       setCurrentWord(word);
       setCurrentContributor(safeContributor);
       
       // Trigger refresh for components that depend on word updates
-      setRefreshTrigger(prev => prev + 1);
+      // ใช้ debounce โดยการทำ timeout เพื่อไม่ให้ trigger event บ่อยเกินไป
+      const timeoutId = setTimeout(() => {
+        setRefreshTrigger(prev => prev + 1);
+      }, 300);
       
       toast({
         title: "เพิ่มคำสำเร็จ",
         description: `เพิ่มคำ "${word}" เรียบร้อยแล้ว`,
       });
+      
+      // สร้าง event เพื่อแจ้งเตือนคอมโพเนนต์อื่นๆ
+      if (template) {
+        const event = new CustomEvent('motivationalSentenceGenerated', {
+          detail: {
+            word,
+            contributor: safeContributor,
+            template
+          }
+        });
+        window.dispatchEvent(event);
+      }
+      
+      // ล้าง timeout เมื่อคอมโพเนนต์ถูกทำลาย
+      return () => clearTimeout(timeoutId);
     } catch (error) {
       console.error("Error adding word:", error);
       toast({
