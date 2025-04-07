@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,6 +14,7 @@ interface MotivationalSentence {
   template?: string;
   sentiment?: 'positive' | 'neutral' | 'negative';
   score?: number;
+  id?: string;
 }
 
 const BillboardLog = () => {
@@ -29,7 +29,6 @@ const BillboardLog = () => {
       if (stored) {
         const parsedSentences = JSON.parse(stored);
         
-        // Remove duplicates and sort by timestamp (newest first)
         const uniqueSentences = removeDuplicateSentences(parsedSentences);
         const sortedSentences = uniqueSentences.sort((a, b) => 
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -42,20 +41,20 @@ const BillboardLog = () => {
     }
   };
   
-  // Improved function to remove duplicates based on word, sentence, and contributor combination
   const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     const uniqueMap = new Map<string, MotivationalSentence>();
     
     sentences.forEach(sentence => {
-      // Create a unique key using word, sentence content, and contributor 
-      const uniqueKey = `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'ไม่ระบุชื่อ'}`;
+      const contributor = sentence.contributor && sentence.contributor.trim() ? 
+        sentence.contributor.trim() : 'ไม่ระบุชื่อ';
+      
+      const uniqueKey = `${sentence.word}-${sentence.sentence}-${contributor}`;
       
       if (!uniqueMap.has(uniqueKey) || 
           new Date(sentence.timestamp).getTime() > new Date(uniqueMap.get(uniqueKey)!.timestamp).getTime()) {
-        // Standardize contributor name if not provided
-        if (!sentence.contributor || sentence.contributor.trim() === '') {
-          sentence.contributor = 'ไม่ระบุชื่อ';
-        }
+        
+        sentence.contributor = contributor;
+        sentence.id = uniqueKey + '-' + new Date(sentence.timestamp).getTime();
         uniqueMap.set(uniqueKey, sentence);
       }
     });
@@ -79,7 +78,6 @@ const BillboardLog = () => {
     };
   }, []);
   
-  // Clean text by removing sentiment markers
   const cleanText = (text: string): string => {
     return text
       .replace(/\$\{บวก\}/g, '')
@@ -87,11 +85,9 @@ const BillboardLog = () => {
       .replace(/\$\{ลบ\}/g, '');
   };
   
-  // Highlight word in sentence
   const highlightWord = (sentence: string, word: string): React.ReactNode => {
     if (!sentence || !word) return cleanText(sentence);
     
-    // Clean the sentence of any sentiment markers first
     const cleanedSentence = cleanText(sentence);
     
     const parts = cleanedSentence.split(new RegExp(`(${word})`, 'gi'));
@@ -108,7 +104,6 @@ const BillboardLog = () => {
     });
   };
   
-  // Get sentiment icon based on sentiment
   const getSentimentIcon = (sentiment?: 'positive' | 'neutral' | 'negative') => {
     switch (sentiment) {
       case 'positive':
@@ -120,7 +115,6 @@ const BillboardLog = () => {
     }
   };
   
-  // Get badge variant based on sentiment
   const getBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative') => {
     switch (sentiment) {
       case 'positive':
@@ -132,7 +126,6 @@ const BillboardLog = () => {
     }
   };
   
-  // Get sentiment text in Thai
   const getSentimentText = (sentiment?: 'positive' | 'neutral' | 'negative'): string => {
     switch (sentiment) {
       case 'positive':
@@ -144,20 +137,17 @@ const BillboardLog = () => {
     }
   };
   
-  // Filter sentences based on search term
   const filteredSentences = sentences.filter(sentence => 
     sentence.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sentence.sentence.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (sentence.contributor && sentence.contributor.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   
-  // Pagination logic
   const indexOfLastSentence = currentPage * sentencesPerPage;
   const indexOfFirstSentence = indexOfLastSentence - sentencesPerPage;
   const currentSentences = filteredSentences.slice(indexOfFirstSentence, indexOfLastSentence);
   const totalPages = Math.ceil(filteredSentences.length / sentencesPerPage);
   
-  // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxPagesToShow = 5;
@@ -194,7 +184,7 @@ const BillboardLog = () => {
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
-                setCurrentPage(1); // Reset to first page when searching
+                setCurrentPage(1);
               }}
             />
           </div>
@@ -215,11 +205,8 @@ const BillboardLog = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentSentences.map((sentence, index) => {
-                    // Create a truly unique key for each row
-                    const rowKey = `sentence-${index}-${sentence.word}-${sentence.timestamp}-${sentence.contributor}`;
-                    return (
-                    <TableRow key={rowKey}>
+                  {currentSentences.map((sentence) => (
+                    <TableRow key={sentence.id || `sentence-${sentence.word}-${sentence.timestamp}`}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {getSentimentIcon(sentence.sentiment)}
@@ -243,12 +230,11 @@ const BillboardLog = () => {
                         })}
                       </TableCell>
                     </TableRow>
-                  )})}
+                  ))}
                 </TableBody>
               </Table>
             </div>
             
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="mt-4">
                 <Pagination>

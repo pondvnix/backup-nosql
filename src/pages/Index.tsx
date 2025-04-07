@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Container } from "@/components/ui/container";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import MobileFooter from "@/components/MobileFooter";
 import Header from "@/components/Header";
 import WordForm from "@/components/WordForm";

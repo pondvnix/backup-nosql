@@ -240,13 +240,17 @@ const WordSuggestions = ({
     // Ensure contributor is never empty
     const safeContributor = contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
     
+    // Create a unique ID for this sentence
+    const uniqueId = `${word}-${sentence}-${safeContributor}-${Date.now()}`;
+    
     const newEntry = {
       sentence,
       word,
       contributor: safeContributor,
       timestamp: new Date(),
       template,
-      sentiment
+      sentiment,
+      id: uniqueId
     };
     
     let existingEntries = [];
@@ -263,11 +267,11 @@ const WordSuggestions = ({
       existingEntries = [];
     }
     
-    // Check for duplicates before adding
+    // Check for duplicates before adding - using a more stringent check
     const isDuplicate = existingEntries.some(
       (entry: any) => entry.word === word && 
                      entry.sentence === sentence && 
-                     entry.contributor === safeContributor
+                     (entry.contributor || 'ไม่ระบุชื่อ') === safeContributor
     );
     
     if (!isDuplicate) {
