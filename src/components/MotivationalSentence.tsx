@@ -264,12 +264,13 @@ const MotivationalSentence = ({
       setDisplaySentence(sentence);
       setShowSentence(true);
       
-      // Get contributor name from localStorage or use provided value or default
-      let contributorName = localStorage.getItem('contributor-name') || contributor || 'ไม่ระบุชื่อ';
+      // Get contributor name from localStorage or use provided value
+      let contributorName = localStorage.getItem('contributor-name') || contributor || '';
       contributorName = contributorName.trim() ? contributorName.trim() : 'ไม่ระบุชื่อ';
       
-      // Generate a unique ID for this sentence
-      const uniqueId = `${word}-${sentence}-${contributorName}-${Date.now()}`;
+      // Generate a unique ID for this sentence that includes timestamp
+      const timestamp = Date.now();
+      const uniqueId = `${word}-${sentence}-${contributorName}-${timestamp}`;
       
       // Dispatch event so other components can listen - include contributor and sentiment info
       const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
@@ -279,7 +280,8 @@ const MotivationalSentence = ({
           contributor: contributorName,
           template: actualTemplate,
           sentiment: sentimentType,
-          id: uniqueId
+          id: uniqueId,
+          timestamp
         }
       });
       window.dispatchEvent(sentenceEvent);

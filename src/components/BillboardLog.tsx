@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Smile, Meh, Frown, Clock, FilePlus } from "lucide-react";
+import { Smile, Meh, Frown, FilePlus } from "lucide-react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 interface MotivationalSentence {
@@ -30,9 +30,11 @@ const BillboardLog = () => {
         const parsedSentences = JSON.parse(stored);
         
         const uniqueSentences = removeDuplicateSentences(parsedSentences);
-        const sortedSentences = uniqueSentences.sort((a, b) => 
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
+        const sortedSentences = uniqueSentences.sort((a, b) => {
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+          return timeB - timeA;
+        });
         
         setSentences(sortedSentences);
       }
@@ -42,7 +44,7 @@ const BillboardLog = () => {
   };
   
   const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
-    const uniqueMap = new Map<string, MotivationalSentence>();
+    const uniqueEntries = new Map<string, MotivationalSentence>();
     
     sentences.forEach(sentence => {
       const contributor = sentence.contributor && sentence.contributor.trim() ? 
@@ -50,16 +52,20 @@ const BillboardLog = () => {
       
       const uniqueKey = `${sentence.word}-${sentence.sentence}-${contributor}`;
       
-      if (!uniqueMap.has(uniqueKey) || 
-          new Date(sentence.timestamp).getTime() > new Date(uniqueMap.get(uniqueKey)!.timestamp).getTime()) {
+      if (!uniqueEntries.has(uniqueKey) || 
+          new Date(sentence.timestamp).getTime() > new Date(uniqueEntries.get(uniqueKey)!.timestamp).getTime()) {
         
-        sentence.contributor = contributor;
-        sentence.id = uniqueKey + '-' + new Date(sentence.timestamp).getTime();
-        uniqueMap.set(uniqueKey, sentence);
+        const updatedSentence = {
+          ...sentence,
+          contributor,
+          id: sentence.id || `${uniqueKey}-${new Date(sentence.timestamp).getTime()}`
+        };
+        
+        uniqueEntries.set(uniqueKey, updatedSentence);
       }
     });
     
-    return Array.from(uniqueMap.values());
+    return Array.from(uniqueEntries.values());
   };
   
   useEffect(() => {

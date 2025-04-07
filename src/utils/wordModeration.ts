@@ -1,4 +1,3 @@
-
 import { analyzeSentimentFromSentence } from "./sentimentConsistency";
 
 // Define TemplateSentiment as a string type for better TypeScript compatibility
@@ -10,14 +9,15 @@ export interface Template {
   sentiment: TemplateSentiment;
 }
 
+// Helper function to standardize contributor names
+export const standardizeContributorName = (contributor?: string): string => {
+  return contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
+};
+
 // ฟังก์ชั่นตรวจสอบความถูกต้องของคำที่ป้อนเข้ามา
 export const validateWordInput = (word: string, contributor: string): { isValid: boolean, message: string } => {
   if (!word.trim()) {
     return { isValid: false, message: "กรุณาใส่คำที่ต้องการ" };
-  }
-  
-  if (!contributor.trim()) {
-    return { isValid: false, message: "กรุณาระบุชื่อของคุณ" };
   }
   
   // ตรวจสอบว่าคำที่ใส่มีคำหยาบหรือไม่
@@ -90,17 +90,21 @@ export const saveMotivationalSentence = (
     const { sentiment, score } = analyzeMotivationalSentence(sentence, template);
     
     // Standardize contributor - never allow empty contributor
-    const safeContributor = contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
+    const safeContributor = standardizeContributorName(contributor);
     
     // สร้างรายการใหม่
+    const timestamp = new Date();
+    const uniqueId = `${word}-${sentence}-${safeContributor}-${timestamp.getTime()}`;
+    
     const newEntry = {
       word,
       sentence,
       contributor: safeContributor,
-      timestamp: new Date(),
+      timestamp,
       polarity: sentiment,
       score: score,
-      template: template
+      template: template,
+      id: uniqueId
     };
     
     // ดึงข้อมูลเดิม (ถ้ามี)
@@ -113,11 +117,11 @@ export const saveMotivationalSentence = (
       }
     }
     
-    // Check for duplicates before adding
+    // Check for duplicates before adding - using a more stringent check
     const isDuplicate = existingEntries.some(
       (entry: any) => entry.word === word && 
                      entry.sentence === sentence && 
-                     entry.contributor === safeContributor
+                     (entry.contributor || 'ไม่ระบุชื่อ') === safeContributor
     );
     
     // เพิ่มรายการใหม่ถ้าไม่ซ้ำ

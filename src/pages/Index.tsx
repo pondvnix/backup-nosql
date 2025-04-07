@@ -13,6 +13,7 @@ import Leaderboard from "@/components/Leaderboard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { analyzeSentence } from "@/utils/sentenceAnalysis";
+import { standardizeContributorName } from "@/utils/wordModeration";
 
 const Index = () => {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
@@ -75,8 +76,8 @@ const Index = () => {
         setSelectedWords(prev => [...prev, word]);
       }
       
-      // Ensure contributor is never empty
-      const safeContributor = contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
+      // Standardize contributor name
+      const safeContributor = standardizeContributorName(contributor);
       
       // Update current word and contributor
       setCurrentWord(word);
