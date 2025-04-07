@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import Layout from "@/layouts/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,37 +21,29 @@ const LeaderboardPage = () => {
   const [sentences, setSentences] = useState<MotivationalSentence[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // ปรับปรุงวิธีการกรองข้อมูลซ้ำซ้อนโดยใช้ Map เพื่อเก็บข้อมูลล่าสุดของแต่ละประโยค
   const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     const uniqueMap = new Map();
     
     sentences.forEach(sentence => {
-      // สร้าง unique key จากข้อมูลหลัก - ปรับปรุงให้รัดกุมขึ้น
       const uniqueKey = `${sentence.word}-${sentence.sentence}`;
       
-      // เก็บข้อมูลล่าสุดของแต่ละประโยค (ตามวันที่)
       if (!uniqueMap.has(uniqueKey) || 
           new Date(sentence.timestamp).getTime() > new Date(uniqueMap.get(uniqueKey).timestamp).getTime()) {
         uniqueMap.set(uniqueKey, sentence);
       }
     });
     
-    // แปลงจาก Map กลับเป็น Array
     return Array.from(uniqueMap.values());
   };
   
-  // ตรวจสอบและกำหนดค่า score ตามมาตรฐาน (positive=1, neutral=0, negative=-1)
   const normalizeScoreByPolarity = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     return sentences.map(sentence => {
-      // ถ้ามีค่า score อยู่แล้ว ให้ใช้ค่านั้น แต่ต้องตรวจสอบว่าสอดคล้องกับ polarity หรือไม่
       if (sentence.score !== undefined) {
-        // ตรวจสอบความสอดคล้องกับ polarity ถ้ามี
         if (sentence.polarity) {
           const expectedScore = 
             sentence.polarity === 'positive' ? 1 : 
             sentence.polarity === 'negative' ? -1 : 0;
           
-          // ถ้า score ไม่สอดคล้องกับ polarity ให้ใช้ค่าตามมาตรฐานแทน
           if (sentence.score !== expectedScore) {
             return { ...sentence, score: expectedScore };
           }
@@ -61,7 +52,6 @@ const LeaderboardPage = () => {
         return sentence;
       }
       
-      // ถ้าไม่มี score แต่มี polarity ให้กำหนดค่า score ตามมาตรฐาน
       if (sentence.polarity) {
         const normalizedScore = 
           sentence.polarity === 'positive' ? 1 : 
@@ -70,7 +60,6 @@ const LeaderboardPage = () => {
         return { ...sentence, score: normalizedScore };
       }
       
-      // กรณีไม่มีทั้ง score และ polarity ให้กำหนดเป็นกลาง
       return { ...sentence, polarity: 'neutral', score: 0 };
     });
   };
@@ -83,13 +72,10 @@ const LeaderboardPage = () => {
           const parsedData = JSON.parse(stored);
           const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
           
-          // กรองข้อมูลซ้ำซ้อน
           const uniqueSentences = removeDuplicateSentences(sentences);
           
-          // ตรวจสอบและกำหนดค่า score ตามมาตรฐาน
           const normalizedSentences = normalizeScoreByPolarity(uniqueSentences);
           
-          // Sort by timestamp (newest first)
           const sortedSentences = normalizedSentences.sort((a, b) => {
             const timeA = new Date(a.timestamp).getTime();
             const timeB = new Date(b.timestamp).getTime();
@@ -124,13 +110,10 @@ const LeaderboardPage = () => {
     };
   }, []);
 
-  // Convert MotivationalSentence to the Quote format expected by MotivationQuoteTable
   const convertSentencesToQuotes = (sentences: MotivationalSentence[]) => {
     return sentences.map(sentence => {
-      // กำหนดค่า score ตามมาตรฐาน
       let score = 0;
       
-      // ถ้ามี score ให้ใช้ค่านั้น หากไม่มีให้คำนวณจาก polarity
       if (sentence.score !== undefined) {
         score = sentence.score;
       } else if (sentence.polarity) {
@@ -138,7 +121,6 @@ const LeaderboardPage = () => {
                 sentence.polarity === 'negative' ? -1 : 0;
       }
       
-      // กำหนดค่า polarity ให้สอดคล้องกับ score
       let polarity: 'positive' | 'neutral' | 'negative' = 'neutral';
       if (score > 0) {
         polarity = 'positive';

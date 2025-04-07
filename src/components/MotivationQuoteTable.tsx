@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { useState, useEffect } from "react";
 import { Smile, Meh, Frown } from "lucide-react";
+import { Badge } from "./ui/badge";
 
 interface Quote {
   text: string;
@@ -12,82 +14,41 @@ interface Quote {
   score?: number;
 }
 
-interface MotivationQuoteTableProps {
+interface QuoteManagementTableProps {
   quotes: Quote[];
-  currentUserId?: string;
   showAllUsers?: boolean;
 }
 
-const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true }: MotivationQuoteTableProps) => {
+const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [uniqueQuotes, setUniqueQuotes] = useState<Quote[]>([]);
-  const quotesPerPage = 30;
+  const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
+  const quotesPerPage = 10;
   
   useEffect(() => {
-    const filteredQuotes = showAllUsers 
-      ? quotes 
-      : quotes.filter(quote => quote.userId === currentUserId);
-    
-    // ปรับปรุงวิธีการกรองข้อมูลซ้ำซ้อนโดยใช้ Map เพื่อเก็บข้อมูลล่าสุดของแต่ละประโยค
-    const uniqueMap = new Map();
-    
-    // ตรวจสอบและกำหนดค่า score ที่ถูกต้องตามมาตรฐาน
-    const normalizedQuotes = filteredQuotes.map(quote => {
-      // ถ้ามีค่า score อยู่แล้ว ให้ตรวจสอบว่าสอดคล้องกับ polarity หรือไม่
-      if (quote.score !== undefined) {
-        // ถ้ามี polarity ให้ตรวจสอบความสอดคล้อง
-        if (quote.polarity) {
-          const expectedScore = 
-            quote.polarity === 'positive' ? 1 : 
-            quote.polarity === 'negative' ? -1 : 0;
-          
-          // ถ้า score ไม่สอดคล้องกับ polarity ให้ใช้ค่าตามมาตรฐานแทน
-          if (quote.score !== expectedScore) {
-            return { ...quote, score: expectedScore };
-          }
-        }
-        
-        return quote;
+    // Deduplicate quotes based on text content
+    const uniqueQuotes = quotes.reduce((acc: Quote[], current) => {
+      const isDuplicate = acc.find(item => item.text === current.text);
+      if (!isDuplicate) {
+        return [...acc, current];
       }
-      
-      // ถ้าไม่มี score แต่มี polarity ให้กำหนดค่า score ตามมาตรฐาน
-      if (quote.polarity) {
-        const normalizedScore = 
-          quote.polarity === 'positive' ? 1 : 
-          quote.polarity === 'negative' ? -1 : 0;
-        
-        return { ...quote, score: normalizedScore };
-      }
-      
-      // กรณีไม่มีทั้ง score และ polarity ให้กำหนดเป็นกลาง
-      return { ...quote, polarity: 'neutral', score: 0 };
-    });
+      return acc;
+    }, []);
     
-    normalizedQuotes.forEach(quote => {
-      const uniqueKey = `${quote.word}-${quote.text}`;
-      
-      // เก็บข้อมูลล่าสุดของแต่ละประโยค (ตามวันที่)
-      if (!uniqueMap.has(uniqueKey) || 
-          new Date(quote.date).getTime() > new Date(uniqueMap.get(uniqueKey).date).getTime()) {
-        uniqueMap.set(uniqueKey, quote);
-      }
-    });
-    
-    // แปลงจาก Map กลับเป็น Array
-    const uniqueQuotesList = Array.from(uniqueMap.values());
-    
-    const sortedQuotes = [...uniqueQuotesList].sort((a, b) => 
+    // Sort quotes by date (newest first)
+    const sortedQuotes = [...uniqueQuotes].sort((a, b) => 
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     
-    setUniqueQuotes(sortedQuotes);
-  }, [quotes, currentUserId, showAllUsers]);
+    setDisplayedQuotes(sortedQuotes);
+  }, [quotes]);
   
+  // Calculate pagination
   const indexOfLastQuote = currentPage * quotesPerPage;
   const indexOfFirstQuote = indexOfLastQuote - quotesPerPage;
-  const currentQuotes = uniqueQuotes.slice(indexOfFirstQuote, indexOfLastQuote);
-  const totalPages = Math.ceil(uniqueQuotes.length / quotesPerPage);
+  const currentQuotes = displayedQuotes.slice(indexOfFirstQuote, indexOfLastQuote);
+  const totalPages = Math.ceil(displayedQuotes.length / quotesPerPage);
   
+  // Get page numbers for pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxPagesToShow = 5;
@@ -113,13 +74,47 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
     return pageNumbers;
   };
   
+  // Format date to local Thai time (GMT+7)
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString('th-TH', {
       timeZone: 'Asia/Bangkok'
     });
   };
   
-  // Function to highlight the word in the sentence
+  // Get sentiment icon based on score
+  const getSentimentIcon = (quote: Quote) => {
+    const score = quote.score !== undefined ? quote.score : 
+                 quote.polarity === 'positive' ? 1 :
+                 quote.polarity === 'negative' ? -1 : 0;
+    
+    if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
+    if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
+    return <Meh className="h-4 w-4 text-blue-500" />;
+  };
+  
+  // Get polarity text based on score
+  const getPolarityText = (quote: Quote): string => {
+    const score = quote.score !== undefined ? quote.score : 
+                 quote.polarity === 'positive' ? 1 :
+                 quote.polarity === 'negative' ? -1 : 0;
+    
+    if (score > 0) return 'เชิงบวก';
+    if (score < 0) return 'เชิงลบ';
+    return 'กลาง';
+  };
+  
+  // Get badge variant based on score
+  const getBadgeVariant = (quote: Quote) => {
+    const score = quote.score !== undefined ? quote.score : 
+                 quote.polarity === 'positive' ? 1 :
+                 quote.polarity === 'negative' ? -1 : 0;
+    
+    if (score > 0) return 'success';
+    if (score < 0) return 'destructive';
+    return 'secondary';
+  };
+  
+  // Highlight word in sentence
   const highlightWord = (sentence: string, word?: string): React.ReactNode => {
     if (!sentence || !word) return sentence;
     
@@ -137,75 +132,55 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
     });
   };
   
-  // ปรับปรุงฟังก์ชั่นให้ใช้ตามมาตรฐาน positive=1, neutral=0, negative=-1
-  const getScoreFromPolarity = (polarity?: string): number => {
-    switch (polarity) {
-      case 'positive':
-        return 1;
-      case 'negative':
-        return -1;
-      default:
-        return 0; // neutral
-    }
-  };
-  
-  // อัปเดตฟังก์ชั่นให้แสดงไอคอนตามค่า score ที่ถูกต้อง
-  const getPolarityIcon = (score: number) => {
-    if (score > 0) {
-      return <Smile className="h-4 w-4 text-green-500" />;
-    } else if (score < 0) {
-      return <Frown className="h-4 w-4 text-red-500" />;
-    } else {
-      return <Meh className="h-4 w-4 text-blue-500" />;
-    }
-  };
-  
   return (
     <div className="space-y-4">
-      {uniqueQuotes.length > 0 ? (
+      {displayedQuotes.length > 0 ? (
         <>
-          <div className="overflow-x-auto border rounded-md">
+          <div className="border rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ความรู้สึก</TableHead>
-                  <TableHead>ผู้ให้กำลังใจ</TableHead>
-                  <TableHead>คำ</TableHead>
-                  <TableHead>ประโยคกำลังใจ</TableHead>
                   <TableHead>คะแนน</TableHead>
-                  <TableHead>วันที่เวลา (GMT+7)</TableHead>
+                  {showAllUsers && <TableHead>ผู้สร้าง</TableHead>}
+                  {showAllUsers && <TableHead>คำ</TableHead>}
+                  <TableHead>ประโยคกำลังใจ</TableHead>
+                  {showAllUsers && <TableHead>วันที่เวลา (GMT+7)</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentQuotes.map((quote) => {
-                  // ใช้ score จากข้อมูล หรือคำนวณจาก polarity ถ้าไม่มี
-                  const score = quote.score !== undefined 
-                    ? quote.score 
-                    : getScoreFromPolarity(quote.polarity);
-                  
-                  return (
-                    <TableRow key={`${quote.word}-${quote.text}-${new Date(quote.date).getTime()}`}>
-                      <TableCell>{getPolarityIcon(score)}</TableCell>
+                {currentQuotes.map((quote, index) => (
+                  <TableRow key={`${quote.text}-${index}`} isHighlighted={index % 2 === 0}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getSentimentIcon(quote)}
+                        <Badge variant={getBadgeVariant(quote)}>
+                          {getPolarityText(quote)}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>{quote.score !== undefined ? quote.score : (quote.polarity === 'positive' ? 1 : quote.polarity === 'negative' ? -1 : 0)}</TableCell>
+                    {showAllUsers && (
                       <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
-                      <TableCell className="font-medium text-primary">{quote.word || '-'}</TableCell>
-                      <TableCell>{highlightWord(quote.text, quote.word)}</TableCell>
-                      <TableCell className={`font-medium ${
-                        score > 0 
-                          ? 'text-green-600' 
-                          : score === 0 
-                            ? 'text-blue-600' 
-                            : 'text-red-600'
-                      }`}>
-                        {score}
+                    )}
+                    {showAllUsers && (
+                      <TableCell className="font-medium text-primary">
+                        {quote.word || '-'}
                       </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">{formatDate(quote.date)}</TableCell>
-                    </TableRow>
-                  );
-                })}
+                    )}
+                    <TableCell className="font-medium">
+                      {quote.word ? highlightWord(quote.text, quote.word) : quote.text}
+                    </TableCell>
+                    {showAllUsers && (
+                      <TableCell className="text-xs">{formatDate(quote.date)}</TableCell>
+                    )}
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
           
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="mt-4">
               <Pagination>
@@ -241,7 +216,7 @@ const MotivationQuoteTable = ({ quotes, currentUserId = "", showAllUsers = true 
           )}
         </>
       ) : (
-        <p className="text-center text-muted-foreground p-4">ไม่พบประโยคกำลังใจสำหรับรายการนี้</p>
+        <p className="text-center text-muted-foreground p-4">ไม่พบประโยคกำลังใจในระบบ</p>
       )}
     </div>
   );

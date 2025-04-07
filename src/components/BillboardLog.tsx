@@ -6,6 +6,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Input } from "@/components/ui/input";
 import { Search, Smile, Meh, Frown } from "lucide-react";
 import { getWordPolarity } from "@/utils/sentenceAnalysis";
+import { Badge } from "@/components/ui/badge";
 
 interface BillboardEntry {
   word: string;
@@ -13,6 +14,7 @@ interface BillboardEntry {
   contributor: string;
   timestamp: Date | string;
   polarity?: 'positive' | 'neutral' | 'negative';
+  score?: number;
 }
 
 const BillboardLog = () => {
@@ -30,12 +32,20 @@ const BillboardLog = () => {
           const parsedData = JSON.parse(stored);
           const sentences = Array.isArray(parsedData) ? parsedData : [parsedData];
           
-          // Process sentences to add polarity 
+          // Process sentences to add polarity and score
           const processedSentences = sentences.map((sentence: BillboardEntry) => {
-            const { polarity } = getWordPolarity(sentence.word);
+            // Get the polarity and score from the database
+            const { polarity, score } = getWordPolarity(sentence.word);
+            
+            // If sentence already has score, use it. Otherwise calculate from polarity
+            const sentenceScore = sentence.score !== undefined ? sentence.score : 
+                                  (polarity === 'positive' ? 1 : 
+                                   polarity === 'negative' ? -1 : 0);
+            
             return {
               ...sentence,
-              polarity
+              polarity,
+              score: sentenceScore
             };
           });
           
@@ -140,16 +150,37 @@ const BillboardLog = () => {
     });
   };
   
-  // Get sentiment icon based on polarity
-  const getSentimentIcon = (polarity: string | undefined) => {
-    switch (polarity) {
-      case 'positive':
-        return <Smile className="h-4 w-4 text-green-500" />;
-      case 'negative':
-        return <Frown className="h-4 w-4 text-red-500" />;
-      default:
-        return <Meh className="h-4 w-4 text-blue-500" />;
-    }
+  // Get sentiment icon based on score
+  const getSentimentIcon = (entry: BillboardEntry) => {
+    const score = entry.score !== undefined ? entry.score : 
+                 entry.polarity === 'positive' ? 1 :
+                 entry.polarity === 'negative' ? -1 : 0;
+    
+    if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
+    if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
+    return <Meh className="h-4 w-4 text-blue-500" />;
+  };
+  
+  // Get polarity text based on score
+  const getPolarityText = (entry: BillboardEntry): string => {
+    const score = entry.score !== undefined ? entry.score : 
+                 entry.polarity === 'positive' ? 1 :
+                 entry.polarity === 'negative' ? -1 : 0;
+    
+    if (score > 0) return 'เชิงบวก';
+    if (score < 0) return 'เชิงลบ';
+    return 'กลาง';
+  };
+  
+  // Get badge variant based on score
+  const getBadgeVariant = (entry: BillboardEntry) => {
+    const score = entry.score !== undefined ? entry.score : 
+                 entry.polarity === 'positive' ? 1 :
+                 entry.polarity === 'negative' ? -1 : 0;
+    
+    if (score > 0) return 'success';
+    if (score < 0) return 'destructive';
+    return 'secondary';
   };
   
   return (
@@ -179,6 +210,7 @@ const BillboardLog = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap">ความรู้สึก</TableHead>
+                    <TableHead className="whitespace-nowrap">คะแนน</TableHead>
                     <TableHead className="whitespace-nowrap">ผู้ให้กำลังใจ</TableHead>
                     <TableHead className="whitespace-nowrap">คำ</TableHead>
                     <TableHead>ประโยคกำลังใจ</TableHead>
@@ -189,7 +221,17 @@ const BillboardLog = () => {
                   {currentEntries.map((entry, index) => (
                     <TableRow key={index} isHighlighted={index % 2 === 0}>
                       <TableCell>
-                        {getSentimentIcon(entry.polarity)}
+                        <div className="flex items-center gap-2">
+                          {getSentimentIcon(entry)}
+                          <Badge variant={getBadgeVariant(entry)}>
+                            {getPolarityText(entry)}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {entry.score !== undefined ? entry.score : 
+                         entry.polarity === 'positive' ? 1 : 
+                         entry.polarity === 'negative' ? -1 : 0}
                       </TableCell>
                       <TableCell className="font-medium whitespace-nowrap">
                         {entry.contributor || 'Anonymous'}

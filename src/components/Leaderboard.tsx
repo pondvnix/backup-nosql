@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Smile, Meh, Frown } from "lucide-react";
 import { getWordPolarity } from "@/utils/sentenceAnalysis";
+import { Badge } from "@/components/ui/badge";
 
 interface Contributor {
   name: string;
@@ -90,21 +91,24 @@ const highlightWord = (sentence: string, word: string): React.ReactNode => {
   });
 };
 
-const getSentimentIcon = (polarity: string | undefined, score?: number) => {
-  if (score !== undefined) {
-    if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
-    if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
-    return <Meh className="h-4 w-4 text-blue-500" />;
-  }
+const getSentimentIcon = (item: MotivationalSentence) => {
+  const score = item.score !== undefined ? item.score : 
+               item.polarity === 'positive' ? 1 :
+               item.polarity === 'negative' ? -1 : 0;
   
-  switch (polarity) {
-    case 'positive':
-      return <Smile className="h-4 w-4 text-green-500" />;
-    case 'negative':
-      return <Frown className="h-4 w-4 text-red-500" />;
-    default:
-      return <Meh className="h-4 w-4 text-blue-500" />;
-  }
+  if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
+  if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
+  return <Meh className="h-4 w-4 text-blue-500" />;
+};
+
+const getBadgeVariant = (item: MotivationalSentence) => {
+  const score = item.score !== undefined ? item.score : 
+               item.polarity === 'positive' ? 1 :
+               item.polarity === 'negative' ? -1 : 0;
+  
+  if (score > 0) return 'success';
+  if (score < 0) return 'destructive';
+  return 'secondary';
 };
 
 const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSentences: propSentences }: LeaderboardProps) => {
@@ -233,23 +237,14 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
 
   const latestSentences = motivationalSentences.slice(-5).reverse();
 
-  const getPolarityText = (polarity: string | undefined, score?: number): string => {
-    if (score !== undefined) {
-      if (score > 0) return 'เชิงบวก';
-      if (score < 0) return 'เชิงลบ';
-      return 'กลาง';
-    }
+  const getPolarityText = (item: MotivationalSentence): string => {
+    const score = item.score !== undefined ? item.score : 
+                 item.polarity === 'positive' ? 1 :
+                 item.polarity === 'negative' ? -1 : 0;
     
-    switch (polarity) {
-      case 'positive':
-        return 'เชิงบวก';
-      case 'neutral':
-        return 'กลาง';
-      case 'negative':
-        return 'เชิงลบ';
-      default:
-        return 'ไม่ระบุ';
-    }
+    if (score > 0) return 'เชิงบวก';
+    if (score < 0) return 'เชิงลบ';
+    return 'กลาง';
   };
 
   return (
@@ -350,6 +345,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
               <TableHeader>
                 <TableRow>
                   <TableHead>ความรู้สึก</TableHead>
+                  <TableHead>คะแนน</TableHead>
                   <TableHead>ผู้ให้กำลังใจ</TableHead>
                   <TableHead>คำ</TableHead>
                   <TableHead>ประโยคกำลังใจ</TableHead>
@@ -358,7 +354,19 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
               <TableBody>
                 {latestSentences.map((item, index) => (
                   <TableRow key={`latest-${item.word}-${item.sentence}-${index}`}>
-                    <TableCell>{getSentimentIcon(item.polarity, item.score)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getSentimentIcon(item)}
+                        <Badge variant={getBadgeVariant(item)}>
+                          {getPolarityText(item)}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {item.score !== undefined ? item.score : 
+                       item.polarity === 'positive' ? 1 : 
+                       item.polarity === 'negative' ? -1 : 0}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {item.contributor || 'ไม่ระบุชื่อ'}
                     </TableCell>
