@@ -2,16 +2,16 @@
 // ฟังก์ชั่นสำหรับดึงข้อมูลความรู้สึกจากแม่แบบประโยค
 export function extractSentimentFromTemplate(template: string): { sentiment: 'positive' | 'neutral' | 'negative', text: string } {
   let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
-  let text = template;
+  let text = template || '';
   
   // ตรวจสอบว่าแม่แบบมีการระบุความรู้สึกหรือไม่
-  if (template.includes('${บวก}')) {
+  if (template && template.includes('${บวก}')) {
     sentiment = 'positive';
     text = template.replace(/\$\{บวก\}/g, '');
-  } else if (template.includes('${ลบ}')) {
+  } else if (template && template.includes('${ลบ}')) {
     sentiment = 'negative';
     text = template.replace(/\$\{ลบ\}/g, '');
-  } else if (template.includes('${กลาง}')) {
+  } else if (template && template.includes('${กลาง}')) {
     sentiment = 'neutral';
     text = template.replace(/\$\{กลาง\}/g, '');
   }
@@ -62,7 +62,7 @@ export function analyzeSentimentFromSentence(sentence: string, template?: string
 }
 
 // Helper functions for UI display
-export function getSentimentBadgeVariant(sentiment: 'positive' | 'neutral' | 'negative'): string {
+export function getSentimentBadgeVariant(sentiment: 'positive' | 'neutral' | 'negative' | undefined): string {
   switch (sentiment) {
     case 'positive':
       return 'success';
@@ -74,7 +74,7 @@ export function getSentimentBadgeVariant(sentiment: 'positive' | 'neutral' | 'ne
   }
 }
 
-export function getPolarityText(sentiment: 'positive' | 'neutral' | 'negative'): string {
+export function getPolarityText(sentiment: 'positive' | 'neutral' | 'negative' | undefined): string {
   switch (sentiment) {
     case 'positive':
       return 'เชิงบวก';

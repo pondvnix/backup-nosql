@@ -4,15 +4,13 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { useState, useEffect } from "react";
 import { Smile, Meh, Frown } from "lucide-react";
 import { Badge } from "./ui/badge";
-import { analyzeSentimentFromSentence } from "@/utils/sentimentConsistency";
+import { extractSentimentFromTemplate } from "@/utils/sentimentConsistency";
 
 interface Quote {
   text: string;
   date: Date;
   userId: string;
   word?: string;
-  polarity?: 'positive' | 'neutral' | 'negative';
-  score?: number;
   template?: string;
 }
 
@@ -41,37 +39,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     
-    // Analyze sentiment based on template or text if not already provided
-    const analyzedQuotes = sortedQuotes.map(quote => {
-      // If polarity and score are already provided, use them
-      if (quote.polarity && typeof quote.score !== 'undefined') {
-        return quote;
-      }
-      
-      let sentiment: 'positive' | 'neutral' | 'negative';
-      let score: number;
-      
-      // If template exists, use sentiment from template
-      if (quote.template) {
-        const analysis = analyzeSentimentFromSentence("", quote.template);
-        sentiment = analysis.sentiment;
-        score = analysis.score;
-      } 
-      // ถ้าไม่มีแม่แบบ ใช้การวิเคราะห์จากประโยค
-      else {
-        const analysis = analyzeSentimentFromSentence(quote.text);
-        sentiment = analysis.sentiment;
-        score = analysis.score;
-      }
-      
-      return {
-        ...quote,
-        polarity: sentiment,
-        score: score
-      };
-    });
-    
-    setDisplayedQuotes(analyzedQuotes);
+    setDisplayedQuotes(sortedQuotes);
   }, [quotes]);
   
   // Calculate pagination
@@ -113,11 +81,19 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     });
   };
   
-  // Get sentiment icon based on polarity
-  const getSentimentIcon = (quote: Quote) => {
-    const polarity = quote.polarity || 'neutral';
+  // Get sentiment from template
+  const getSentimentFromTemplate = (template?: string): 'positive' | 'neutral' | 'negative' => {
+    if (!template) return 'neutral';
     
-    switch (polarity) {
+    const { sentiment } = extractSentimentFromTemplate(template);
+    return sentiment;
+  };
+  
+  // Get sentiment icon based on template
+  const getSentimentIcon = (quote: Quote) => {
+    const sentiment = getSentimentFromTemplate(quote.template);
+    
+    switch (sentiment) {
       case 'positive':
         return <Smile className="h-4 w-4 text-green-500" />;
       case 'negative':
@@ -127,11 +103,11 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     }
   };
   
-  // Get polarity text based on polarity
+  // Get polarity text based on template
   const getPolarityText = (quote: Quote): string => {
-    const polarity = quote.polarity || 'neutral';
+    const sentiment = getSentimentFromTemplate(quote.template);
     
-    switch (polarity) {
+    switch (sentiment) {
       case 'positive':
         return 'เชิงบวก';
       case 'negative':
@@ -141,11 +117,11 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     }
   };
   
-  // Get badge variant based on polarity
+  // Get badge variant based on template
   const getBadgeVariant = (quote: Quote) => {
-    const polarity = quote.polarity || 'neutral';
+    const sentiment = getSentimentFromTemplate(quote.template);
     
-    switch (polarity) {
+    switch (sentiment) {
       case 'positive':
         return 'success';
       case 'negative':
@@ -153,6 +129,12 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
       default:
         return 'secondary';
     }
+  };
+  
+  // Get sentiment score based on template
+  const getSentimentScore = (quote: Quote): number => {
+    const sentiment = getSentimentFromTemplate(quote.template);
+    return sentiment === 'positive' ? 1 : sentiment === 'negative' ? -1 : 0;
   };
   
   // Highlight word in sentence
@@ -200,7 +182,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell>{quote.score || 0}</TableCell>
+                    <TableCell>{getSentimentScore(quote)}</TableCell>
                     {showAllUsers && (
                       <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
                     )}
