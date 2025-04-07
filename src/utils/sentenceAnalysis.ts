@@ -6,16 +6,16 @@ export const wordPolarityDatabase = [
   { word: "รัก", templates: ["${บวก}${รัก}ทำให้โลกหมุนไป", "${บวก}${รัก}คือพลังที่ยิ่งใหญ่", "${บวก}เมื่อมี${รัก}ทุกอย่างก็ดูสดใส"] },
   { word: "สุข", templates: ["${บวก}ความ${สุข}อยู่รอบตัวเรา", "${บวก}${สุข}เล็กๆ น้อยๆ ทำให้ชีวิตมีความหมาย"] },
   { word: "สู้", templates: ["${บวก}${สู้}ไปด้วยกัน เราจะผ่านมันไปได้", "${บวก}${สู้}ต่อไป อย่ายอมแพ้"] },
-  { word: "หวัง", templates: ["${บวก}ความ${หวัง}ทำให้เรามีกำลังใจ", "${บวก}${หวัง}แล้วทำ ฝันจะเป็นจริง"] },
-  { word: "เหนื่อย", templates: ["${บวก}${เหนื่อย}วันนี้ เพื่อสบายในวันหน้า", "${บวก}เมื่อ${เหนื่อย}ได้พัก เมื่อพักแล้วลุยต่อ"] },
-  { word: "ล้ม", templates: ["${บวก}${ล้ม}แล้วลุกขึ้นใหม่", "${บวก}การ${ล้ม}คือบทเรียน ไม่ใช่ความล้มเหลว"] },
+  { word: "หวัง", templates: ["${บวก}ความ${หวัง}ทำให้เรามีกำลังใจ", "${กลาง}${หวัง}แล้วทำ ฝันจะเป็นจริง"] },
+  { word: "เหนื่อย", templates: ["${กลาง}${เหนื่อย}วันนี้ เพื่อสบายในวันหน้า", "${กลาง}เมื่อ${เหนื่อย}ได้พัก เมื่อพักแล้วลุยต่อ"] },
+  { word: "ล้ม", templates: ["${กลาง}${ล้ม}แล้วลุกขึ้นใหม่", "${กลาง}การ${ล้ม}คือบทเรียน ไม่ใช่ความล้มเหลว"] },
   { word: "เสียใจ", templates: ["${ลบ}ความ${เสียใจ}จะผ่านไป พรุ่งนี้ต้องดีกว่า", "${ลบ}แม้จะ${เสียใจ} แต่อย่าท้อแท้"] },
   { word: "กลัว", templates: ["${ลบ}ความ${กลัว}เป็นเพียงอุปสรรคที่เราสร้างขึ้นเอง", "${ลบ}อย่าให้ความ${กลัว}หยุดคุณไว้"] },
   { word: "ผิดหวัง", templates: ["${ลบ}ความ${ผิดหวัง}จะทำให้เราเข้มแข็งขึ้น", "${ลบ}${ผิดหวัง}วันนี้ เพื่อเรียนรู้และเติบโตในวันหน้า"] },
 ];
 
 // ฟังก์ชั่นสำหรับดึงความรู้สึกของคำจากฐานข้อมูล (อัพเดทให้ใช้ความรู้สึกจากแม่แบบแทน)
-export const getWordPolarity = (word: string): { polarity: 'positive' | 'negative', score: number } => {
+export const getWordPolarity = (word: string): { polarity: 'positive' | 'neutral' | 'negative', score: number } => {
   let database = [];
   
   try {
@@ -38,20 +38,21 @@ export const getWordPolarity = (word: string): { polarity: 'positive' | 'negativ
     const { sentiment } = analyzeSentimentFromSentence("", wordEntry.templates[0]);
     return {
       polarity: sentiment,
-      score: sentiment === 'positive' ? 1 : -1
+      score: sentiment === 'positive' ? 1 : sentiment === 'negative' ? -1 : 0
     };
   }
   
   // ค่าเริ่มต้น หากไม่พบคำในฐานข้อมูล
-  return { polarity: 'positive', score: 1 };
+  return { polarity: 'neutral', score: 0 };
 };
 
 // Function to analyze a sentence for sentiment
 export const analyzeSentence = (sentence: string | string[]): { 
-  polarity: 'positive' | 'negative'; 
+  polarity: 'positive' | 'neutral' | 'negative'; 
   score: number;
   breakdown: {
     positive: number;
+    neutral: number;
     negative: number;
   };
   emotionFlow: {
@@ -67,8 +68,9 @@ export const analyzeSentence = (sentence: string | string[]): {
   
   const result = analyzeSentimentFromSentence(sentenceText);
   
-  // Count positive and negative words
+  // Count positive, neutral, and negative words
   let positiveCount = 0;
+  let neutralCount = 0;
   let negativeCount = 0;
   
   // If sentence is an array of words, analyze each word
@@ -76,7 +78,8 @@ export const analyzeSentence = (sentence: string | string[]): {
     sentence.forEach(word => {
       const wordPolarity = getWordPolarity(word);
       if (wordPolarity.polarity === 'positive') positiveCount++;
-      else negativeCount++;
+      else if (wordPolarity.polarity === 'negative') negativeCount++;
+      else neutralCount++;
     });
   } else {
     // For a single string, estimate based on the overall sentiment
@@ -84,11 +87,17 @@ export const analyzeSentence = (sentence: string | string[]): {
     const totalWords = words.length || 1;
     
     if (result.sentiment === 'positive') {
-      positiveCount = Math.ceil(totalWords * 0.8);
-      negativeCount = totalWords - positiveCount;
+      positiveCount = Math.ceil(totalWords * 0.7);
+      neutralCount = totalWords - positiveCount - 1;
+      negativeCount = 1; // At least one for balance
+    } else if (result.sentiment === 'negative') {
+      negativeCount = Math.ceil(totalWords * 0.7);
+      neutralCount = totalWords - negativeCount - 1;
+      positiveCount = 1; // At least one for balance
     } else {
-      negativeCount = Math.ceil(totalWords * 0.8);
-      positiveCount = totalWords - negativeCount;
+      neutralCount = Math.ceil(totalWords * 0.7);
+      positiveCount = Math.floor((totalWords - neutralCount) / 2);
+      negativeCount = totalWords - neutralCount - positiveCount;
     }
   }
   
@@ -101,11 +110,11 @@ export const analyzeSentence = (sentence: string | string[]): {
   }
   
   // Determine if there's a consistency in sentiment
-  const consistency = Math.abs(positiveCount - negativeCount) > Math.min(positiveCount, negativeCount);
+  const consistency = Math.abs(positiveCount - negativeCount) > neutralCount;
   
   // Calculate confidence based on clarity of sentiment
-  const totalWords = positiveCount + negativeCount || 1;
-  const dominantSentiment = Math.max(positiveCount, negativeCount);
+  const totalWords = positiveCount + neutralCount + negativeCount || 1;
+  const dominantSentiment = Math.max(positiveCount, neutralCount, negativeCount);
   const confidence = dominantSentiment / totalWords;
   
   // Determine if moderation is needed
@@ -124,6 +133,7 @@ export const analyzeSentence = (sentence: string | string[]): {
     score: result.score,
     breakdown: {
       positive: positiveCount,
+      neutral: neutralCount,
       negative: negativeCount
     },
     emotionFlow: {

@@ -10,6 +10,7 @@ interface SentenceAnalysisProps {
     energyScore: number;
     breakdown: {
       positive: number;
+      neutral: number;
       negative: number;
     };
     emotionFlow: {
@@ -42,7 +43,7 @@ const SentenceAnalysis = ({
 
   const {
     energyScore,
-    breakdown = { positive: 0, negative: 0 },
+    breakdown = { positive: 0, neutral: 0, negative: 0 },
     emotionFlow = { quality: 'good', consistency: true },
     confidence = 0.5,
     needsModeration = false,
@@ -51,6 +52,7 @@ const SentenceAnalysis = ({
 
   // Ensure breakdown properties exist to prevent undefined errors
   const positiveCount = breakdown?.positive || 0;
+  const neutralCount = breakdown?.neutral || 0;
   const negativeCount = breakdown?.negative || 0;
 
   // Normalize energy score for progress display (0-100)
@@ -81,10 +83,14 @@ const SentenceAnalysis = ({
           <Progress value={normalizedScore} className="h-2" />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-center">
+        <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-green-50 p-2 rounded-md">
             <p className="text-xs text-muted-foreground">คำบวก</p>
             <p className="font-bold text-green-600">{positiveCount}</p>
+          </div>
+          <div className="bg-blue-50 p-2 rounded-md">
+            <p className="text-xs text-muted-foreground">คำกลาง</p>
+            <p className="font-bold text-blue-600">{neutralCount}</p>
           </div>
           <div className="bg-red-50 p-2 rounded-md">
             <p className="text-xs text-muted-foreground">คำลบ</p>

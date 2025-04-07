@@ -1,7 +1,7 @@
 
 // ฟังก์ชั่นสำหรับดึงข้อมูลความรู้สึกจากแม่แบบประโยค
-export function extractSentimentFromTemplate(template: string): { sentiment: 'positive' | 'negative', text: string } {
-  let sentiment: 'positive' | 'negative' = 'positive'; // Default to positive
+export function extractSentimentFromTemplate(template: string): { sentiment: 'positive' | 'neutral' | 'negative', text: string } {
+  let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
   let text = template || '';
   
   // ตรวจสอบว่าแม่แบบมีการระบุความรู้สึกหรือไม่
@@ -12,8 +12,7 @@ export function extractSentimentFromTemplate(template: string): { sentiment: 'po
     sentiment = 'negative';
     text = template.replace(/\$\{ลบ\}/g, '');
   } else if (template && template.includes('${กลาง}')) {
-    // Convert neutral to positive as we're removing neutral sentiment
-    sentiment = 'positive';
+    sentiment = 'neutral';
     text = template.replace(/\$\{กลาง\}/g, '');
   }
   
@@ -25,7 +24,7 @@ export function extractSentimentFromTemplate(template: string): { sentiment: 'po
 
 // ฟังก์ชั่นวิเคราะห์ความรู้สึกจากแม่แบบประโยคและประโยคที่สร้าง
 export function analyzeSentimentFromSentence(sentence: string, template?: string): { 
-  sentiment: 'positive' | 'negative',
+  sentiment: 'positive' | 'neutral' | 'negative',
   score: number 
 } {
   // หากมีแม่แบบ ให้ใช้ความรู้สึกจากแม่แบบ
@@ -33,7 +32,7 @@ export function analyzeSentimentFromSentence(sentence: string, template?: string
     const { sentiment } = extractSentimentFromTemplate(template);
     return {
       sentiment,
-      score: sentiment === 'positive' ? 1 : -1
+      score: sentiment === 'positive' ? 1 : sentiment === 'negative' ? -1 : 0
     };
   }
   
@@ -53,32 +52,36 @@ export function analyzeSentimentFromSentence(sentence: string, template?: string
   }
   
   // ตัดสินใจจากคำที่พบ
-  if (positiveCount >= negativeCount) {
+  if (positiveCount > negativeCount) {
     return { sentiment: 'positive', score: 1 };
-  } else {
+  } else if (negativeCount > positiveCount) {
     return { sentiment: 'negative', score: -1 };
+  } else {
+    return { sentiment: 'neutral', score: 0 };
   }
 }
 
 // Helper functions for UI display
-export function getSentimentBadgeVariant(sentiment: 'positive' | 'negative' | undefined): string {
+export function getSentimentBadgeVariant(sentiment: 'positive' | 'neutral' | 'negative' | undefined): string {
   switch (sentiment) {
     case 'positive':
       return 'success';
     case 'negative':
       return 'destructive';
+    case 'neutral':
     default:
-      return 'success'; // Default to positive variant
+      return 'secondary';
   }
 }
 
-export function getPolarityText(sentiment: 'positive' | 'negative' | undefined): string {
+export function getPolarityText(sentiment: 'positive' | 'neutral' | 'negative' | undefined): string {
   switch (sentiment) {
     case 'positive':
       return 'เชิงบวก';
     case 'negative':
       return 'เชิงลบ';
+    case 'neutral':
     default:
-      return 'เชิงบวก'; // Default to positive text
+      return 'กลาง';
   }
 }

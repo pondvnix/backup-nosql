@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getWordPolarity } from "@/utils/sentenceAnalysis";
@@ -9,7 +10,7 @@ interface WordLogEntry {
   word: string;
   contributor: string;
   timestamp: Date;
-  sentiment?: 'positive' | 'negative'; // Template sentiment
+  sentiment?: 'positive' | 'neutral' | 'negative'; // Template sentiment instead of polarity
   templates?: string[];
 }
 
@@ -28,10 +29,10 @@ const WordPolarityLog = ({ words }: WordPolarityLogProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 30;
   
-  // Process words to include template sentiment information
+  // Process words to include template sentiment information instead of polarity
   const wordLog: WordLogEntry[] = words.map(word => {
     // Get template sentiment if available
-    let sentiment: 'positive' | 'negative' = 'positive';
+    let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
     
     if (word.templates && word.templates.length > 0) {
       // Use the first template's sentiment
@@ -40,8 +41,7 @@ const WordPolarityLog = ({ words }: WordPolarityLogProps) => {
       } else if (word.templates[0].startsWith('${ลบ}')) {
         sentiment = 'negative';
       } else if (word.templates[0].startsWith('${กลาง}')) {
-        // Convert neutral to positive as we're removing neutral sentiment
-        sentiment = 'positive';
+        sentiment = 'neutral';
       }
     }
     
@@ -122,13 +122,16 @@ const WordPolarityLog = ({ words }: WordPolarityLogProps) => {
                 <td className="px-4 py-2">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     badgeVariant === 'success' ? 'bg-green-100 text-green-800 border-green-300' :
-                    'bg-red-100 text-red-800 border-red-300'
+                    badgeVariant === 'destructive' ? 'bg-red-100 text-red-800 border-red-300' :
+                    'bg-blue-100 text-blue-800 border-blue-300'
                   }`}>
                     {getPolarityText(entry.sentiment)}
                   </span>
                 </td>
                 <td className="px-4 py-2">
-                  {entry.sentiment === 'positive' ? '1 คะแนน' : '-1 คะแนน'}
+                  {entry.sentiment === 'positive' ? '1 คะแนน' : 
+                   entry.sentiment === 'negative' ? '-1 คะแนน' : 
+                   '0 คะแนน'}
                 </td>
               </tr>
             );

@@ -2,15 +2,11 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useState, useEffect } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Smile, Frown } from "lucide-react";
-import { extractSentimentFromTemplate, getPolarityText } from "@/utils/sentimentConsistency";
 
 interface Quote {
   text: string;
   date: Date;
   userId: string;
-  template?: string;
 }
 
 interface QuoteManagementTableProps {
@@ -79,29 +75,6 @@ const QuoteManagementTable = ({ quotes }: QuoteManagementTableProps) => {
     });
   };
   
-  // Get sentiment from template
-  const getSentimentFromTemplate = (template?: string): 'positive' | 'negative' => {
-    if (!template) return 'positive';
-    
-    const { sentiment } = extractSentimentFromTemplate(template);
-    return sentiment;
-  };
-  
-  // Get sentiment icon based on template
-  const getSentimentIcon = (quote: Quote) => {
-    const sentiment = getSentimentFromTemplate(quote.template);
-    
-    return sentiment === 'positive' 
-      ? <Smile className="h-4 w-4 text-green-500" />
-      : <Frown className="h-4 w-4 text-red-500" />;
-  };
-  
-  // Get badge variant based on template
-  const getBadgeVariant = (quote: Quote) => {
-    const sentiment = getSentimentFromTemplate(quote.template);
-    return sentiment === 'positive' ? 'success' : 'destructive';
-  };
-  
   return (
     <div className="space-y-4">
       {displayedQuotes.length > 0 ? (
@@ -110,7 +83,6 @@ const QuoteManagementTable = ({ quotes }: QuoteManagementTableProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ความรู้สึก</TableHead>
                   <TableHead>ประโยคกำลังใจ</TableHead>
                   <TableHead>ผู้สร้าง</TableHead>
                   <TableHead>วันที่เวลา (GMT+7)</TableHead>
@@ -119,14 +91,6 @@ const QuoteManagementTable = ({ quotes }: QuoteManagementTableProps) => {
               <TableBody>
                 {currentQuotes.map((quote, index) => (
                   <TableRow key={`${quote.text}-${index}`} isHighlighted={index % 2 === 0}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getSentimentIcon(quote)}
-                        <Badge variant={getBadgeVariant(quote)}>
-                          {getPolarityText(getSentimentFromTemplate(quote.template))}
-                        </Badge>
-                      </div>
-                    </TableCell>
                     <TableCell className="font-medium">{quote.text}</TableCell>
                     <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
                     <TableCell className="text-xs">{formatDate(quote.date)}</TableCell>

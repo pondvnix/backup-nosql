@@ -1,9 +1,10 @@
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useState, useEffect } from "react";
-import { Smile, Frown } from "lucide-react";
+import { Smile, Meh, Frown } from "lucide-react";
 import { Badge } from "./ui/badge";
-import { extractSentimentFromTemplate, getSentimentBadgeVariant, getPolarityText } from "@/utils/sentimentConsistency";
+import { extractSentimentFromTemplate } from "@/utils/sentimentConsistency";
 
 interface Quote {
   text: string;
@@ -81,8 +82,8 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   };
   
   // Get sentiment from template
-  const getSentimentFromTemplate = (template?: string): 'positive' | 'negative' => {
-    if (!template) return 'positive';
+  const getSentimentFromTemplate = (template?: string): 'positive' | 'neutral' | 'negative' => {
+    if (!template) return 'neutral';
     
     const { sentiment } = extractSentimentFromTemplate(template);
     return sentiment;
@@ -92,27 +93,48 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   const getSentimentIcon = (quote: Quote) => {
     const sentiment = getSentimentFromTemplate(quote.template);
     
-    return sentiment === 'positive' 
-      ? <Smile className="h-4 w-4 text-green-500" />
-      : <Frown className="h-4 w-4 text-red-500" />;
+    switch (sentiment) {
+      case 'positive':
+        return <Smile className="h-4 w-4 text-green-500" />;
+      case 'negative':
+        return <Frown className="h-4 w-4 text-red-500" />;
+      default:
+        return <Meh className="h-4 w-4 text-blue-500" />;
+    }
   };
   
   // Get polarity text based on template
-  const getPolarityTextFromTemplate = (quote: Quote): string => {
+  const getPolarityText = (quote: Quote): string => {
     const sentiment = getSentimentFromTemplate(quote.template);
-    return sentiment === 'positive' ? 'เชิงบวก' : 'เชิงลบ';
+    
+    switch (sentiment) {
+      case 'positive':
+        return 'เชิงบวก';
+      case 'negative':
+        return 'เชิงลบ';
+      default:
+        return 'กลาง';
+    }
   };
   
   // Get badge variant based on template
   const getBadgeVariant = (quote: Quote) => {
     const sentiment = getSentimentFromTemplate(quote.template);
-    return sentiment === 'positive' ? 'success' : 'destructive';
+    
+    switch (sentiment) {
+      case 'positive':
+        return 'success';
+      case 'negative':
+        return 'destructive';
+      default:
+        return 'secondary';
+    }
   };
   
   // Get sentiment score based on template
   const getSentimentScore = (quote: Quote): number => {
     const sentiment = getSentimentFromTemplate(quote.template);
-    return sentiment === 'positive' ? 1 : -1;
+    return sentiment === 'positive' ? 1 : sentiment === 'negative' ? -1 : 0;
   };
   
   // Highlight word in sentence
@@ -156,7 +178,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
                       <div className="flex items-center gap-2">
                         {getSentimentIcon(quote)}
                         <Badge variant={getBadgeVariant(quote)}>
-                          {getPolarityTextFromTemplate(quote)}
+                          {getPolarityText(quote)}
                         </Badge>
                       </div>
                     </TableCell>
