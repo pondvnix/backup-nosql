@@ -50,6 +50,11 @@ const SentenceAnalysis = ({
     suggestion = "ไม่มีคำแนะนำ",
   } = analysisResult;
 
+  // Ensure breakdown properties exist to prevent undefined errors
+  const positiveCount = breakdown?.positive || 0;
+  const neutralCount = breakdown?.neutral || 0;
+  const negativeCount = breakdown?.negative || 0;
+
   // Normalize energy score for progress display (0-100)
   // Assuming the max score would be all positive words (words.length)
   const normalizedScore = Math.max(0, Math.min(100, ((energyScore + words.length) / (words.length * 2)) * 100));
@@ -81,15 +86,15 @@ const SentenceAnalysis = ({
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-green-50 p-2 rounded-md">
             <p className="text-xs text-muted-foreground">คำบวก</p>
-            <p className="font-bold text-green-600">{breakdown.positive}</p>
+            <p className="font-bold text-green-600">{positiveCount}</p>
           </div>
           <div className="bg-blue-50 p-2 rounded-md">
             <p className="text-xs text-muted-foreground">คำกลาง</p>
-            <p className="font-bold text-blue-600">{breakdown.neutral}</p>
+            <p className="font-bold text-blue-600">{neutralCount}</p>
           </div>
           <div className="bg-red-50 p-2 rounded-md">
             <p className="text-xs text-muted-foreground">คำลบ</p>
-            <p className="font-bold text-red-600">{breakdown.negative}</p>
+            <p className="font-bold text-red-600">{negativeCount}</p>
           </div>
         </div>
 
@@ -97,23 +102,23 @@ const SentenceAnalysis = ({
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">การไหลของอารมณ์</span>
             <span className={
-              emotionFlow.quality === 'excellent' 
+              emotionFlow?.quality === 'excellent' 
                 ? 'text-green-500' 
-                : emotionFlow.quality === 'good' 
+                : emotionFlow?.quality === 'good' 
                   ? 'text-amber-500' 
                   : 'text-red-500'
             }>
-              {emotionFlow.quality === 'excellent' 
+              {emotionFlow?.quality === 'excellent' 
                 ? 'ดีเยี่ยม' 
-                : emotionFlow.quality === 'good' 
+                : emotionFlow?.quality === 'good' 
                   ? 'ดี' 
                   : 'ต้องปรับปรุง'}
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span>ความต่อเนื่อง:</span>
-            <span className={emotionFlow.consistency ? 'text-green-500' : 'text-red-500'}>
-              {emotionFlow.consistency ? 'ดี' : 'กระโดด'}
+            <span className={emotionFlow?.consistency ? 'text-green-500' : 'text-red-500'}>
+              {emotionFlow?.consistency ? 'ดี' : 'กระโดด'}
             </span>
           </div>
         </div>
@@ -121,9 +126,9 @@ const SentenceAnalysis = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">ความมั่นใจในการวิเคราะห์</span>
-            <span>{Math.round(confidence * 100)}%</span>
+            <span>{Math.round((confidence || 0) * 100)}%</span>
           </div>
-          <Progress value={confidence * 100} className="h-2" />
+          <Progress value={(confidence || 0) * 100} className="h-2" />
         </div>
 
         <div className="flex items-center p-3 rounded-md bg-secondary">
