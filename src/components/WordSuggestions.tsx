@@ -34,7 +34,7 @@ const WordSuggestions = ({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [wordDatabase, setWordDatabase] = useState<WordEntry[]>([]);
   const [usedTemplates, setUsedTemplates] = useState<string[]>([]);
-  const [hasUsedToday, setHasUsedToday] = useState(false);
+  const [hasUsedToday, setHasUsedToday] = useState(false); // Ensure this is defined
   const { toast } = useToast();
 
   // Load the word database from local storage and track used templates
@@ -77,8 +77,12 @@ const WordSuggestions = ({
         lastDate.getMonth() === today.getMonth() &&
         lastDate.getFullYear() === today.getFullYear()
       ) {
-        setHasUsedToday(true);
+        setHasUsedToday(false); // Disable quota restriction as requested
+      } else {
+        setHasUsedToday(false); // Always set to false to disable quota
       }
+    } else {
+      setHasUsedToday(false); // Always set to false if no date found
     }
   };
 
@@ -189,15 +193,8 @@ const WordSuggestions = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasUsedToday) {
-      toast({
-        title: "ขออภัย",
-        description: "คุณได้ใช้โควต้าการสร้างประโยคกำลังใจวันนี้แล้ว กรุณารอจนถึงวันพรุ่งนี้",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Removed the hasUsedToday check as requested
+    
     if (selectedSuggestion) {
       // Add the selected word to the stream
       onSelectWord(selectedSuggestion.word);
@@ -247,17 +244,17 @@ const WordSuggestions = ({
       // Also dispatch billboard updated event
       window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
       
-      // Mark as used for today
+      // Set the last used date but don't update the hasUsedToday state
       localStorage.setItem('last-word-used-date', new Date().toISOString());
-      setHasUsedToday(true);
-
+      // Removed setHasUsedToday(true) as requested
+      
       toast({
         title: "เพิ่มคำสำเร็จ!",
         description: (
           <div className="mt-2">
             <p>คำ "<span className="text-[#F97316] font-semibold">{selectedSuggestion.word}</span>" ได้ถูกเพิ่มเข้าสู่ประโยคกำลังใจแล้ว</p>
             <p className="mt-1 font-medium">"{sentence}"</p>
-            <p className="mt-2 text-sm text-muted-foreground">คุณสามารถสร้างประโยคกำลังใจได้อีกครั้งในวันพรุ่งนี้</p>
+            <p className="mt-2 text-sm text-muted-foreground">คุณสามารถสร้างประโยคกำลังใจได้ทุกเมื่อ</p>
           </div>
         ),
       });
@@ -338,16 +335,11 @@ const WordSuggestions = ({
 
         <Button
           type="submit"
-          disabled={!selectedSuggestion || hasUsedToday}
+          disabled={!selectedSuggestion}
           className="w-full transition-all duration-300 hover:scale-105"
         >
-          {hasUsedToday ? 'คุณได้ใช้โควต้าวันนี้แล้ว' : 'ใช้คำนี้'}
+          ใช้คำนี้
         </Button>
-        {hasUsedToday && (
-          <p className="text-sm text-center text-muted-foreground">
-            คุณสามารถสร้างประโยคกำลังใจได้อีกครั้งในวันพรุ่งนี้
-          </p>
-        )}
       </form>
     </div>
   );
