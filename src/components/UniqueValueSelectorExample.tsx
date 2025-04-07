@@ -30,12 +30,19 @@ const UniqueValueSelectorExample = () => {
 
   const handleSelectAll = (options: OptionType[]) => {
     setAllSelected(options);
-    // You could distribute these values among your selectors
+    // Distribute these values among your selectors
     if (options.length > 0) {
       setSelection1(options[0]);
       if (options.length > 1) {
         setSelection2(options[1]);
+      } else {
+        // Clear selection2 if there's only one option
+        setSelection2(undefined);
       }
+    } else {
+      // Clear both selections if no options
+      setSelection1(undefined);
+      setSelection2(undefined);
     }
   };
 

@@ -108,20 +108,25 @@ export function UniqueValueSelector({
       >
         {options.map((option) => {
           const isDisabled = usedValues.includes(option.value) && option.value !== selected?.value;
+          // Create a unique value for each option
+          const optionValue = option.value;
           
           return (
-            <div key={option.value} className={cn(
-              "flex items-center space-x-2 rounded-md border p-3 transition-colors",
-              isDisabled ? "opacity-50 cursor-not-allowed bg-muted" : "hover:bg-accent",
-              selectedValue === option.value && "border-primary bg-accent"
-            )}>
+            <div 
+              key={optionValue} 
+              className={cn(
+                "flex items-center space-x-2 rounded-md border p-3 transition-colors",
+                isDisabled ? "opacity-50 cursor-not-allowed bg-muted" : "hover:bg-accent",
+                selectedValue === optionValue && "border-primary bg-accent"
+              )}
+            >
               <RadioGroupItem 
-                value={option.value} 
-                id={`option-${option.value}`}
+                value={optionValue} 
+                id={`option-${optionValue}`}
                 disabled={isDisabled}
               />
               <Label 
-                htmlFor={`option-${option.value}`} 
+                htmlFor={`option-${optionValue}`} 
                 className={cn(
                   "cursor-pointer flex-1",
                   isDisabled && "cursor-not-allowed"
