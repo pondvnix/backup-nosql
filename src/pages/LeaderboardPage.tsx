@@ -11,6 +11,7 @@ import { getWordPolarity } from "@/utils/sentenceAnalysis";
 interface MotivationalSentence {
   word: string;
   sentence: string;
+  template?: string;
   contributor?: string;
   timestamp: Date | string | number;
   polarity?: 'positive' | 'neutral' | 'negative';

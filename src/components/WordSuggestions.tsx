@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,19 +36,32 @@ const WordSuggestions = ({
   const [selectedOption, setSelectedOption] = useState<string>("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [globalUsedWords, setGlobalUsedWords] = useState<string[]>([]);
+  const [usedWordTemplates, setUsedWordTemplates] = useState<Set<string>>(new Set());
 
-  // Load all globally used words from localStorage
-  const loadGlobalUsedWords = () => {
+  // Load all globally used words and word-template combinations from localStorage
+  const loadUsedWordsAndTemplates = () => {
     try {
       const storedSentences = localStorage.getItem('motivation-sentences');
       if (storedSentences) {
         const sentences = JSON.parse(storedSentences);
+        
+        // Track used words
         const allUsedWords = sentences.map((item: any) => item.word || "");
         setGlobalUsedWords(allUsedWords.filter(Boolean));
+        
+        // Track used word-template combinations
+        const usedCombinations = new Set<string>();
+        sentences.forEach((item: any) => {
+          if (item.word && item.sentence) {
+            usedCombinations.add(`${item.word}_${item.sentence}`);
+          }
+        });
+        setUsedWordTemplates(usedCombinations);
       }
     } catch (e) {
-      console.error("Error loading used words:", e);
+      console.error("Error loading used words and templates:", e);
       setGlobalUsedWords([]);
+      setUsedWordTemplates(new Set());
     }
   };
 
@@ -72,12 +86,20 @@ const WordSuggestions = ({
         wordDatabase = response.database || [];
       }
       
-      // Filter out words that are already in existingWords or globally used
-      const filteredWords = wordDatabase.filter(
-        (word: any) => 
-          !existingWords.includes(word.word) && 
-          !globalUsedWords.includes(word.word)
-      );
+      // Filter out words that don't have any unused templates
+      const filteredWords = wordDatabase.filter((wordEntry: any) => {
+        // If the word doesn't have templates, don't suggest it
+        if (!wordEntry.templates || wordEntry.templates.length === 0) {
+          return false;
+        }
+        
+        // Check if there are any unused templates for this word
+        const hasUnusedTemplates = wordEntry.templates.some((template: string) => {
+          return !usedWordTemplates.has(`${wordEntry.word}_${template}`);
+        });
+        
+        return hasUnusedTemplates;
+      });
       
       // Shuffle and take the first few words
       const shuffled = [...filteredWords].sort(() => 0.5 - Math.random());
@@ -100,8 +122,13 @@ const WordSuggestions = ({
 
     words.forEach(wordItem => {
       if (wordItem.templates && wordItem.templates.length > 0 && showMultipleTemplates) {
-        // Add each word-template combination as a separate option
+        // Add each word-template combination as a separate option, but only if not already used
         wordItem.templates.forEach(template => {
+          // Skip this template if it's already been used with this word
+          if (usedWordTemplates.has(`${wordItem.word}_${template}`)) {
+            return;
+          }
+          
           // Create a preview of the template by replacing ${word} with the actual word
           const templatePreview = template
             .replace(new RegExp(`\\$\\{${wordItem.word}\\}`, 'g'), wordItem.word)
@@ -114,8 +141,8 @@ const WordSuggestions = ({
             displayText: `${wordItem.word} - ${templatePreview}`
           });
         });
-      } else {
-        // Add just the word as an option if no templates or showMultipleTemplates is false
+      } else if (!showMultipleTemplates) {
+        // Add just the word as an option if showMultipleTemplates is false
         options.push({
           word: wordItem.word,
           polarity: wordItem.polarity,
@@ -130,18 +157,18 @@ const WordSuggestions = ({
 
   // Initialize suggestions on component mount and when global used words change
   useEffect(() => {
-    loadGlobalUsedWords();
+    loadUsedWordsAndTemplates();
     
     const handleMotivationalSentenceGenerated = () => {
-      loadGlobalUsedWords();
+      loadUsedWordsAndTemplates();
     };
     
     window.addEventListener('motivationalSentenceGenerated', handleMotivationalSentenceGenerated);
-    window.addEventListener('motivation-billboard-updated', loadGlobalUsedWords);
+    window.addEventListener('motivation-billboard-updated', loadUsedWordsAndTemplates);
     
     return () => {
       window.removeEventListener('motivationalSentenceGenerated', handleMotivationalSentenceGenerated);
-      window.removeEventListener('motivation-billboard-updated', loadGlobalUsedWords);
+      window.removeEventListener('motivation-billboard-updated', loadUsedWordsAndTemplates);
     };
   }, []);
   
@@ -154,7 +181,7 @@ const WordSuggestions = ({
       const refreshInterval = setInterval(generateSuggestions, 60000);
       return () => clearInterval(refreshInterval);
     }
-  }, [disableAutoRefresh, existingWords, globalUsedWords]);
+  }, [disableAutoRefresh, existingWords, globalUsedWords, usedWordTemplates]);
 
   // Handle option selection from radio group
   const handleOptionSelect = (optionId: string) => {
@@ -183,10 +210,14 @@ const WordSuggestions = ({
         const contributor = localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
         
         // Save the sentence to the motivational sentences database
-        storeSentenceInDatabase(selectedItem.word, sentenceText, contributor);
+        storeSentenceInDatabase(selectedItem.word, sentenceText, contributor, selectedItem.template);
         
-        // Add the selected word to the global used words
-        setGlobalUsedWords(prev => [...prev, selectedItem.word]);
+        // Add the selected word-template combination to the usedWordTemplates set
+        setUsedWordTemplates(prev => {
+          const newSet = new Set(prev);
+          newSet.add(`${selectedItem.word}_${selectedItem.template || 'default'}`);
+          return newSet;
+        });
         
         // Trigger the motivational sentence event so other components can update
         const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
@@ -208,14 +239,15 @@ const WordSuggestions = ({
   };
   
   // Store the sentence in the local database
-  const storeSentenceInDatabase = (word: string, sentence: string, contributor: string) => {
+  const storeSentenceInDatabase = (word: string, sentence: string, contributor: string, template?: string) => {
     if (!sentence) return;
     
     const newEntry = {
       sentence,
       word,
       contributor: contributor || 'ไม่ระบุชื่อ',
-      timestamp: new Date()
+      timestamp: new Date(),
+      template
     };
     
     let existingEntries = [];

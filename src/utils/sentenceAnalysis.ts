@@ -1,4 +1,3 @@
-
 // Word Polarity Database (Simple version)
 // In a production app, this would be loaded from a database
 export interface WordPolarity {

@@ -21,7 +21,44 @@ const MotivationalSentence = ({
   const [displaySentence, setDisplaySentence] = useState<string>("");
   const [generatedSentences, setGeneratedSentences] = useState<{word: string, sentence: string, contributor?: string, template?: string}[]>([]);
   const [showSentence, setShowSentence] = useState(shouldDisplay);
+  const [usedWordTemplates, setUsedWordTemplates] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  
+  // Load used word-template combinations
+  useEffect(() => {
+    const loadUsedWordTemplates = () => {
+      try {
+        const storedSentences = localStorage.getItem('motivation-sentences');
+        if (storedSentences) {
+          const sentences = JSON.parse(storedSentences);
+          
+          // Track used word-template combinations
+          const usedCombinations = new Set<string>();
+          sentences.forEach((item: any) => {
+            if (item.word && item.sentence) {
+              usedCombinations.add(`${item.word}_${item.sentence}`);
+              if (item.template) {
+                usedCombinations.add(`${item.word}_${item.template}`);
+              }
+            }
+          });
+          setUsedWordTemplates(usedCombinations);
+        }
+      } catch (e) {
+        console.error("Error loading used word-templates:", e);
+      }
+    };
+    
+    loadUsedWordTemplates();
+    
+    window.addEventListener('motivationalSentenceGenerated', loadUsedWordTemplates);
+    window.addEventListener('motivation-billboard-updated', loadUsedWordTemplates);
+    
+    return () => {
+      window.removeEventListener('motivationalSentenceGenerated', loadUsedWordTemplates);
+      window.removeEventListener('motivation-billboard-updated', loadUsedWordTemplates);
+    };
+  }, []);
   
   // Initialize with provided sentence if available
   useEffect(() => {
@@ -59,6 +96,16 @@ const MotivationalSentence = ({
       if (event.detail && event.detail.sentence) {
         setDisplaySentence(event.detail.sentence);
         setShowSentence(true);
+        
+        // Track the used word-template combination
+        if (event.detail.word && event.detail.template) {
+          setUsedWordTemplates(prev => {
+            const newSet = new Set(prev);
+            newSet.add(`${event.detail.word}_${event.detail.template}`);
+            newSet.add(`${event.detail.word}_${event.detail.sentence}`);
+            return newSet;
+          });
+        }
       }
     };
     
@@ -100,9 +147,19 @@ const MotivationalSentence = ({
     
     // Get templates for this word if available, otherwise use default templates
     if (wordEntry?.templates && wordEntry.templates.length > 0) {
-      // Use custom templates for this specific word
-      const randomIndex = Math.floor(Math.random() * wordEntry.templates.length);
-      return wordEntry.templates[randomIndex].replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+      // Filter out already used templates
+      const unusedTemplates = wordEntry.templates.filter(template => 
+        !usedWordTemplates.has(`${word}_${template}`)
+      );
+      
+      // If there are unused templates, pick one randomly
+      if (unusedTemplates.length > 0) {
+        const randomIndex = Math.floor(Math.random() * unusedTemplates.length);
+        return unusedTemplates[randomIndex].replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
+      }
+      
+      // If all templates are used, fall back to the first template
+      return wordEntry.templates[0].replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
     }
     
     // Default templates based on polarity

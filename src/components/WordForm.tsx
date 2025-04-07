@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +33,7 @@ const WordForm = ({
   const [contributor, setContributor] = useState("");
   const [inputMethod, setInputMethod] = useState<"manual" | "suggestions">("suggestions");
   const [wordDatabase, setWordDatabase] = useState<WordEntry[]>([]);
-  const [usedWords, setUsedWords] = useState<string[]>([]);
+  const [usedWordTemplates, setUsedWordTemplates] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,14 +43,14 @@ const WordForm = ({
     }
     
     loadWordDatabase();
-    loadUsedWords();
+    loadUsedWordTemplates();
     
     const handleDatabaseUpdate = () => {
       loadWordDatabase();
     };
     
     const handleBillboardUpdate = () => {
-      loadUsedWords();
+      loadUsedWordTemplates();
     };
     
     window.addEventListener('word-database-updated', handleDatabaseUpdate);
@@ -65,16 +64,24 @@ const WordForm = ({
     };
   }, []);
 
-  const loadUsedWords = () => {
+  const loadUsedWordTemplates = () => {
     try {
       const storedSentences = localStorage.getItem('motivation-sentences');
       if (storedSentences) {
         const sentences = JSON.parse(storedSentences);
-        const billboardWords = sentences.map((item: any) => item.word || "");
-        setUsedWords(billboardWords.filter(Boolean));
+        
+        // Track used word-template combinations
+        const usedCombinations = new Set<string>();
+        sentences.forEach((item: any) => {
+          if (item.word && item.sentence) {
+            usedCombinations.add(`${item.word}_${item.sentence}`);
+          }
+        });
+        setUsedWordTemplates(usedCombinations);
       }
     } catch (e) {
-      console.error("Error loading used words:", e);
+      console.error("Error loading used word-templates:", e);
+      setUsedWordTemplates(new Set());
     }
   };
 
@@ -95,15 +102,6 @@ const WordForm = ({
     const trimmedWord = word.trim();
     const trimmedContributor = contributor.trim() || "ไม่ระบุชื่อ";
 
-    if (usedWords.includes(trimmedWord)) {
-      toast({
-        title: "คำนี้ถูกใช้ไปแล้ว",
-        description: "คำนี้ปรากฏในประโยคกำลังใจล่าสุดแล้ว กรุณาใช้คำอื่น",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const validation = validateWordInput(trimmedWord, trimmedContributor);
     
     if (!validation.isValid) {
@@ -119,12 +117,29 @@ const WordForm = ({
     const wordEntry = wordDatabase.find(entry => entry.word === trimmedWord);
     
     if (wordEntry) {
-      const sentence = generateEncouragingSentence(trimmedWord, wordEntry);
+      // Find an unused template for this word
+      const unusedTemplates = wordEntry.templates.filter(template => 
+        !usedWordTemplates.has(`${trimmedWord}_${template}`)
+      );
+      
+      if (unusedTemplates.length === 0) {
+        toast({
+          title: "ไม่พบประโยคกำลังใจที่ยังไม่ได้ใช้",
+          description: "ประโยคกำลังใจสำหรับคำนี้ถูกใช้ไปหมดแล้ว กรุณาใช้คำอื่น",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Select a random unused template
+      const template = unusedTemplates[Math.floor(Math.random() * unusedTemplates.length)];
+      const sentence = template.replace(new RegExp(`\\$\\{${trimmedWord}\\}`, 'g'), trimmedWord);
       
       // Create a new sentence entry
       const newSentenceEntry = {
         word: trimmedWord,
         sentence: sentence,
+        template: template,
         contributor: trimmedContributor,
         timestamp: new Date()
       };
@@ -139,17 +154,22 @@ const WordForm = ({
         console.error("Error updating sentences:", error);
       }
       
+      // Add to used word-template combinations
+      setUsedWordTemplates(prev => {
+        const newSet = new Set(prev);
+        newSet.add(`${trimmedWord}_${template}`);
+        return newSet;
+      });
+      
       const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
         detail: { 
           sentence,
           word: trimmedWord,
-          contributor: trimmedContributor
+          contributor: trimmedContributor,
+          template
         }
       });
       window.dispatchEvent(sentenceEvent);
-      
-      // Add to used words
-      setUsedWords(prev => [...prev, trimmedWord]);
       
       toast({
         title: "เพิ่มคำสำเร็จ!",
@@ -166,56 +186,34 @@ const WordForm = ({
     setWord("");
   };
 
-  const generateEncouragingSentence = (word: string, wordEntry: WordEntry): string => {
-    if (wordEntry.templates && wordEntry.templates.length > 0) {
-      const randomIndex = Math.floor(Math.random() * wordEntry.templates.length);
-      return wordEntry.templates[randomIndex].replace(new RegExp(`\\$\\{${word}\\}`, 'g'), word);
-    }
-    
-    const positiveTemplates = [
-      `การมี${word}ในชีวิตทำให้เรารู้สึกดีขึ้น`,
-      `${word}คือสิ่งที่เราทุกคนต้องการ`,
-      `${word}จะทำให้เราเข้มแข็งขึ้น`,
-      `อย่าลืมที่จะ${word}ทุกวัน`,
-      `${word}คือพลังใจที่เราสร้างได้`,
-    ];
-    
-    const neutralTemplates = [
-      `${word}เป็นส่วนหนึ่งของชีวิตที่เราต้องเรียนรู้`,
-      `${word}และความพยายามจะนำไปสู่ความสำเร็จ`,
-      `${word}จะทำให้เราเข้าใจตัวเองมากขึ้น`,
-      `ทุกคนมี${word}ในแบบของตัวเอง`,
-      `${word}เป็นสิ่งที่ทำให้ชีวิตมีความหมาย`,
-    ];
-    
-    const negativeTemplates = [
-      `แม้จะมี${word} แต่เราจะผ่านมันไปได้`,
-      `${word}เป็นบทเรียนที่ทำให้เราเติบโต`,
-      `อย่าให้${word}มาหยุดความฝันของเรา`,
-      `${word}จะกลายเป็นแรงผลักดันให้เราไปต่อ`,
-      `เราจะเปลี่ยน${word}ให้เป็นพลัง`,
-    ];
-    
-    const templates = wordEntry.polarity === "positive" ? positiveTemplates : 
-                       wordEntry.polarity === "neutral" ? neutralTemplates : 
-                       negativeTemplates;
-    
-    const randomIndex = Math.floor(Math.random() * templates.length);
-    return templates[randomIndex];
-  };
-
   const handleSelectSuggestion = (selectedWord: string, template?: string) => {
     const contributorName = contributor.trim() || "ไม่ระบุชื่อ";
     localStorage.setItem("contributor-name", contributorName);
     
-    // Add to used words
-    setUsedWords(prev => [...prev, selectedWord]);
+    // Add to used word-template combinations if template is provided
+    if (template) {
+      setUsedWordTemplates(prev => {
+        const newSet = new Set(prev);
+        newSet.add(`${selectedWord}_${template}`);
+        return newSet;
+      });
+    }
     
-    onAddWord(selectedWord, contributorName, template);
+    onSelectWord(selectedWord, contributorName, template);
   };
 
+  // We'll maintain this for backward compatibility, but now we focus on word-template combinations
   const isWordAvailable = (wordText: string) => {
-    return !usedWords.includes(wordText);
+    const wordEntry = wordDatabase.find(entry => entry.word === wordText);
+    
+    if (!wordEntry || !wordEntry.templates || wordEntry.templates.length === 0) {
+      return false;
+    }
+    
+    // Check if there are any unused templates for this word
+    return wordEntry.templates.some(template => 
+      !usedWordTemplates.has(`${wordText}_${template}`)
+    );
   };
 
   return (
