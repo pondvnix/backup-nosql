@@ -85,6 +85,10 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   const getSentimentFromTemplate = (template?: string): 'positive' | 'neutral' | 'negative' => {
     if (!template) return 'neutral';
     
+    if (template.includes('${บวก}')) return 'positive';
+    if (template.includes('${ลบ}')) return 'negative';
+    if (template.includes('${กลาง}')) return 'neutral';
+    
     const { sentiment } = extractSentimentFromTemplate(template);
     return sentiment;
   };
