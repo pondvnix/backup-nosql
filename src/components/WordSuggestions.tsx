@@ -198,6 +198,7 @@ const WordSuggestions = ({
           markTemplateAsUsed(selectedItem.word, selectedItem.template);
         }
         
+        // Standardize empty contributor as "ไม่ระบุชื่อ"
         const contributor = localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
         
         storeSentenceInDatabase(selectedItem.word, sentenceText, contributor, selectedItem.template);
@@ -235,10 +236,13 @@ const WordSuggestions = ({
       sentiment = sentimentInfo.sentiment;
     }
     
+    // Ensure contributor is never empty
+    const safeContributor = contributor ? contributor.trim() : 'ไม่ระบุชื่อ';
+    
     const newEntry = {
       sentence,
       word,
-      contributor: contributor || 'ไม่ระบุชื่อ',
+      contributor: safeContributor,
       timestamp: new Date(),
       template,
       sentiment
@@ -258,11 +262,20 @@ const WordSuggestions = ({
       existingEntries = [];
     }
     
-    const updatedEntries = [newEntry, ...existingEntries];
-    localStorage.setItem('motivation-sentences', JSON.stringify(updatedEntries));
+    // Check for duplicates before adding
+    const isDuplicate = existingEntries.some(
+      (entry: any) => entry.word === word && 
+                     entry.sentence === sentence && 
+                     entry.contributor === safeContributor
+    );
     
-    window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
-    window.dispatchEvent(new CustomEvent('template-usage-updated'));
+    if (!isDuplicate) {
+      const updatedEntries = [newEntry, ...existingEntries];
+      localStorage.setItem('motivation-sentences', JSON.stringify(updatedEntries));
+      
+      window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
+      window.dispatchEvent(new CustomEvent('template-usage-updated'));
+    }
   };
 
   const getPolarityClass = (polarity: string) => {

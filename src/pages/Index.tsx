@@ -77,7 +77,7 @@ const Index = () => {
       
       // Update current word and contributor
       setCurrentWord(word);
-      setCurrentContributor(contributor);
+      setCurrentContributor(contributor || 'ไม่ระบุชื่อ');
       
       // Trigger refresh for components that depend on word updates
       setRefreshTrigger(prev => prev + 1);
@@ -160,24 +160,7 @@ const Index = () => {
             </div>
             
             <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>เพิ่มคำของคุณ</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <WordForm 
-                    onAddWord={handleAddWord}
-                    isLoading={isLoading}
-                    existingWords={selectedWords}
-                    showMultipleTemplates={true}
-                  />
-                </CardContent>
-                <CardFooter className="flex justify-center border-t p-4">
-                  <p className="text-xs text-muted-foreground text-center">
-                    เพิ่มคำของคุณเพื่อสร้างประโยคให้กำลังใจที่มีความหมาย
-                  </p>
-                </CardFooter>
-              </Card>
+              {/* Removed redundant WordForm section here */}
               
               <div className="w-full">
                 <Leaderboard refreshTrigger={refreshTrigger} />

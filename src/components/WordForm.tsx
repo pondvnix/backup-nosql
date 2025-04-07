@@ -100,6 +100,7 @@ const WordForm = ({
     e.preventDefault();
     
     const trimmedWord = word.trim();
+    // Standardize empty contributor as "ไม่ระบุชื่อ"
     const trimmedContributor = contributor.trim() || "ไม่ระบุชื่อ";
 
     const validation = validateWordInput(trimmedWord, trimmedContributor);
@@ -137,7 +138,7 @@ const WordForm = ({
         word: trimmedWord,
         sentence: sentence,
         template: template,
-        contributor: trimmedContributor,
+        contributor: trimmedContributor, // Use standardized contributor name
         timestamp: new Date(),
         polarity: wordEntry.polarity,
         score: wordEntry.score || (wordEntry.polarity === 'positive' ? 1 : wordEntry.polarity === 'negative' ? -1 : 0)
@@ -162,7 +163,7 @@ const WordForm = ({
         detail: { 
           sentence,
           word: trimmedWord,
-          contributor: trimmedContributor,
+          contributor: trimmedContributor, // Use standardized contributor name
           template,
           polarity: wordEntry.polarity,
           score: wordEntry.score || (wordEntry.polarity === 'positive' ? 1 : wordEntry.polarity === 'negative' ? -1 : 0)
@@ -186,6 +187,7 @@ const WordForm = ({
   };
 
   const handleSelectWord = (selectedWord: string, contributor: string, template?: string) => {
+    // Standardize empty contributor as "ไม่ระบุชื่อ"
     const trimmedContributor = contributor.trim() || "ไม่ระบุชื่อ";
     localStorage.setItem("contributor-name", trimmedContributor);
     
@@ -204,7 +206,7 @@ const WordForm = ({
         word: selectedWord,
         sentence: template.replace(new RegExp(`\\$\\{${selectedWord}\\}`, 'g'), selectedWord),
         template: template,
-        contributor: trimmedContributor,
+        contributor: trimmedContributor, // Use standardized contributor name
         timestamp: new Date(),
         polarity: wordEntry.polarity,
         score: wordEntry.score || (wordEntry.polarity === 'positive' ? 1 : wordEntry.polarity === 'negative' ? -1 : 0)
@@ -224,6 +226,7 @@ const WordForm = ({
   };
 
   const handleSelectSuggestion = (selectedWord: string, template?: string) => {
+    // Standardize empty contributor as "ไม่ระบุชื่อ"
     const contributorName = contributor.trim() || "ไม่ระบุชื่อ";
     localStorage.setItem("contributor-name", contributorName);
     

@@ -42,15 +42,20 @@ const BillboardLog = () => {
     }
   };
   
-  // Function to remove duplicates based on word and sentence combination
+  // Improved function to remove duplicates based on word, sentence, and contributor combination
   const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
     const uniqueMap = new Map<string, MotivationalSentence>();
     
     sentences.forEach(sentence => {
-      const uniqueKey = `${sentence.word}-${sentence.sentence}`;
+      // Create a unique key using word, sentence, and contributor
+      const uniqueKey = `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'anonymous'}`;
       
       if (!uniqueMap.has(uniqueKey) || 
           new Date(sentence.timestamp).getTime() > new Date(uniqueMap.get(uniqueKey)!.timestamp).getTime()) {
+        // Standardize contributor name if not provided
+        if (!sentence.contributor || sentence.contributor.trim() === '') {
+          sentence.contributor = 'ไม่ระบุชื่อ';
+        }
         uniqueMap.set(uniqueKey, sentence);
       }
     });
@@ -211,7 +216,7 @@ const BillboardLog = () => {
                 </TableHeader>
                 <TableBody>
                   {currentSentences.map((sentence, index) => (
-                    <TableRow key={`sentence-${index}`}>
+                    <TableRow key={`sentence-${index}-${sentence.word}-${sentence.timestamp}`}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {getSentimentIcon(sentence.sentiment)}
