@@ -1,775 +1,652 @@
 
+import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
+import MobileFooter from "@/components/MobileFooter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, Trash2, Plus, Download, Upload, RefreshCw, Heart, FileSpreadsheet } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MotivationQuoteTable } from "@/components";
 import { useToast } from "@/hooks/use-toast";
-import MobileFooter from "@/components/MobileFooter";
-import BillboardLog from "@/components/BillboardLog";
-import QuoteManagementTable from "@/components/QuoteManagementTable";
-import WordSuggestions from "@/components/WordSuggestions";
+import { Separator } from "@/components/ui/separator";
+import ClearDataButtons from "@/components/ClearDataButtons";
+import { normalizeScoreAndPolarity } from "@/utils/sentimentConsistency";
+
+interface Word {
+  word: string;
+  polarity: 'positive' | 'neutral' | 'negative';
+  score: number;
+  templates?: string[];
+}
+
+interface Quote {
+  text: string;
+  date: Date;
+  userId: string;
+  word?: string;
+  polarity?: 'positive' | 'neutral' | 'negative';
+  score?: number;
+}
 
 const ManagementPage = () => {
+  const [words, setWords] = useState<Word[]>([]);
+  const [newWord, setNewWord] = useState('');
+  const [newPolarity, setNewPolarity] = useState<'positive' | 'neutral' | 'negative'>('neutral');
+  const [newScore, setNewScore] = useState<number>(0);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [name, setName] = useState('');
+  const [newTemplate, setNewTemplate] = useState('');
+  const [selectedWordForTemplate, setSelectedWordForTemplate] = useState('');
+  const [templateWord, setTemplateWord] = useState('');
+  const [templates, setTemplates] = useState<{[key: string]: string[]}>({});
+  const [wordToEdit, setWordToEdit] = useState<Word | null>(null);
+  const [editedPolarity, setEditedPolarity] = useState<'positive' | 'neutral' | 'negative'>('neutral');
+  const [editedScore, setEditedScore] = useState<number>(0);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [templateInput, setTemplateInput] = useState<string>("");
-  const [contributorName, setContributorName] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<string>("words");
-  const [editingWord, setEditingWord] = useState<any>(null);
-  
+
+  // Load words from localStorage
   useEffect(() => {
-    const savedContributor = localStorage.getItem("contributor-name");
-    if (savedContributor) {
-      setContributorName(savedContributor);
-    }
-  }, []);
-  
-  const { data: words = [], isLoading } = useQuery({
-    queryKey: ['encouragement-words'],
-    queryFn: async () => {
-      const storedWords = localStorage.getItem('encouragement-words');
-      if (!storedWords) return [];
-      return JSON.parse(storedWords);
-    },
-  });
-  
-  const { data: sentences = [] } = useQuery({
-    queryKey: ['motivation-sentences'],
-    queryFn: async () => {
-      const storedSentences = localStorage.getItem('motivation-sentences');
-      if (!storedSentences) return [];
-      return JSON.parse(storedSentences);
-    },
-  });
-  
-  const quotes = sentences.map((sentence: any) => ({
-    text: sentence.sentence,
-    date: new Date(sentence.timestamp),
-    userId: sentence.contributor
-  }));
-  
-  const { data: wordDatabase = [], refetch: refetchWordDatabase } = useQuery({
-    queryKey: ['word-polarity-database'],
-    queryFn: async () => {
-      const storedData = localStorage.getItem("word-polarity-database");
-      if (!storedData) return [];
-      return JSON.parse(storedData);
-    },
-  });
-  
-  const getTemplateForWord = (word: string): string => {
-    const entry = wordDatabase.find((entry: any) => entry.word === word);
-    if (entry?.templates && entry.templates.length > 0) {
-      return entry.templates[0];
-    }
-    return "";
-  };
-  
-  const { mutate: deleteWord } = useMutation({
-    mutationFn: async (id: string) => {
-      const storedWords = localStorage.getItem('encouragement-words');
-      if (!storedWords) return;
-      
-      const words = JSON.parse(storedWords);
-      const updatedWords = words.filter((word: any) => word.id !== id);
-      
-      localStorage.setItem('encouragement-words', JSON.stringify(updatedWords));
-      return id;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['encouragement-words'] });
-      
-      toast({
-        title: "คำถูกลบแล้ว",
-        description: "คำได้ถูกลบออกจากระบบเรียบร้อยแล้ว",
-      });
-      
-      window.dispatchEvent(new CustomEvent('word-database-updated'));
-    },
-  });
-  
-  const saveTemplate = (word: string, template: string) => {
-    if (!template.trim()) {
-      toast({
-        title: "ต้องระบุประโยคกำลังใจ",
-        description: "กรุณาระบุประโยคกำลังใจสำหรับคำนี้",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    let database = [];
     try {
-      const storedData = localStorage.getItem("word-polarity-database");
-      if (storedData) {
-        database = JSON.parse(storedData);
+      const savedName = localStorage.getItem('contributor-name');
+      if (savedName) {
+        setName(savedName);
       }
-    } catch (e) {
-      console.error("Error parsing word database:", e);
-    }
-    
-    const existingEntryIndex = database.findIndex((entry: any) => entry.word === word);
-    
-    if (existingEntryIndex !== -1) {
-      database[existingEntryIndex].templates = [template];
-    } else {
-      database.push({
-        word: word,
-        polarity: "positive",
-        score: 1,
-        templates: [template]
-      });
-    }
-    
-    localStorage.setItem("word-polarity-database", JSON.stringify(database));
-    
-    refetchWordDatabase();
-    
-    toast({
-      title: "บันทึกประโยคกำลังใจสำเร็จ",
-      description: `ประโยคกำลังใจสำหรับคำ "${word}" ถูกบันทึกแล้ว`,
-    });
-    
-    setTemplateInput("");
-    
-    window.dispatchEvent(new CustomEvent('word-database-updated'));
-  };
-  
-  const deleteSelected = () => {
-    if (selectedItems.length === 0) return;
-    
-    selectedItems.forEach(id => {
-      deleteWord(id);
-    });
-    
-    setSelectedItems([]);
-  };
-  
-  const toggleSelectItem = (id: string) => {
-    setSelectedItems(prev => 
-      prev.includes(id) 
-        ? prev.filter(itemId => itemId !== id)
-        : [...prev, id]
-    );
-  };
-  
-  const exportData = () => {
-    const data = {
-      words,
-      sentences,
-      wordDatabase,
-      timestamp: new Date().toISOString(),
-      version: "1.0"
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `คำลังใจ-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: "ส่งออกข้อมูลสำเร็จ",
-      description: "ข้อมูลทั้งหมดได้ถูกส่งออกเป็นไฟล์ JSON แล้ว",
-    });
-  };
-  
-  const clearAllData = () => {
-    if (confirm("คุณแน่ใจหรือไม่ที่จะลบข้อมูลทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้")) {
-      localStorage.removeItem('encouragement-words');
-      localStorage.removeItem('motivation-sentences');
-      localStorage.removeItem('word-polarity-database');
       
-      queryClient.invalidateQueries();
-      
-      window.dispatchEvent(new CustomEvent('word-database-updated'));
-      window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
-      
-      toast({
-        title: "ลบข้อมูลทั้งหมดสำเร็จ",
-        description: "ข้อมูลทั้งหมดได้ถูกลบออกจากระบบแล้ว",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const importedData = JSON.parse(e.target?.result as string);
+      const savedWords = localStorage.getItem('word-polarity-database');
+      if (savedWords) {
+        const parsedWords = JSON.parse(savedWords);
+        setWords(parsedWords);
         
-        if (importedData.words) {
-          localStorage.setItem('encouragement-words', JSON.stringify(importedData.words));
-        }
-        
-        if (importedData.sentences) {
-          localStorage.setItem('motivation-sentences', JSON.stringify(importedData.sentences));
-        }
-        
-        if (importedData.wordDatabase) {
-          localStorage.setItem('word-polarity-database', JSON.stringify(importedData.wordDatabase));
-        }
-        
-        queryClient.invalidateQueries();
-        
-        window.dispatchEvent(new CustomEvent('word-database-updated'));
-        window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
-        
-        toast({
-          title: "นำเข้าข้อมูลสำเร็จ",
-          description: "ข้อมูลได้ถูกนำเข้าสู่ระบบเรียบร้อยแล้ว",
+        // Extract templates
+        const extractedTemplates: {[key: string]: string[]} = {};
+        parsedWords.forEach((word: Word) => {
+          if (word.templates && word.templates.length > 0) {
+            extractedTemplates[word.word] = word.templates;
+          }
         });
-      } catch (error) {
-        toast({
-          title: "เกิดข้อผิดพลาด",
-          description: "ไม่สามารถนำเข้าข้อมูลได้ โปรดตรวจสอบไฟล์ของคุณ",
-          variant: "destructive",
-        });
+        setTemplates(extractedTemplates);
       }
-    };
-    reader.readAsText(file);
-    
-    event.target.value = '';
-  };
-  
-  const addNewWord = (word: string, contributor: string) => {
-    if (!word || !contributor) {
-      toast({
-        title: "ข้อมูลไม่ครบถ้วน",
-        description: "กรุณากรอกข้อมูลให้ครบทุกช่อง",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const existingWords = words.map((w: any) => w.text.toLowerCase());
-    if (existingWords.includes(word.toLowerCase())) {
-      toast({
-        title: "คำซ้ำ",
-        description: "คำนี้มีอยู่ในระบบแล้ว",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newWord = {
-      id: Date.now().toString(),
-      text: word,
-      contributor,
-      timestamp: new Date(),
-    };
-    
-    const updatedWords = [...words, newWord];
-    localStorage.setItem('encouragement-words', JSON.stringify(updatedWords));
-    
-    queryClient.setQueryData(['encouragement-words'], updatedWords);
-    
-    window.dispatchEvent(new CustomEvent('word-database-updated'));
-    
-    toast({
-      title: "คำใหม่ถูกเพิ่มแล้ว",
-      description: `"${word}" ได้ถูกเพิ่มเข้าสู่ระบบแล้ว`,
-    });
-    
-    localStorage.setItem("contributor-name", contributor);
-  };
-  
-  const handleUseWord = (word: string) => {
-    if (!contributorName) {
-      toast({
-        title: "โปรดระบุชื่อของคุณ",
-        description: "กรุณาระบุชื่อของคุณก่อนเลือกคำ",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const wordObj = words.find((w: any) => w.text === word);
-    if (!wordObj) return;
-    
-    const template = getTemplateForWord(word);
-    if (!template) {
-      toast({
-        title: "ยังไม่มีประโยคกำลังใจ",
-        description: `คำ "${word}" ยังไม่มีประโยคกำลังใจกำหนดไว้ โปรดกำหนดก่อนใช้งาน`,
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newSentence = {
-      word,
-      sentence: template,
-      contributor: contributorName,
-      timestamp: new Date()
-    };
-    
-    let existingEntries = [];
-    try {
-      const storedSentences = localStorage.getItem('motivation-sentences');
-      if (storedSentences) {
-        existingEntries = JSON.parse(storedSentences);
-        if (!Array.isArray(existingEntries)) {
-          existingEntries = [existingEntries];
+      
+      const savedQuotes = localStorage.getItem('motivation-sentences');
+      if (savedQuotes) {
+        try {
+          const parsedQuotes = JSON.parse(savedQuotes);
+          
+          // Normalize data structure
+          const formattedQuotes: Quote[] = Array.isArray(parsedQuotes) 
+            ? parsedQuotes.map((quote: any) => {
+                const normalized = normalizeScoreAndPolarity({
+                  text: quote.sentence,
+                  date: quote.timestamp || new Date(),
+                  userId: quote.contributor || 'Anonymous',
+                  word: quote.word,
+                  polarity: quote.polarity,
+                  score: quote.score
+                });
+                
+                return {
+                  text: quote.sentence,
+                  date: quote.timestamp || new Date(),
+                  userId: quote.contributor || 'Anonymous',
+                  word: quote.word,
+                  polarity: normalized.polarity,
+                  score: normalized.score
+                };
+              })
+            : [{
+                text: parsedQuotes.sentence,
+                date: parsedQuotes.timestamp || new Date(),
+                userId: parsedQuotes.contributor || 'Anonymous',
+                word: parsedQuotes.word,
+                polarity: parsedQuotes.polarity,
+                score: parsedQuotes.score
+              }];
+          
+          setQuotes(formattedQuotes);
+        } catch (error) {
+          console.error('Error parsing quotes:', error);
+          setQuotes([]);
         }
       }
     } catch (error) {
-      console.error("Error parsing stored sentences:", error);
+      console.error('Error loading data:', error);
     }
-    
-    const updatedEntries = [newSentence, ...existingEntries];
-    localStorage.setItem('motivation-sentences', JSON.stringify(updatedEntries));
-    
-    queryClient.invalidateQueries({ queryKey: ['motivation-sentences'] });
-    
-    const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
-      detail: { 
-        sentence: template,
-        word,
-        contributor: contributorName
-      }
-    });
-    window.dispatchEvent(sentenceEvent);
-    
-    window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
-    
-    toast({
-      title: "สร้างประโยคกำลังใจสำเร็จ",
-      description: (
-        <div className="mt-2">
-          <p>คำ "<span className="text-[#F97316] font-semibold">{word}</span>" ได้ถูกใช้สร้างประโยคกำลังใจ</p>
-          <p className="mt-1 font-medium">"{template}"</p>
-        </div>
-      ),
-    });
-    
-    setActiveTab("quotes");
+  }, []);
+
+  // Save contributor name
+  const saveName = () => {
+    if (name.trim()) {
+      localStorage.setItem('contributor-name', name);
+      toast({
+        title: 'บันทึกชื่อสำเร็จ',
+        description: `ชื่อ "${name}" ถูกบันทึกเรียบร้อยแล้ว`,
+      });
+    }
   };
 
-  const exportMotivationToCSV = () => {
-    if (!sentences || sentences.length === 0) {
+  // Handle adding new word
+  const handleAddWord = () => {
+    if (!newWord.trim()) {
       toast({
-        title: "ไม่พบข้อมูล",
-        description: "ไม่มีประโยคกำลังใจในระบบที่จะส่งออก",
-        variant: "destructive",
+        title: 'ไม่สามารถเพิ่มคำได้',
+        description: 'กรุณากรอกคำที่ต้องการเพิ่ม',
+        variant: 'destructive',
       });
       return;
     }
     
-    let csvContent = "ประโยค,คำ,ผู้สร้าง,วันที่\n";
+    // Check if word already exists
+    const existingWord = words.find(w => w.word === newWord);
+    if (existingWord) {
+      toast({
+        title: 'คำนี้มีอยู่แล้ว',
+        description: `คำว่า "${newWord}" มีอยู่ในระบบแล้ว`,
+        variant: 'destructive',
+      });
+      return;
+    }
     
-    sentences.forEach((sentence: any) => {
-      const date = new Date(sentence.timestamp).toLocaleString('th-TH');
-      const escapedSentence = `"${sentence.sentence.replace(/"/g, '""')}"`;
-      csvContent += `${escapedSentence},${sentence.word},${sentence.contributor || 'ไม่ระบุชื่อ'},${date}\n`;
-    });
+    // Create new word object
+    const normalizedScore = newPolarity === 'positive' ? 1 : 
+                           newPolarity === 'negative' ? -1 : 0;
     
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ประโยคกำลังใจ-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const newWordObj: Word = {
+      word: newWord,
+      polarity: newPolarity,
+      score: newScore !== undefined ? newScore : normalizedScore,
+      templates: []
+    };
     
+    // Update state and localStorage
+    const updatedWords = [...words, newWordObj];
+    setWords(updatedWords);
+    localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
+    
+    // Notify user
     toast({
-      title: "ส่งออกข้อมูลสำเร็จ",
-      description: "ประวัติประโยคกำลังใจได้ถูกส่งออกเป็นไฟล์ CSV แล้ว",
+      title: 'เพิ่มคำสำเร็จ',
+      description: `คำว่า "${newWord}" ถูกเพิ่มเรียบร้อยแล้ว`,
     });
+    
+    // Reset form
+    setNewWord('');
+    setNewPolarity('neutral');
+    setNewScore(0);
+    
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event('word-database-updated'));
+  };
+
+  // Handle adding new template
+  const handleAddTemplate = () => {
+    if (!templateWord) {
+      toast({
+        title: 'กรุณาเลือกคำ',
+        description: 'กรุณาเลือกคำที่ต้องการเพิ่มแม่แบบประโยค',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!newTemplate.trim()) {
+      toast({
+        title: 'กรุณากรอกแม่แบบประโยค',
+        description: 'กรุณากรอกแม่แบบประโยคที่ต้องการเพิ่ม',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Check if template includes the word
+    if (!newTemplate.includes(`\${${templateWord}}`)) {
+      toast({
+        title: 'แม่แบบประโยคไม่ถูกต้อง',
+        description: `กรุณาใส่ \${${templateWord}} ในแม่แบบประโยค`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Update templates state
+    const updatedTemplates = { ...templates };
+    if (!updatedTemplates[templateWord]) {
+      updatedTemplates[templateWord] = [];
+    }
+    updatedTemplates[templateWord].push(newTemplate);
+    setTemplates(updatedTemplates);
+    
+    // Update words state
+    const updatedWords = words.map(word => {
+      if (word.word === templateWord) {
+        return {
+          ...word,
+          templates: updatedTemplates[templateWord]
+        };
+      }
+      return word;
+    });
+    
+    setWords(updatedWords);
+    localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
+    
+    // Notify user
+    toast({
+      title: 'เพิ่มแม่แบบประโยคสำเร็จ',
+      description: `แม่แบบประโยคสำหรับคำว่า "${templateWord}" ถูกเพิ่มเรียบร้อยแล้ว`,
+    });
+    
+    // Reset form
+    setNewTemplate('');
+    setTemplateWord('');
+    
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event('word-database-updated'));
+  };
+
+  // Handle word selection for editing
+  const handleSelectWordForEdit = (word: Word) => {
+    setWordToEdit(word);
+    setEditedPolarity(word.polarity);
+    setEditedScore(word.score);
+  };
+
+  // Handle updating word
+  const handleUpdateWord = () => {
+    if (!wordToEdit) return;
+    
+    // Update the word
+    const updatedWords = words.map(word => {
+      if (word.word === wordToEdit.word) {
+        return {
+          ...word,
+          polarity: editedPolarity,
+          score: editedScore
+        };
+      }
+      return word;
+    });
+    
+    setWords(updatedWords);
+    localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
+    
+    // Notify user
+    toast({
+      title: 'แก้ไขคำสำเร็จ',
+      description: `คำว่า "${wordToEdit.word}" ถูกแก้ไขเรียบร้อยแล้ว`,
+    });
+    
+    // Reset form
+    setWordToEdit(null);
+    setEditedPolarity('neutral');
+    setEditedScore(0);
+    
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event('word-database-updated'));
+  };
+
+  // Handle deleting word
+  const handleDeleteWord = (wordToDelete: string) => {
+    // Remove the word
+    const updatedWords = words.filter(word => word.word !== wordToDelete);
+    
+    setWords(updatedWords);
+    localStorage.setItem('word-polarity-database', JSON.stringify(updatedWords));
+    
+    // Also remove from templates
+    const updatedTemplates = { ...templates };
+    delete updatedTemplates[wordToDelete];
+    setTemplates(updatedTemplates);
+    
+    // Notify user
+    toast({
+      title: 'ลบคำสำเร็จ',
+      description: `คำว่า "${wordToDelete}" ถูกลบเรียบร้อยแล้ว`,
+    });
+    
+    // Close edit modal if we're deleting the word being edited
+    if (wordToEdit && wordToEdit.word === wordToDelete) {
+      setWordToEdit(null);
+    }
+    
+    // Dispatch event to notify other components
+    window.dispatchEvent(new Event('word-database-updated'));
+  };
+
+  // Map polarity to Thai translation
+  const getPolarityThai = (polarity: 'positive' | 'neutral' | 'negative') => {
+    switch (polarity) {
+      case 'positive':
+        return 'เชิงบวก';
+      case 'negative':
+        return 'เชิงลบ';
+      default:
+        return 'กลาง';
+    }
+  };
+
+  // Handle polarity change and update score accordingly
+  const handlePolarityChange = (polarity: 'positive' | 'neutral' | 'negative') => {
+    setNewPolarity(polarity);
+    
+    // Set default score based on polarity
+    if (polarity === 'positive') {
+      setNewScore(1);
+    } else if (polarity === 'negative') {
+      setNewScore(-1);
+    } else {
+      setNewScore(0);
+    }
+  };
+
+  // Handle edited polarity change and update score accordingly  
+  const handleEditedPolarityChange = (polarity: 'positive' | 'neutral' | 'negative') => {
+    setEditedPolarity(polarity);
+    
+    // Set default score based on polarity
+    if (polarity === 'positive') {
+      setEditedScore(1);
+    } else if (polarity === 'negative') {
+      setEditedScore(-1);
+    } else {
+      setEditedScore(0);
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-orange-50 to-white pb-16 md:pb-0">
+    <div className="min-h-screen bg-slate-50 pb-20 md:pb-10">
       <Header />
       
-      <main className="flex-1 container mx-auto py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-center mb-8">
-            <Heart className="h-6 w-6 text-primary mr-2" />
-            <h1 className="text-3xl md:text-4xl font-bold font-mitr">
-              เพิ่มคำใหม่
-            </h1>
-          </div>
+      <main className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">จัดการคำและประโยคกำลังใจ</h1>
+        
+        <Tabs defaultValue="name" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="name">ชื่อผู้ให้กำลังใจ</TabsTrigger>
+            <TabsTrigger value="words">คำ</TabsTrigger>
+            <TabsTrigger value="templates">แม่แบบประโยค</TabsTrigger>
+            <TabsTrigger value="settings">ตั้งค่า</TabsTrigger>
+          </TabsList>
           
-          <Tabs defaultValue="words" value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="words">จัดการคำ</TabsTrigger>
-              <TabsTrigger value="quotes">ประโยคกำลังใจ</TabsTrigger>
-              <TabsTrigger value="billboard">ประวัติประโยคกำลังใจ</TabsTrigger>
-              <TabsTrigger value="system">Settings</TabsTrigger>
-            </TabsList>
+          {/* Name Tab */}
+          <TabsContent value="name" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>ตั้งค่าชื่อผู้ให้กำลังใจ</CardTitle>
+                <CardDescription>
+                  ชื่อของคุณจะปรากฏเมื่อคุณสร้างประโยคให้กำลังใจ
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">ชื่อผู้ให้กำลังใจ</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="ระบุชื่อของคุณ"
+                  />
+                </div>
+                <Button onClick={saveName}>บันทึกชื่อ</Button>
+              </CardContent>
+            </Card>
             
-            <TabsContent value="words" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>เพิ่มคำใหม่</CardTitle>
-                  <CardDescription>
-                    เพิ่มคำใหม่เข้าสู่ระบบโดยตรง พร้อมกำหนด Template ประโยคให้กำลังใจ
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const text = formData.get('word') as string;
-                    const polarity = formData.get('polarity') as string;
-                    const template = formData.get('template') as string;
-                    
-                    const score = polarity === 'positive' ? 1 : 
-                                polarity === 'neutral' ? 0 : -1;
-                    
-                    if (!text || !template || !polarity) {
-                      toast({
-                        title: "ข้อมูลไม่ครบถ้วน",
-                        description: "กรุณากรอกข้อมูลให้ครบทุกช่อง",
-                        variant: "destructive",
-                      });
-                      return;
-                    }
-
-                    if (editingWord) {
-                      const storedData = localStorage.getItem("word-polarity-database");
-                      let database = storedData ? JSON.parse(storedData) : [];
-                      database = database.map((w: any) => 
-                        w.word === editingWord.word
-                          ? {
-                              word: text,
-                              polarity,
-                              score,
-                              templates: [template]
-                            }
-                          : w
-                      );
-                      
-                      localStorage.setItem("word-polarity-database", JSON.stringify(database));
-                      
-                      queryClient.invalidateQueries({ queryKey: ['word-polarity-database'] });
-                      
-                      window.dispatchEvent(new CustomEvent('word-database-updated'));
-                      
-                      toast({
-                        title: "คำถูกอัพเดทแล้ว",
-                        description: `"${text}" ได้ถูกอัพเดทในระบบแล้ว`,
-                      });
-
-                      setEditingWord(null);
-                    } else {
-                      let database = [];
-                      const storedData = localStorage.getItem("word-polarity-database");
-                      if (storedData) {
-                        database = JSON.parse(storedData);
-                      }
-                      
-                      database.push({
-                        word: text,
-                        polarity,
-                        score,
-                        templates: [template]
-                      });
-                      
-                      localStorage.setItem("word-polarity-database", JSON.stringify(database));
-                      
-                      queryClient.invalidateQueries({ queryKey: ['word-polarity-database'] });
-                      
-                      window.dispatchEvent(new CustomEvent('word-database-updated'));
-                      
-                      toast({
-                        title: "คำใหม่ถูกเพิ่มแล้ว",
-                        description: `"${text}" ได้ถูกเพิ่มเข้าสู่ระบบแล้ว`,
-                      });
-                    }
-                    
-                    e.currentTarget.reset();
-                  }}>
-                    <div className="grid gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="word">คำ</Label>
-                        <Input 
-                          id="word" 
-                          name="word" 
-                          placeholder="ใส่คำใหม่" 
-                          defaultValue={editingWord?.word || ''}
-                          required 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="polarity">ความรู้สึก</Label>
-                        <select 
-                          id="polarity" 
-                          name="polarity" 
-                          className="w-full px-3 py-2 border rounded-md"
-                          defaultValue={editingWord?.polarity || ''}
-                          required
-                        >
-                          <option value="">เลือกความรู้สึก</option>
-                          <option value="positive">เชิงบวก (1 คะแนน)</option>
-                          <option value="neutral">กลาง (0 คะแนน)</option>
-                          <option value="negative">เชิงลบ (-1 คะแนน)</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="template">ประโยคกำลังใจ</Label>
-                        <Textarea 
-                          id="template" 
-                          name="template" 
-                          placeholder="ระบุประโยคกำลังใจสำหรับคำนี้" 
-                          defaultValue={editingWord?.templates?.[0] || ''}
-                          rows={2}
-                          required
-                        />
-                        <div className="space-y-1">
-                          <p className="text-sm text-muted-foreground">
-                            หมายเหตุ: ใส่คำในรูปแบบ '{'{word}'}' เพื่อให้คำนั้นถูกไฮไลท์เป็นสีส้มในหน้าหลัก
-                          </p>
-                          <p className="text-xs text-orange-600">
-                            ตัวอย่าง: ถ้าคำคือ "สู้" และต้องการไฮไลท์คำนี้ ให้พิมพ์ประโยค "{'{word}'} ต่อไปอย่างไม่ย่อท้อ" 
-                            <br/>
-                            ผลลัพธ์ในหน้าหลัก: <span className="text-[#F97316] font-semibold">สู้</span> ต่อไปอย่างไม่ย่อท้อ
-                          </p>
+            <Card>
+              <CardHeader>
+                <CardTitle>ประวัติประโยคกำลังใจ</CardTitle>
+                <CardDescription>
+                  ประโยคกำลังใจทั้งหมดที่เคยสร้าง
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MotivationQuoteTable quotes={quotes} showAllUsers={true} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Words Tab */}
+          <TabsContent value="words" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>เพิ่มคำใหม่</CardTitle>
+                <CardDescription>
+                  เพิ่มคำใหม่เพื่อใช้ในการสร้างประโยคให้กำลังใจ
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-word">คำ</Label>
+                  <Input
+                    id="new-word"
+                    value={newWord}
+                    onChange={(e) => setNewWord(e.target.value)}
+                    placeholder="ระบุคำที่ต้องการเพิ่ม"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="polarity">ความรู้สึก</Label>
+                    <Select 
+                      value={newPolarity} 
+                      onValueChange={(value) => handlePolarityChange(value as 'positive' | 'neutral' | 'negative')}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="เลือกความรู้สึก" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="positive">เชิงบวก</SelectItem>
+                        <SelectItem value="neutral">กลาง</SelectItem>
+                        <SelectItem value="negative">เชิงลบ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="score">คะแนน</Label>
+                    <Input
+                      id="score"
+                      type="number"
+                      value={newScore}
+                      onChange={(e) => setNewScore(Number(e.target.value))}
+                      placeholder="คะแนน"
+                    />
+                  </div>
+                </div>
+                
+                <Button onClick={handleAddWord}>เพิ่มคำ</Button>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>คำทั้งหมด</CardTitle>
+                <CardDescription>
+                  รายการคำทั้งหมดที่มีในระบบ
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {words.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {words.map((word, index) => (
+                      <div
+                        key={index}
+                        className="p-3 border rounded-md flex justify-between items-center"
+                      >
+                        <div>
+                          <p className="font-medium">{word.word}</p>
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <span>ความรู้สึก: {getPolarityThai(word.polarity)}</span>
+                            <span className="mx-1">|</span>
+                            <span>คะแนน: {word.score}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSelectWordForEdit(word)}
+                          >
+                            แก้ไข
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteWord(word.word)}
+                          >
+                            ลบ
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button type="submit" className="flex items-center gap-1">
-                          <Plus className="h-4 w-4" />
-                          <span>{editingWord ? 'อัพเดทคำ' : 'เพิ่มคำ'}</span>
-                        </Button>
-                        {editingWord && (
-                          <Button 
-                            type="button" 
-                            variant="outline"
-                            onClick={() => {
-                              setEditingWord(null);
-                              document.querySelector('form')?.reset();
-                            }}
-                          >
-                            ยกเลิก
-                          </Button>
-                        )}
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">ไม่มีคำในระบบ</p>
+                )}
+              </CardContent>
+            </Card>
+            
+            {/* Edit Word Modal */}
+            {wordToEdit && (
+              <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+                <Card className="w-full max-w-md mx-4">
+                  <CardHeader>
+                    <CardTitle>แก้ไขคำ: {wordToEdit.word}</CardTitle>
+                    <CardDescription>
+                      แก้ไขความรู้สึกและคะแนนของคำ
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-polarity">ความรู้สึก</Label>
+                        <Select 
+                          value={editedPolarity} 
+                          onValueChange={(value) => handleEditedPolarityChange(value as 'positive' | 'neutral' | 'negative')}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="เลือกความรู้สึก" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="positive">เชิงบวก</SelectItem>
+                            <SelectItem value="neutral">กลาง</SelectItem>
+                            <SelectItem value="negative">เชิงลบ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-score">คะแนน</Label>
+                        <Input
+                          id="edit-score"
+                          type="number"
+                          value={editedScore}
+                          onChange={(e) => setEditedScore(Number(e.target.value))}
+                          placeholder="คะแนน"
+                        />
                       </div>
                     </div>
-                  </form>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>คลังคำศัพท์</CardTitle>
-                  <CardDescription>
-                    รายการคำทั้งหมดในระบบ
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>คำ</TableHead>
-                          <TableHead>ความรู้สึก</TableHead>
-                          <TableHead>คะแนน</TableHead>
-                          <TableHead>ประโยคกำลังใจ</TableHead>
-                          <TableHead>ผู้สร้าง</TableHead>
-                          <TableHead className="text-right">จัดการ</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {wordDatabase.map((entry: any) => {
-                          const word = words.find((w: any) => w.text === entry.word);
-                          return (
-                            <TableRow key={entry.word}>
-                              <TableCell className="font-medium">{entry.word}</TableCell>
-                              <TableCell>
-                                {entry.polarity === 'positive' ? 'เชิงบวก' : 
-                                 entry.polarity === 'neutral' ? 'กลาง' : 'เชิงลบ'}
-                              </TableCell>
-                              <TableCell>{entry.score}</TableCell>
-                              <TableCell className="max-w-[300px] truncate">
-                                {entry.templates?.[0]}
-                              </TableCell>
-                              <TableCell>{word?.contributor || '-'}</TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm"
-                                    onClick={() => {
-                                      setEditingWord({
-                                        ...entry,
-                                        contributor: word?.contributor
-                                      });
-                                      document.querySelector('form')?.scrollIntoView({ behavior: 'smooth' });
-                                    }}
-                                  >
-                                    แก้ไข
-                                  </Button>
-                                  <Button 
-                                    variant="destructive" 
-                                    size="sm"
-                                    onClick={() => {
-                                      if (word) {
-                                        deleteWord(word.id);
-                                      }
-                                      const database = wordDatabase.filter((w: any) => w.word !== entry.word);
-                                      localStorage.setItem("word-polarity-database", JSON.stringify(database));
-                                      queryClient.invalidateQueries({ queryKey: ['word-polarity-database'] });
-                                    }}
-                                  >
-                                    ลบ
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="quotes" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>ประโยคกำลังใจทั้งหมด</CardTitle>
-                  <CardDescription>
-                    ประโยคกำลังใจที่ถูกสร้างโดยผู้ใช้ทั้งหมดในระบบ
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <QuoteManagementTable quotes={quotes} />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="billboard" className="space-y-4">
-              <BillboardLog />
-            </TabsContent>
-            
-            <TabsContent value="system" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Settings</CardTitle>
-                  <CardDescription>
-                    จัดการการตั้งค่าระบบ
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">Export Data (JSON)</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          ส่งออกข้อมูลทั้งหมดในระบบเป็นไฟล์ JSON
-                        </p>
-                        <Button onClick={exportData} className="w-full flex items-center gap-1">
-                          <Download className="h-4 w-4" />
-                          <span>Export JSON</span>
-                        </Button>
-                      </CardContent>
-                    </Card>
                     
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">Import Data (JSON)</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          นำเข้าข้อมูลจากไฟล์ JSON
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <Input 
-                            id="importFile" 
-                            type="file" 
-                            accept=".json" 
-                            onChange={handleImport}
-                            className="hidden"
-                          />
-                          <Button 
-                            onClick={() => document.getElementById('importFile')?.click()}
-                            className="w-full flex items-center gap-1"
-                          >
-                            <Upload className="h-4 w-4" />
-                            <span>Import JSON</span>
-                          </Button>
+                    <div className="flex justify-end gap-2 mt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setWordToEdit(null)}
+                      >
+                        ยกเลิก
+                      </Button>
+                      <Button onClick={handleUpdateWord}>บันทึก</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+          
+          {/* Templates Tab */}
+          <TabsContent value="templates" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>เพิ่มแม่แบบประโยค</CardTitle>
+                <CardDescription>
+                  เพิ่มแม่แบบประโยคสำหรับคำที่มีอยู่ในระบบ
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="template-word">คำ</Label>
+                  <Select 
+                    value={templateWord} 
+                    onValueChange={setTemplateWord}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="เลือกคำ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {words.map((word, index) => (
+                        <SelectItem key={index} value={word.word}>
+                          {word.word} ({getPolarityThai(word.polarity)})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-template">
+                    แม่แบบประโยค <span className="text-sm text-muted-foreground">(ใช้ ${'{'}templateWord{'}'} เพื่อแทนที่คำในประโยค)</span>
+                  </Label>
+                  <Textarea
+                    id="new-template"
+                    value={newTemplate}
+                    onChange={(e) => setNewTemplate(e.target.value)}
+                    placeholder={`ตัวอย่าง: การมี\${${templateWord || 'คำ'}} ในชีวิตทำให้เรารู้สึกดีขึ้น`}
+                    rows={3}
+                  />
+                </div>
+                
+                <Button onClick={handleAddTemplate} disabled={!templateWord}>เพิ่มแม่แบบประโยค</Button>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>แม่แบบประโยคทั้งหมด</CardTitle>
+                <CardDescription>
+                  รายการแม่แบบประโยคทั้งหมดที่มีในระบบ
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {Object.keys(templates).length > 0 ? (
+                  <div className="space-y-4">
+                    {Object.entries(templates).map(([word, wordTemplates]) => (
+                      <div key={word} className="space-y-2">
+                        <h3 className="font-semibold">คำ: {word}</h3>
+                        <div className="space-y-2 pl-4">
+                          {wordTemplates.map((template, idx) => (
+                            <div key={idx} className="p-2 border rounded-md bg-slate-50">
+                              <p>{template.replace(`\${${word}}`, word)}</p>
+                            </div>
+                          ))}
                         </div>
-                      </CardContent>
-                    </Card>
+                        <Separator className="my-2" />
+                      </div>
+                    ))}
                   </div>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Export ประวัติประโยคกำลังใจ (CSV)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        ส่งออกประวัติประโยคกำลังใจทั้งหมดเป็นไฟล์ CSV
-                      </p>
-                      <Button 
-                        onClick={exportMotivationToCSV} 
-                        className="w-full flex items-center gap-1"
-                      >
-                        <FileSpreadsheet className="h-4 w-4" />
-                        <span>Export ประวัติประโยคกำลังใจ (CSV)</span>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                  
-                  <Separator />
-                  
-                  <Card className="border-destructive">
-                    <CardHeader>
-                      <CardTitle className="text-base text-destructive">Reset ระบบ</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        ลบข้อมูลทั้งหมดในระบบ การกระทำนี้ไม่สามารถเรียกคืนได้
-                      </p>
-                      <Button 
-                        variant="destructive" 
-                        onClick={clearAllData}
-                        className="w-full flex items-center gap-1"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                        <span>Reset ระบบ</span>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">ไม่มีแม่แบบประโยคในระบบ</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-4">
+            <ClearDataButtons />
+          </TabsContent>
+        </Tabs>
       </main>
-      
-      <footer className="bg-white py-6 border-t hidden md:block">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-muted-foreground">
-            &copy; {new Date().getFullYear()} "คำ"ลังใจ - 
-            โครงการสร้างกำลังใจร่วมกัน
-          </p>
-        </div>
-      </footer>
       
       <MobileFooter />
     </div>

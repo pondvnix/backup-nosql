@@ -301,7 +301,7 @@ const BillboardLog = () => {
                     <PaginationItem>
                       <PaginationNext 
                         onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                        className={currentPage === currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                       />
                     </PaginationItem>
                   </PaginationContent>
