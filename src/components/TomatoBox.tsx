@@ -75,6 +75,21 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
     }
   };
 
+  // New function to highlight words in the sentence
+  const highlightWordsInSentence = (sentence: string | undefined, focusWord: string) => {
+    if (!sentence || !focusWord) return sentence;
+    
+    const regex = new RegExp(`(${focusWord})`, 'gi');
+    const parts = sentence.split(regex);
+    
+    return parts.map((part, index) => {
+      if (part.toLowerCase() === focusWord.toLowerCase()) {
+        return <span key={index} className="bg-orange-100 text-orange-800 px-1 rounded">{part}</span>;
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="space-y-6 font-sarabun">
       {/* Hidden div that will be converted to image */}
@@ -121,7 +136,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
             </div>
           </div>
           
-          {/* New section for the motivational sentence with orange styling */}
+          {/* New section for the motivational sentence with orange styling and word highlighting */}
           {sentence && (
             <div className="mb-4 bg-white p-4 rounded-lg shadow border border-orange-200">
               <div className="relative">
@@ -132,7 +147,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
                   </svg>
                 </div>
                 <h3 className="text-orange-800 font-medium mb-1 pl-5">ประโยคให้กำลังใจ</h3>
-                <p className="text-sm italic text-orange-700 pl-5 font-sarabun">"{sentence}"</p>
+                <p className="text-sm italic text-orange-700 pl-5 font-sarabun">"{highlightWordsInSentence(sentence, word)}"</p>
               </div>
             </div>
           )}
@@ -143,7 +158,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
               <p className="text-xs font-medium mb-2 text-red-700 font-sarabun">ส่วนประกอบ:</p>
               <div className="flex flex-wrap gap-1.5 justify-start">
                 {selectedWords.map((selectedWord, index) => (
-                  <span key={index} className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs rounded-full border border-orange-200 font-sarabun">
+                  <span key={index} className={`px-2 py-0.5 ${selectedWord.toLowerCase() === word.toLowerCase() ? 'bg-orange-200 text-orange-900' : 'bg-orange-100 text-orange-800'} text-xs rounded-full border border-orange-200 font-sarabun`}>
                     {selectedWord}
                   </span>
                 ))}

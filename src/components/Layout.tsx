@@ -9,7 +9,7 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="min-h-screen bg-gray-50 pb-16 md:pb-0">
+    <div className="min-h-screen bg-[#fef8ee] pb-16 md:pb-0">
       <Header />
       <main className="container mx-auto py-8">
         {children}

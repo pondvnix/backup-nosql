@@ -60,6 +60,21 @@ const MoodReport = ({ limit = 10, refreshKey = 0, sentences: providedSentences }
     }
   };
 
+  // New function to highlight the focus word in orange
+  const highlightWord = (sentence: string, word: string) => {
+    if (!word || !sentence) return sentence;
+    
+    const regex = new RegExp(`(${word})`, 'gi');
+    const parts = sentence.split(regex);
+    
+    return parts.map((part, index) => {
+      if (part.toLowerCase() === word.toLowerCase()) {
+        return <span key={index} className="bg-orange-100 text-orange-800 px-1 rounded-sm">{part}</span>;
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="space-y-4 font-sarabun">
       {sentences.length === 0 ? (
@@ -73,7 +88,9 @@ const MoodReport = ({ limit = 10, refreshKey = 0, sentences: providedSentences }
               <div className="border-l-4 border-orange-400 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <p className="text-lg font-medium mb-2">{entry.sentence}</p>
+                    <p className="text-lg font-medium mb-2">
+                      {highlightWord(entry.sentence, entry.word)}
+                    </p>
                     
                     <div className="flex items-center text-sm text-muted-foreground gap-6">
                       <div className="flex items-center gap-1">
