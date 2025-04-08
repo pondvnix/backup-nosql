@@ -69,14 +69,29 @@ export const updateMetaTitleAndDescription = (config: MetaConfig): void => {
 };
 
 export const getEncodedMetaInfo = () => {
-  // เข้ารหัสข้อมูล
+  // Safely encode and decode Unicode strings for base64
   const encodeData = (data: string) => {
-    return btoa(data);
+    // First encode the string as UTF-8, then convert to base64
+    try {
+      return btoa(encodeURIComponent(data).replace(/%([0-9A-F]{2})/g, (_, p1) => {
+        return String.fromCharCode(parseInt(p1, 16));
+      }));
+    } catch (e) {
+      console.error('Encoding error:', e);
+      return btoa('encoding_error');
+    }
   };
 
-  // ถอดรหัสข้อมูล
+  // Safely decode base64 to Unicode strings
   const decodeData = (encoded: string) => {
-    return atob(encoded);
+    try {
+      return decodeURIComponent(Array.prototype.map.call(atob(encoded), (c) => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+    } catch (e) {
+      console.error('Decoding error:', e);
+      return 'Error decoding data';
+    }
   };
 
   const metaInfo = {
