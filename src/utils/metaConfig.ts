@@ -80,7 +80,7 @@ export const getEncodedMetaInfo = () => {
   };
 
   const metaInfo = {
-    title: encodeData('"คำ" ลังใจ'),
+    title: encodeData('&#34;คำ&#34; ลังใจ'),
     description: encodeData('ร่วมสร้างประโยคกำลังใจที่ยาวที่สุด โดยเพิ่มคำของคุณต่อท้ายคำอื่นๆ เพื่อส่งต่อกำลังใจให้กับผู้ป่วยและบุคลากรทางการแพทย์'),
     author: encodeData('ผลิตภัณฑ์ดอยคำ'),
     twitterHandle: encodeData('@doikham_th'),
