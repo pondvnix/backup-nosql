@@ -14,7 +14,18 @@ export function extractSentimentFromTemplate(template: string) {
     text = template.replace(/\$\{กลาง\}/g, '');
   }
   
-  return { sentiment, text };
+  return { sentiment, text, score: calculateSentimentScore(sentiment) };
+}
+
+function calculateSentimentScore(sentiment: 'positive' | 'neutral' | 'negative'): number {
+  switch (sentiment) {
+    case 'positive':
+      return 1;
+    case 'negative':
+      return -1;
+    default:
+      return 0;
+  }
 }
 
 export function getSentimentBadgeVariant(sentiment?: 'positive' | 'neutral' | 'negative') {
@@ -76,5 +87,8 @@ export function analyzeSentimentFromSentence(sentence: string, template?: string
     sentiment = 'negative';
   }
   
-  return { sentiment, text: sentence };
+  // Calculate a score between -1 and 1
+  const score = calculateSentimentScore(sentiment);
+  
+  return { sentiment, text: sentence, score };
 }

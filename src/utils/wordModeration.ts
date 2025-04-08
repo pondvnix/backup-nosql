@@ -15,6 +15,7 @@ export interface WordEntry {
   templates: string[];
   polarity?: number;
   isCustom?: boolean;
+  sentiment?: 'positive' | 'neutral' | 'negative'; // Add sentiment property
 }
 
 // ฟังก์ชันอัปเดตสถิติการใช้คำของผู้ร่วมสร้าง
@@ -207,4 +208,63 @@ export const getSentimentAnalysis = (templates: string[]): { positive: number; n
   });
   
   return { positive, neutral, negative };
+};
+
+// Add the missing getRandomWord function
+export const getRandomWord = (): string => {
+  // Predefined list of Thai words for encouragement
+  const defaultWords = [
+    "กำลังใจ", "ความหวัง", "ความฝัน", "ความสุข", "ความรัก", 
+    "พลัง", "ศรัทธา", "ความเชื่อ", "ความเพียร", "ความอดทน",
+    "ความสำเร็จ", "ความดี", "ความจริง", "ความกล้า", "มิตรภาพ",
+    "ครอบครัว", "ความสามัคคี", "สติปัญญา", "สุขภาพ", "การเรียนรู้",
+    "การเติบโต", "ความเข้มแข็ง", "ความมุ่งมั่น", "ความตั้งใจ", "การให้อภัย"
+  ];
+  
+  // Try to get from database first
+  const wordEntries = getWordDatabase();
+  const allWords = wordEntries.length > 0 
+    ? wordEntries.map(entry => entry.word)
+    : defaultWords;
+  
+  // Select a random word
+  const randomIndex = Math.floor(Math.random() * allWords.length);
+  return allWords[randomIndex];
+};
+
+// Add the missing saveWordContribution function
+export const saveWordContribution = (word: string, contributor: string): boolean => {
+  if (!word.trim()) return false;
+  
+  try {
+    // Get existing words or create an empty array
+    const wordEntries = getWordDatabase();
+    
+    // Check if word already exists
+    const existingWordIndex = wordEntries.findIndex(entry => entry.word === word);
+    
+    if (existingWordIndex === -1) {
+      // Add new word with default template
+      const newWordEntry: WordEntry = {
+        word,
+        templates: [`${word} เป็นสิ่งที่สำคัญในชีวิต`],
+        isCustom: true
+      };
+      
+      addWord(newWordEntry);
+    }
+    
+    // Update contributor stats
+    updateContributorStats(contributor);
+    
+    // Dispatch custom event to notify other components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('word-database-updated'));
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error saving word contribution:", error);
+    return false;
+  }
 };
