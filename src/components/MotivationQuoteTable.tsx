@@ -4,7 +4,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { useState, useEffect } from "react";
 import { Smile, Meh, Frown } from "lucide-react";
 import { Badge } from "./ui/badge";
-import { extractSentimentFromTemplate } from "@/utils/sentimentConsistency";
+import { extractSentimentFromTemplate, getSentimentBadgeVariant, getPolarityText } from "@/utils/sentimentConsistency";
 
 interface Quote {
   text: string;
@@ -25,8 +25,17 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   const quotesPerPage = 10;
   
   useEffect(() => {
+    // Ensure quotes is an array before proceeding
+    if (!Array.isArray(quotes)) {
+      setDisplayedQuotes([]);
+      return;
+    }
+    
     // Deduplicate quotes based on text content
     const uniqueQuotes = quotes.reduce((acc: Quote[], current) => {
+      if (!current || typeof current !== 'object') return acc;
+      if (!current.text) return acc;
+      
       const isDuplicate = acc.find(item => item.text === current.text);
       if (!isDuplicate) {
         return [...acc, current];
@@ -76,22 +85,39 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   
   // Format date to local Thai time (GMT+7)
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleString('th-TH', {
-      timeZone: 'Asia/Bangkok'
-    });
+    if (!date || !(date instanceof Date)) {
+      return '';
+    }
+    
+    try {
+      return new Date(date).toLocaleString('th-TH', {
+        timeZone: 'Asia/Bangkok'
+      });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return '';
+    }
   };
   
   // Clean template text by removing sentiment markers
-  const cleanTemplateText = (text: string): string => {
+  const cleanTemplateText = (text: string | undefined): string => {
+    if (!text || typeof text !== 'string') {
+      return '';
+    }
+    
     return text
       .replace(/\$\{บวก\}/g, '')
       .replace(/\$\{กลาง\}/g, '')
-      .replace(/\$\{ลบ\}/g, '');
+      .replace(/\$\{ลบ\}/g, '')
+      .replace(/\$\{[\w\u0E00-\u0E7F]+\}/g, (match) => {
+        // Extract the word from ${word}
+        return match.substring(2, match.length - 1);
+      });
   };
   
   // Get sentiment from template
   const getSentimentFromTemplate = (template?: string): 'positive' | 'neutral' | 'negative' => {
-    if (!template) return 'neutral';
+    if (!template || typeof template !== 'string') return 'neutral';
     
     if (template.includes('${บวก}')) return 'positive';
     if (template.includes('${ลบ}')) return 'negative';
@@ -103,6 +129,10 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   
   // Get sentiment icon based on template
   const getSentimentIcon = (quote: Quote) => {
+    if (!quote || typeof quote !== 'object') {
+      return <Meh className="h-4 w-4 text-blue-500" />;
+    }
+    
     const sentiment = getSentimentFromTemplate(quote.template);
     
     switch (sentiment) {
@@ -115,59 +145,46 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     }
   };
   
-  // Get polarity text based on template
-  const getPolarityText = (quote: Quote): string => {
-    const sentiment = getSentimentFromTemplate(quote.template);
-    
-    switch (sentiment) {
-      case 'positive':
-        return 'เชิงบวก';
-      case 'negative':
-        return 'เชิงลบ';
-      default:
-        return 'กลาง';
-    }
-  };
-  
-  // Get badge variant based on template
-  const getBadgeVariant = (quote: Quote) => {
-    const sentiment = getSentimentFromTemplate(quote.template);
-    
-    switch (sentiment) {
-      case 'positive':
-        return 'success';
-      case 'negative':
-        return 'destructive';
-      default:
-        return 'secondary';
-    }
-  };
-  
   // Get sentiment score based on template
   const getSentimentScore = (quote: Quote): number => {
+    if (!quote || typeof quote !== 'object') {
+      return 0;
+    }
+    
     const sentiment = getSentimentFromTemplate(quote.template);
     return sentiment === 'positive' ? 1 : sentiment === 'negative' ? -1 : 0;
   };
   
   // Highlight word in sentence
-  const highlightWord = (sentence: string, word?: string): React.ReactNode => {
-    if (!sentence || !word) return cleanTemplateText(sentence);
+  const highlightWord = (sentence: string | undefined, word?: string): React.ReactNode => {
+    if (!sentence || typeof sentence !== 'string') {
+      return '';
+    }
+    
+    if (!word || typeof word !== 'string') {
+      return cleanTemplateText(sentence);
+    }
     
     // First clean the sentence from template markers
     const cleanedSentence = cleanTemplateText(sentence);
     
-    const parts = cleanedSentence.split(new RegExp(`(${word})`, 'gi'));
-    
-    return parts.map((part, index) => {
-      if (part.toLowerCase() === word.toLowerCase()) {
-        return (
-          <span key={index} className="text-[#F97316] font-semibold">
-            {part}
-          </span>
-        );
-      }
-      return part;
-    });
+    try {
+      const parts = cleanedSentence.split(new RegExp(`(${word})`, 'gi'));
+      
+      return parts.map((part, index) => {
+        if (part.toLowerCase() === word.toLowerCase()) {
+          return (
+            <span key={index} className="text-[#F97316] font-semibold">
+              {part}
+            </span>
+          );
+        }
+        return part;
+      });
+    } catch (error) {
+      console.error("Error highlighting word:", error);
+      return cleanedSentence;
+    }
   };
   
   return (
@@ -187,33 +204,43 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentQuotes.map((quote, index) => (
-                  <TableRow key={`${quote.text}-${index}`} isHighlighted={index % 2 === 0}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getSentimentIcon(quote)}
-                        <Badge variant={getBadgeVariant(quote)}>
-                          {getPolarityText(quote)}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getSentimentScore(quote)}</TableCell>
-                    {showAllUsers && (
-                      <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
-                    )}
-                    {showAllUsers && (
-                      <TableCell className="font-medium text-primary">
-                        {quote.word || '-'}
+                {currentQuotes.map((quote, index) => {
+                  // Handle invalid quotes
+                  if (!quote || typeof quote !== 'object') {
+                    return null;
+                  }
+                  
+                  const sentiment = getSentimentFromTemplate(quote.template);
+                  const badgeVariant = getSentimentBadgeVariant(sentiment);
+                  
+                  return (
+                    <TableRow key={`${quote.text}-${index}`}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {getSentimentIcon(quote)}
+                          <Badge variant={badgeVariant}>
+                            {getPolarityText(sentiment)}
+                          </Badge>
+                        </div>
                       </TableCell>
-                    )}
-                    <TableCell className="font-medium">
-                      {quote.word ? highlightWord(quote.text, quote.word) : cleanTemplateText(quote.text)}
-                    </TableCell>
-                    {showAllUsers && (
-                      <TableCell className="text-xs">{formatDate(quote.date)}</TableCell>
-                    )}
-                  </TableRow>
-                ))}
+                      <TableCell>{getSentimentScore(quote)}</TableCell>
+                      {showAllUsers && (
+                        <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
+                      )}
+                      {showAllUsers && (
+                        <TableCell className="font-medium text-primary">
+                          {quote.word || '-'}
+                        </TableCell>
+                      )}
+                      <TableCell className="font-medium">
+                        {quote.word ? highlightWord(quote.text, quote.word) : cleanTemplateText(quote.text)}
+                      </TableCell>
+                      {showAllUsers && (
+                        <TableCell className="text-xs">{formatDate(quote.date)}</TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

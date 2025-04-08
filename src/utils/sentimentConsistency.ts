@@ -1,3 +1,4 @@
+
 // Function to extract sentiment from a template string
 export const extractSentimentFromTemplate = (template: string | undefined): { sentiment: 'positive' | 'neutral' | 'negative'; text: string } => {
   let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
@@ -25,7 +26,7 @@ export const extractSentimentFromTemplate = (template: string | undefined): { se
 };
 
 // Function to analyze sentiment from a sentence
-export const analyzeSentimentFromSentence = (sentence: string, template?: string): { sentiment: 'positive' | 'neutral' | 'negative'; score: number } => {
+export const analyzeSentimentFromSentence = (sentence: string | undefined, template?: string | undefined): { sentiment: 'positive' | 'neutral' | 'negative'; score: number } => {
   // If a template is provided, use it to determine sentiment
   if (template && typeof template === 'string') {
     if (template.includes('${บวก}')) {
@@ -37,6 +38,9 @@ export const analyzeSentimentFromSentence = (sentence: string, template?: string
     }
   }
   
+  // Ensure sentence is a valid string before analysis
+  const validSentence = typeof sentence === 'string' ? sentence : '';
+  
   // Simple sentiment analysis for the sentence if no template or template doesn't have sentiment markers
   const positiveWords = ['ดี', 'สุข', 'รัก', 'ชอบ', 'ยิ้ม', 'สวย', 'เยี่ยม', 'ประสบความสำเร็จ', 'พลัง', 'กำลังใจ'];
   const negativeWords = ['แย่', 'เศร้า', 'เจ็บ', 'เสียใจ', 'กลัว', 'โกรธ', 'ล้มเหลว', 'ยาก', 'ปัญหา', 'ยาก'];
@@ -44,20 +48,18 @@ export const analyzeSentimentFromSentence = (sentence: string, template?: string
   // Count positive and negative words in the sentence
   let positiveCount = 0;
   let negativeCount = 0;
-  
-  if (typeof sentence === 'string') {
-    positiveWords.forEach(word => {
-      if (sentence.toLowerCase().includes(word.toLowerCase())) {
-        positiveCount++;
-      }
-    });
 
-    negativeWords.forEach(word => {
-      if (sentence.toLowerCase().includes(word.toLowerCase())) {
-        negativeCount++;
-      }
-    });
-  }
+  positiveWords.forEach(word => {
+    if (validSentence.toLowerCase().includes(word.toLowerCase())) {
+      positiveCount++;
+    }
+  });
+
+  negativeWords.forEach(word => {
+    if (validSentence.toLowerCase().includes(word.toLowerCase())) {
+      negativeCount++;
+    }
+  });
 
   // Calculate sentiment score
   const score = positiveCount - negativeCount;

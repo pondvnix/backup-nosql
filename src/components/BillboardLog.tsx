@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Smile, Meh, Frown, FilePlus } from "lucide-react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { getMotivationalSentences, MotivationalSentence } from "@/utils/motivationSentenceManager";
+import { getSentimentBadgeVariant, getPolarityText } from "@/utils/sentimentConsistency";
 
 const BillboardLog = () => {
   const [sentences, setSentences] = useState<MotivationalSentence[]>([]);
@@ -51,7 +52,11 @@ const BillboardLog = () => {
   }, [loadSentences]);
   
   // ลบเครื่องหมาย sentiment ออกจากข้อความ
-  const cleanText = (text: string): string => {
+  const cleanText = (text: string | undefined): string => {
+    if (!text || typeof text !== 'string') {
+      return '';
+    }
+    
     return text
       .replace(/\$\{บวก\}/g, '')
       .replace(/\$\{กลาง\}/g, '')
@@ -59,23 +64,31 @@ const BillboardLog = () => {
   };
   
   // ไฮไลต์คำในประโยค
-  const highlightWord = (sentence: string, word: string): React.ReactNode => {
-    if (!sentence || !word) return cleanText(sentence);
+  const highlightWord = (sentence: string | undefined, word: string | undefined): React.ReactNode => {
+    if (!sentence || !word || typeof sentence !== 'string' || typeof word !== 'string') {
+      return cleanText(sentence || '');
+    }
     
     const cleanedSentence = cleanText(sentence);
     
-    const parts = cleanedSentence.split(new RegExp(`(${word})`, 'gi'));
-    
-    return parts.map((part, index) => {
-      if (part.toLowerCase() === word.toLowerCase()) {
-        return (
-          <span key={index} className="text-orange-500 font-semibold">
-            {part}
-          </span>
-        );
-      }
-      return part;
-    });
+    // Safely split the string with proper type checking
+    try {
+      const parts = cleanedSentence.split(new RegExp(`(${word})`, 'gi'));
+      
+      return parts.map((part, index) => {
+        if (part.toLowerCase() === word.toLowerCase()) {
+          return (
+            <span key={index} className="text-orange-500 font-semibold">
+              {part}
+            </span>
+          );
+        }
+        return part;
+      });
+    } catch (error) {
+      console.error("Error highlighting word:", error);
+      return cleanedSentence;
+    }
   };
   
   // แสดงไอคอนตาม sentiment
@@ -90,36 +103,18 @@ const BillboardLog = () => {
     }
   };
   
-  // กำหนดสีของ Badge ตาม sentiment
-  const getBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative') => {
-    switch (sentiment) {
-      case 'positive':
-        return 'success';
-      case 'negative':
-        return 'destructive';
-      default:
-        return 'secondary';
-    }
-  };
-  
-  // แปลงชื่อ sentiment เป็นภาษาไทย
-  const getSentimentText = (sentiment?: 'positive' | 'neutral' | 'negative'): string => {
-    switch (sentiment) {
-      case 'positive':
-        return 'เชิงบวก';
-      case 'negative':
-        return 'เชิงลบ';
-      default:
-        return 'กลาง';
-    }
-  };
-  
   // กรองประโยคตามคำค้นหา
-  const filteredSentences = sentences.filter(sentence => 
-    sentence.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    sentence.sentence.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (sentence.contributor && sentence.contributor.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredSentences = sentences.filter(sentence => {
+    if (!searchTerm) return true;
+    
+    const word = sentence.word || '';
+    const sentenceText = sentence.sentence || '';
+    const contributor = sentence.contributor || '';
+    
+    return word.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           sentenceText.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           contributor.toLowerCase().includes(searchTerm.toLowerCase());
+  });
   
   // คำนวณหน้าปัจจุบัน
   const indexOfLastSentence = currentPage * sentencesPerPage;
@@ -190,8 +185,8 @@ const BillboardLog = () => {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {getSentimentIcon(sentence.sentiment)}
-                          <Badge variant={getBadgeVariant(sentence.sentiment)}>
-                            {getSentimentText(sentence.sentiment)}
+                          <Badge variant={getSentimentBadgeVariant(sentence.sentiment)}>
+                            {getPolarityText(sentence.sentiment)}
                           </Badge>
                         </div>
                       </TableCell>
@@ -199,7 +194,7 @@ const BillboardLog = () => {
                         {sentence.contributor || 'ไม่ระบุชื่อ'}
                       </TableCell>
                       <TableCell className="font-medium text-primary">
-                        {sentence.word}
+                        {sentence.word || ''}
                       </TableCell>
                       <TableCell>
                         {highlightWord(sentence.sentence, sentence.word)}
