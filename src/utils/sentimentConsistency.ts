@@ -1,49 +1,5 @@
 
-// ฟังก์ชันวิเคราะห์ sentiment จากประโยค
-export const analyzeSentimentFromSentence = (
-  sentence: string,
-  template?: string
-): { sentiment: 'positive' | 'neutral' | 'negative'; score: number } => {
-  // ถ้ามี template ให้วิเคราะห์จาก template ก่อน
-  if (template) {
-    const { sentiment } = extractSentimentFromTemplate(template);
-    
-    // กำหนดคะแนนตามเกณฑ์
-    let score: number;
-    switch (sentiment) {
-      case 'positive':
-        score = 2;  // ความรู้สึกเชิงบวก = 2 คะแนน
-        break;
-      case 'neutral':
-        score = 1;  // ความรู้สึกกลาง = 1 คะแนน
-        break;
-      case 'negative':
-        score = -1; // ความรู้สึกเชิงลบ = -1 คะแนน
-        break;
-      default:
-        score = 0;
-    }
-    
-    return { sentiment, score };
-  }
-  
-  // วิเคราะห์จากประโยคโดยตรง
-  if (sentence.includes('${บวก}')) {
-    return { sentiment: 'positive', score: 2 };
-  } else if (sentence.includes('${ลบ}')) {
-    return { sentiment: 'negative', score: -1 };
-  } else if (sentence.includes('${กลาง}')) {
-    return { sentiment: 'neutral', score: 1 };
-  }
-  
-  // ถ้าไม่มีตัวบ่งชี้ใด ๆ ให้เป็น neutral
-  return { sentiment: 'neutral', score: 1 };
-};
-
-// ฟังก์ชันดึง sentiment จาก template
-export const extractSentimentFromTemplate = (
-  template: string
-): { sentiment: 'positive' | 'neutral' | 'negative'; text: string } => {
+export function extractSentimentFromTemplate(template: string) {
   let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
   let text = template;
   
@@ -59,28 +15,66 @@ export const extractSentimentFromTemplate = (
   }
   
   return { sentiment, text };
-};
+}
 
-// ฟังก์ชันแปลง sentiment เป็นคำไทย
-export const getPolarityText = (sentiment?: 'positive' | 'neutral' | 'negative'): string => {
+export function getSentimentBadgeVariant(sentiment?: 'positive' | 'neutral' | 'negative') {
   switch (sentiment) {
     case 'positive':
-      return 'เชิงบวก';
+      return 'success' as const;
     case 'negative':
-      return 'เชิงลบ';
+      return 'destructive' as const;
     default:
-      return 'กลาง';
+      return 'secondary' as const;
   }
-};
+}
 
-// ฟังก์ชันแปลง sentiment เป็น badge variant
-export const getSentimentBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative'): "success" | "destructive" | "secondary" | "default" | "outline" | "warning" | "info" => {
-  switch (sentiment) {
-    case 'positive':
-      return 'success';
-    case 'negative':
-      return 'destructive';
-    default:
-      return 'secondary';
+export function getPolarityText(polarity?: 'positive' | 'neutral' | 'negative'): string {
+  if (polarity === 'positive') return 'เชิงบวก';
+  if (polarity === 'negative') return 'เชิงลบ';
+  return 'กลาง';
+}
+
+export function analyzeSentimentFromSentence(sentence: string, template?: string) {
+  if (template) {
+    return extractSentimentFromTemplate(template);
   }
-};
+  
+  const positivePatterns = [
+    'ดี', 'สุข', 'สบาย', 'รัก', 'ชื่นชม', 'ยินดี', 'สำเร็จ', 'เก่ง', 'เยี่ยม',
+    'น่ารัก', 'สนุก', 'สดใส', 'มีความสุข', 'สุดยอด', 'ชอบ', 'กำลังใจ',
+    'หวัง', 'พยายาม', 'เติบโต', 'ขอบคุณ', 'มั่นใจ', 'แข็งแรง', 'ฝัน', 'ส่งเสริม'
+  ];
+
+  const negativePatterns = [
+    'เศร้า', 'เสียใจ', 'ผิดหวัง', 'กลัว', 'กังวล', 'ท้อ', 'แย่', 'ล้มเหลว',
+    'หมดหวัง', 'เหนื่อย', 'โกรธ', 'เจ็บปวด', 'ร้องไห้', 'หนัก', 'ยาก',
+    'ลำบาก', 'ทุกข์', 'สงสาร', 'อ่อนแอ', 'อันตราย', 'อิจฉา', 'หึง'
+  ];
+  
+  let positiveCount = 0;
+  let negativeCount = 0;
+  
+  // Check for positive patterns
+  positivePatterns.forEach(pattern => {
+    if (sentence.toLowerCase().includes(pattern.toLowerCase())) {
+      positiveCount++;
+    }
+  });
+  
+  // Check for negative patterns
+  negativePatterns.forEach(pattern => {
+    if (sentence.toLowerCase().includes(pattern.toLowerCase())) {
+      negativeCount++;
+    }
+  });
+  
+  let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
+  
+  if (positiveCount > negativeCount) {
+    sentiment = 'positive';
+  } else if (negativeCount > positiveCount) {
+    sentiment = 'negative';
+  }
+  
+  return { sentiment, text: sentence };
+}
