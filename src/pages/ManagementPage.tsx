@@ -76,22 +76,24 @@ const ManagementPage = () => {
 
   const addNewWord = () => {
     if (word.trim()) {
-      const defaultTemplate: Template = {
-        template: `${word.trim()} คือสิ่งสำคัญในชีวิต`,
-        sentiment: 'positive'
-      };
+      const defaultTemplate = `${word.trim()} คือสิ่งสำคัญในชีวิต`;
       
       const contributor = getContributorName();
       
-      addWordToDatabase(word.trim(), 'positive', 1, [defaultTemplate]);
+      addWordToDatabase(word.trim(), [`\${บวก}${defaultTemplate}`]);
       
-      addWord(word.trim());
+      const newWordEntry: WordEntry = {
+        word: word.trim(),
+        templates: [`\${บวก}${defaultTemplate}`],
+        isCustom: true
+      };
+      addWord(newWordEntry);
       
       const event = new CustomEvent('motivationalSentenceGenerated', {
         detail: {
           word: word.trim(),
           contributor: contributor,
-          sentence: `${word.trim()} คือสิ่งสำคัญในชีวิต`,
+          sentence: defaultTemplate,
           sentiment: 'positive'
         }
       });
@@ -101,7 +103,7 @@ const ManagementPage = () => {
       
       const updatedWords = [...allWords, { 
         word: word.trim(), 
-        templates: ['${บวก}' + defaultTemplate.template]
+        templates: [`\${บวก}${defaultTemplate}`]
       }];
       
       setAllWords(updatedWords);
@@ -151,24 +153,19 @@ const ManagementPage = () => {
   const confirmEdit = () => {
     if (!currentEditWord) return;
 
-    const templates = parseTemplates(templateText);
+    const templateStrings = parseTemplates(templateText);
     
-    if (!checkTemplates(templates)) {
+    if (!checkTemplates(templateStrings)) {
       return;
     }
     
-    const firstTemplateSentiment = templates.length > 0 ? templates[0].sentiment : 'positive';
+    const firstTemplateInfo = extractSentimentFromTemplate(templateStrings[0] || "");
+    const firstTemplateSentiment = firstTemplateInfo.sentiment;
     const score = firstTemplateSentiment === 'positive' ? 1 : 
                  firstTemplateSentiment === 'negative' ? -1 : 0;
     
-    updateWordPolarity(
-      currentEditWord.word,
-      firstTemplateSentiment,
-      score,
-      templates
-    );
+    updateWordPolarity(currentEditWord.word, score);
     
-    const templateStrings = templateObjectsToStrings(templates);
     const updatedWords = allWords.map(w => {
       if (w.word === currentEditWord.word) {
         return { 
@@ -284,8 +281,8 @@ const ManagementPage = () => {
     const endPos = textarea.selectionEnd || 0;
     
     const placeholder = 
-      sentiment === 'positive' ? '${บวก}' :
-      sentiment === 'negative' ? '${ลบ}' :
+      sentiment === TemplateSentiment.POSITIVE ? '${บวก}' :
+      sentiment === TemplateSentiment.NEGATIVE ? '${ลบ}' :
       '${กลาง}';
       
     const newText = 
@@ -347,7 +344,7 @@ const ManagementPage = () => {
         
         <Card>
           <CardHeader>
-            <CardTitle>การจัดการคำและแม่แบบประโยค</CardTitle>
+            <CardTitle>���ารจัดการคำและแม่แบบประโยค</CardTitle>
             <CardDescription>เพิ่ม แก้ไข หรือลบคำและแม่แบบประโยคในระบบ</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -530,7 +527,7 @@ const ManagementPage = () => {
                       variant="outline"
                       size="sm"
                       className="h-8 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 border-green-200"
-                      onClick={() => insertSentimentPlaceholder('positive')}
+                      onClick={() => insertSentimentPlaceholder(TemplateSentiment.POSITIVE)}
                     >
                       <Smile className="h-3 w-3 mr-1" />
                       เพิ่ม ${"{"}บวก{"}"}
@@ -540,7 +537,7 @@ const ManagementPage = () => {
                       variant="outline"
                       size="sm"
                       className="h-8 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 border-blue-200"
-                      onClick={() => insertSentimentPlaceholder('neutral')}
+                      onClick={() => insertSentimentPlaceholder(TemplateSentiment.NEUTRAL)}
                     >
                       <Meh className="h-3 w-3 mr-1" />
                       เพิ่ม ${"{"}กลาง{"}"}
@@ -550,7 +547,7 @@ const ManagementPage = () => {
                       variant="outline"
                       size="sm"
                       className="h-8 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 border-red-200"
-                      onClick={() => insertSentimentPlaceholder('negative')}
+                      onClick={() => insertSentimentPlaceholder(TemplateSentiment.NEGATIVE)}
                     >
                       <Frown className="h-3 w-3 mr-1" />
                       เพิ่ม ${"{"}ลบ{"}"}

@@ -1,4 +1,3 @@
-
 // Type definitions
 export interface Template {
   text: string;
@@ -15,6 +14,7 @@ export interface WordEntry {
   word: string;
   templates: string[];
   polarity?: number;
+  isCustom?: boolean;
 }
 
 // ฟังก์ชันอัปเดตสถิติการใช้คำของผู้ร่วมสร้าง
@@ -86,14 +86,18 @@ export const addWord = (wordEntry: WordEntry): void => {
   updateWordDatabase(wordEntries);
 };
 
-export const addWordToDatabase = (word: string, templates: string[]): void => {
+// Updated function to handle string instead of string[]
+export const addWordToDatabase = (word: string, templates: string[] | string): void => {
   const wordEntries = getWordDatabase();
   const existingIndex = wordEntries.findIndex(entry => entry.word === word);
   
+  // Convert single string to array if needed
+  const templatesArray = Array.isArray(templates) ? templates : [templates];
+  
   if (existingIndex !== -1) {
-    wordEntries[existingIndex].templates = templates;
+    wordEntries[existingIndex].templates = templatesArray;
   } else {
-    wordEntries.push({ word, templates });
+    wordEntries.push({ word, templates: templatesArray });
   }
   
   updateWordDatabase(wordEntries);
@@ -170,9 +174,12 @@ export const validateWordInput = (word: string, templates: string[]): { valid: b
   return { valid: true };
 };
 
-export const hasDuplicateTemplates = (templates: string[]): boolean => {
-  const uniqueTemplates = new Set(templates);
-  return uniqueTemplates.size !== templates.length;
+export const hasDuplicateTemplates = (templates: string[] | Template[]): boolean => {
+  const templatesAsStrings = Array.isArray(templates) && templates.length > 0 && typeof templates[0] === 'object'
+    ? (templates as Template[]).map(t => t.text)
+    : templates as string[];
+  const uniqueTemplates = new Set(templatesAsStrings);
+  return uniqueTemplates.size !== templatesAsStrings.length;
 };
 
 export const parseTemplates = (rawTemplates: string): string[] => {

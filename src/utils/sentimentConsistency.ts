@@ -74,7 +74,7 @@ export const getPolarityText = (sentiment?: 'positive' | 'neutral' | 'negative')
 };
 
 // ฟังก์ชันแปลง sentiment เป็น badge variant
-export const getSentimentBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative'): string => {
+export const getSentimentBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative'): "success" | "destructive" | "secondary" | "default" | "outline" | "warning" | "info" => {
   switch (sentiment) {
     case 'positive':
       return 'success';

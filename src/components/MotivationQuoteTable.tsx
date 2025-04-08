@@ -1,4 +1,3 @@
-
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useState, useEffect } from "react";
@@ -25,13 +24,11 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   const quotesPerPage = 10;
   
   useEffect(() => {
-    // Ensure quotes is an array before proceeding
     if (!Array.isArray(quotes)) {
       setDisplayedQuotes([]);
       return;
     }
     
-    // Deduplicate quotes based on text content
     const uniqueQuotes = quotes.reduce((acc: Quote[], current) => {
       if (!current || typeof current !== 'object') return acc;
       if (!current.text || typeof current.text !== 'string') return acc;
@@ -43,7 +40,6 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
       return acc;
     }, []);
     
-    // Sort quotes by date (newest first)
     const sortedQuotes = [...uniqueQuotes].sort((a, b) => {
       const dateA = a.date instanceof Date ? a.date.getTime() : 0;
       const dateB = b.date instanceof Date ? b.date.getTime() : 0;
@@ -53,13 +49,11 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     setDisplayedQuotes(sortedQuotes);
   }, [quotes]);
   
-  // Calculate pagination
   const indexOfLastQuote = currentPage * quotesPerPage;
   const indexOfFirstQuote = indexOfLastQuote - quotesPerPage;
   const currentQuotes = displayedQuotes.slice(indexOfFirstQuote, indexOfLastQuote);
   const totalPages = Math.ceil(displayedQuotes.length / quotesPerPage);
   
-  // Get page numbers for pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxPagesToShow = 5;
@@ -85,7 +79,6 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     return pageNumbers;
   };
   
-  // Format date to local Thai time (GMT+7)
   const formatDate = (date: Date | null | undefined) => {
     if (!date || !(date instanceof Date)) {
       return '';
@@ -101,7 +94,6 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     }
   };
   
-  // Clean template text by removing sentiment markers
   const cleanTemplateText = (text: string | undefined): string => {
     if (!text || typeof text !== 'string') {
       return '';
@@ -112,13 +104,11 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
       .replace(/\$\{กลาง\}/g, '')
       .replace(/\$\{ลบ\}/g, '')
       .replace(/\$\{[\w\u0E00-\u0E7F]+\}/g, (match) => {
-        // Extract the word from ${word}
         const word = match.substring(2, match.length - 1);
         return word;
       });
   };
   
-  // Get sentiment from template
   const getSentimentFromTemplate = (template?: string): 'positive' | 'neutral' | 'negative' => {
     if (!template || typeof template !== 'string') return 'neutral';
     
@@ -130,7 +120,6 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     return sentiment;
   };
   
-  // Get sentiment icon based on template
   const getSentimentIcon = (quote: Quote) => {
     if (!quote || typeof quote !== 'object') {
       return <Meh className="h-4 w-4 text-blue-500" />;
@@ -148,7 +137,6 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     }
   };
   
-  // Get sentiment score based on template
   const getSentimentScore = (quote: Quote): number => {
     if (!quote || typeof quote !== 'object') {
       return 0;
@@ -158,7 +146,6 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     return sentiment === 'positive' ? 1 : sentiment === 'negative' ? -1 : 0;
   };
   
-  // Highlight word in sentence
   const highlightWord = (sentence: string | undefined, word?: string): React.ReactNode => {
     if (!sentence || typeof sentence !== 'string') {
       return '';
@@ -168,7 +155,6 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
       return cleanTemplateText(sentence);
     }
     
-    // First clean the sentence from template markers
     const cleanedSentence = cleanTemplateText(sentence);
     
     try {
@@ -208,7 +194,6 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
               </TableHeader>
               <TableBody>
                 {currentQuotes.map((quote, index) => {
-                  // Handle invalid quotes
                   if (!quote || typeof quote !== 'object') {
                     return null;
                   }
@@ -250,7 +235,6 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
             </Table>
           </div>
           
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="mt-4">
               <Pagination>

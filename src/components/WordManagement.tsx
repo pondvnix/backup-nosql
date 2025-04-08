@@ -18,7 +18,6 @@ import {
   WordEntry
 } from "@/utils/wordModeration";
 import { wordPolarityDatabase as defaultWordDatabase } from "@/utils/sentenceAnalysis";
-import { addWord } from "@/utils/wordModeration";
 
 const WordManagement = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -150,7 +149,11 @@ const WordManagement = () => {
     });
     
     // บันทึกประวัติการใช้งาน
-    addWord(newWord.word);
+    const wordEntry: WordEntry = {
+      word: newWord.word,
+      templates: newWord.templates || []
+    };
+    addWord(wordEntry);
     
     // ปิด modal
     setIsAddModalOpen(false);

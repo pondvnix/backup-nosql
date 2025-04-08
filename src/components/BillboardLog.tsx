@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,12 +14,10 @@ const BillboardLog = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const sentencesPerPage = 10;
   
-  // โหลดข้อมูลประโยคให้กำลังใจด้วย useCallback
   const loadSentences = useCallback(() => {
     try {
       const loadedSentences = getMotivationalSentences();
       
-      // Validate received sentences
       const validSentences = Array.isArray(loadedSentences) ? loadedSentences.filter(sentence => 
         sentence && typeof sentence === 'object'
       ) : [];
@@ -48,7 +45,6 @@ const BillboardLog = () => {
     window.addEventListener('motivationalSentenceGenerated', handleUpdate);
     window.addEventListener('motivation-billboard-updated', handleUpdate);
     
-    // ลดความถี่เป็น 5 วินาที
     const intervalId = setInterval(handleUpdate, 5000);
     
     return () => {
@@ -58,7 +54,6 @@ const BillboardLog = () => {
     };
   }, [loadSentences]);
   
-  // ลบเครื่องหมาย sentiment ออกจากข้อความ
   const cleanText = (text: string | undefined): string => {
     if (!text || typeof text !== 'string') {
       return '';
@@ -70,7 +65,6 @@ const BillboardLog = () => {
       .replace(/\$\{ลบ\}/g, '');
   };
   
-  // ไฮไลต์คำในประโยค
   const highlightWord = (sentence: string | undefined, word: string | undefined): React.ReactNode => {
     if (!sentence || !word || typeof sentence !== 'string' || typeof word !== 'string') {
       return cleanText(sentence || '');
@@ -78,7 +72,6 @@ const BillboardLog = () => {
     
     const cleanedSentence = cleanText(sentence);
     
-    // Safely split the string with proper type checking
     try {
       const parts = cleanedSentence.split(new RegExp(`(${word})`, 'gi'));
       
@@ -98,7 +91,6 @@ const BillboardLog = () => {
     }
   };
   
-  // แสดงไอคอนตาม sentiment
   const getSentimentIcon = (sentiment?: 'positive' | 'neutral' | 'negative') => {
     switch (sentiment) {
       case 'positive':
@@ -110,7 +102,6 @@ const BillboardLog = () => {
     }
   };
   
-  // กรองประโยคตามคำค้นหา
   const filteredSentences = sentences.filter(sentence => {
     if (!searchTerm || typeof searchTerm !== 'string') return true;
     if (!sentence || typeof sentence !== 'object') return false;
@@ -123,13 +114,11 @@ const BillboardLog = () => {
     return word.includes(search) || sentenceText.includes(search) || contributor.includes(search);
   });
   
-  // คำนวณหน้าปัจจุบัน
   const indexOfLastSentence = currentPage * sentencesPerPage;
   const indexOfFirstSentence = indexOfLastSentence - sentencesPerPage;
   const currentSentences = filteredSentences.slice(indexOfFirstSentence, indexOfLastSentence);
   const totalPages = Math.ceil(filteredSentences.length / sentencesPerPage);
   
-  // สร้างตัวเลขหน้าสำหรับ pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxPagesToShow = 5;
@@ -188,12 +177,10 @@ const BillboardLog = () => {
                 </TableHeader>
                 <TableBody>
                   {currentSentences.map((sentence, index) => {
-                    // Skip invalid sentence data
                     if (!sentence || typeof sentence !== 'object') {
                       return null;
                     }
                     
-                    // Generate a valid key
                     const key = sentence.id || `sentence-${index}-${typeof sentence.timestamp === 'object' ? 
                       new Date(sentence.timestamp).getTime() : 
                       typeof sentence.timestamp === 'number' ? 
