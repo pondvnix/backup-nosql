@@ -66,7 +66,7 @@ const LogsPage = () => {
   }, []);
   
   // Get sentiment from template
-  const getSentimentFromTemplate = (template: string): 'positive' | 'neutral' | 'negative' => {
+  const getSentimentFromTemplate = (template: string | undefined): 'positive' | 'neutral' | 'negative' => {
     if (!template || typeof template !== 'string') return 'neutral';
     
     if (template.includes('${บวก}')) return 'positive';
@@ -78,7 +78,7 @@ const LogsPage = () => {
   };
   
   // Clean template text by removing sentiment markers
-  const cleanTemplateText = (text: string): string => {
+  const cleanTemplateText = (text: string | undefined): string => {
     if (!text || typeof text !== 'string') return '';
     
     return text

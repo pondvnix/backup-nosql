@@ -113,7 +113,8 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
       .replace(/\$\{ลบ\}/g, '')
       .replace(/\$\{[\w\u0E00-\u0E7F]+\}/g, (match) => {
         // Extract the word from ${word}
-        return match.substring(2, match.length - 1);
+        const word = match.substring(2, match.length - 1);
+        return word;
       });
   };
   

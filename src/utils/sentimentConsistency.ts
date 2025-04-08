@@ -11,13 +11,13 @@ export const extractSentimentFromTemplate = (template: string | undefined): { se
   text = template;
 
   // Check for sentiment prefixes and remove them
-  if (typeof template === 'string' && template.includes('${บวก}')) {
+  if (template.includes('${บวก}')) {
     sentiment = 'positive';
     text = template.replace('${บวก}', '');
-  } else if (typeof template === 'string' && template.includes('${กลาง}')) {
+  } else if (template.includes('${กลาง}')) {
     sentiment = 'neutral';
     text = template.replace('${กลาง}', '');
-  } else if (typeof template === 'string' && template.includes('${ลบ}')) {
+  } else if (template.includes('${ลบ}')) {
     sentiment = 'negative';
     text = template.replace('${ลบ}', '');
   }

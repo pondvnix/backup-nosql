@@ -34,14 +34,17 @@ const WordPolarityLog = ({ words }: WordPolarityLogProps) => {
     // Get template sentiment if available
     let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
     
-    if (word.templates && word.templates.length > 0) {
-      // Use the first template's sentiment
-      if (word.templates[0].startsWith('${บวก}')) {
-        sentiment = 'positive';
-      } else if (word.templates[0].startsWith('${ลบ}')) {
-        sentiment = 'negative';
-      } else if (word.templates[0].startsWith('${กลาง}')) {
-        sentiment = 'neutral';
+    if (word.templates && Array.isArray(word.templates) && word.templates.length > 0) {
+      const firstTemplate = word.templates[0];
+      // Check if firstTemplate is a string before using includes
+      if (typeof firstTemplate === 'string') {
+        if (firstTemplate.startsWith('${บวก}')) {
+          sentiment = 'positive';
+        } else if (firstTemplate.startsWith('${ลบ}')) {
+          sentiment = 'negative';
+        } else if (firstTemplate.startsWith('${กลาง}')) {
+          sentiment = 'neutral';
+        }
       }
     }
     
