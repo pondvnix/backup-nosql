@@ -12,7 +12,8 @@ import AboutPage from "./pages/AboutPage";
 import ManagementPage from "./pages/ManagementPage";
 import LogsPage from "./pages/LogsPage";
 import NotFound from "./pages/NotFound";
-import { MetaTags } from './components/MetaTags';
+import MetaTags from './components/MetaTags';
+import { updateMetaTitleAndDescription } from "./utils/metaConfig";
 
 const App = () => {
   // Create a QueryClient instance within the component
@@ -28,6 +29,14 @@ const App = () => {
     
     // Apply Sarabun font to the body
     document.body.classList.add('font-sarabun');
+    
+    // Set initial meta tags
+    updateMetaTitleAndDescription({
+      title: '"คำ" ลังใจ',
+      description: 'ร่วมสร้างประโยคกำลังใจที่ยาวที่สุด โดยเพิ่มคำของคุณต่อท้ายคำอื่นๆ เพื่อส่งต่อกำลังใจให้กับผู้ป่วยและบุคลากรทางการแพทย์ ผลิตภัณฑ์ดอยคำ โครงการส่วนพระองค์ ผลิตโดย โครงการส่วนพระองค์ สวนจิตรลดา กล่องคำลังใจ - ข้อความให้กำลังใจ',
+      siteUrl: 'https://preview--retro-terminal-blocks.lovable.app',
+      imageUrl: '/og-image.jpg'
+    });
     
     return () => {
       // Clean up

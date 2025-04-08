@@ -76,20 +76,52 @@ const TomatoBox = ({
     generateTomatoBoxImage();
   }, [word, contributor, sentence, selectedWords]);
 
-  // Copy to clipboard function
+  // Copy to clipboard function with improved browser compatibility
   const copyToClipboard = async () => {
     try {
       if (imageUrl) {
-        // For modern browsers
-        const blob = await fetch(imageUrl).then(r => r.blob());
-        const item = new ClipboardItem({
-          "image/png": blob
-        });
-        await navigator.clipboard.write([item]);
-        toast({
-          title: "คัดลอกสำเร็จ",
-          description: "กล่องน้ำมะเขือเทศถูกคัดลอกไปยังคลิปบอร์ดแล้ว"
-        });
+        // For modern browsers supporting ClipboardItem
+        if (navigator.clipboard && ClipboardItem) {
+          const blob = await fetch(imageUrl).then(r => r.blob());
+          const item = new ClipboardItem({
+            "image/png": blob
+          });
+          await navigator.clipboard.write([item]);
+          toast({
+            title: "คัดลอกสำเร็จ",
+            description: "กล่องน้ำมะเขือเทศถูกคัดลอกไปยังคลิปบอร์ดแล้ว"
+          });
+        } else {
+          // Fallback for older browsers - create a temporary element
+          const tempImg = document.createElement('img');
+          tempImg.src = imageUrl;
+          
+          const tempContainer = document.createElement('div');
+          tempContainer.style.position = 'fixed';
+          tempContainer.style.pointerEvents = 'none';
+          tempContainer.style.opacity = '0';
+          tempContainer.appendChild(tempImg);
+          document.body.appendChild(tempContainer);
+          
+          // Select and copy
+          const range = document.createRange();
+          range.selectNode(tempContainer);
+          window.getSelection()?.removeAllRanges();
+          window.getSelection()?.addRange(range);
+          
+          const success = document.execCommand('copy');
+          window.getSelection()?.removeAllRanges();
+          document.body.removeChild(tempContainer);
+          
+          if (success) {
+            toast({
+              title: "คัดลอกสำเร็จ",
+              description: "กล่องน้ำมะเขือเทศถูกคัดลอกไปยังคลิปบอร์ดแล้ว"
+            });
+          } else {
+            throw new Error("execCommand returned false");
+          }
+        }
       }
     } catch (error) {
       console.error("คัดลอกล้มเหลว:", error);
@@ -119,6 +151,19 @@ const TomatoBox = ({
         variant: "destructive"
       });
     }
+  };
+
+  // Data URL to Blob conversion for sharing
+  const dataURLtoBlob = (dataURL: string): Blob => {
+    const arr = dataURL.split(',');
+    const mime = arr[0].match(/:(.*?);/)![1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
   };
 
   // New function to highlight words in the sentence
@@ -236,10 +281,26 @@ const TomatoBox = ({
               </Button>
               
               {/* Share to Facebook */}
-              <ShareButton platform="facebook" url={window.location.href} sectionId="tomato-box-section" text={`กล่องคำลังใจดอยคำ: "${word}" โดย ${contributor}`} className="bg-blue-600 text-white hover:bg-blue-700 h-10 animate-fade-in" />
+              <ShareButton 
+                platform="facebook" 
+                url={window.location.href} 
+                sectionId="tomato-box-section" 
+                text={`กล่องคำลังใจดอยคำ: "${word}" โดย ${contributor}`}
+                imageUrl={imageUrl}
+                title={`"${word}" - กล่องคำลังใจดอยคำ`}
+                className="bg-blue-600 text-white hover:bg-blue-700 h-10 animate-fade-in" 
+              />
               
               {/* Share to Twitter */}
-              <ShareButton platform="twitter" url={window.location.href} sectionId="tomato-box-section" text={`กล่องคำลังใจดอยคำ: "${word}" โดย ${contributor}`} className="bg-black text-white hover:bg-gray-800 h-10 animate-fade-in" />
+              <ShareButton 
+                platform="twitter" 
+                url={window.location.href} 
+                sectionId="tomato-box-section" 
+                text={`กล่องคำลังใจดอยคำ: "${word}" โดย ${contributor}`}
+                imageUrl={imageUrl}
+                title={`"${word}" - กล่องคำลังใจดอยคำ`}
+                className="bg-black text-white hover:bg-gray-800 h-10 animate-fade-in" 
+              />
               
               {/* Copy to clipboard */}
               <Button onClick={copyToClipboard} variant="outline" className="gap-2 bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 h-10 animate-fade-in">

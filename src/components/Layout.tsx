@@ -5,11 +5,12 @@ import MobileFooter from "./MobileFooter";
 
 interface LayoutProps {
   children: React.ReactNode;
+  className?: string;
 }
 
-const Layout = ({ children }: LayoutProps) => {
+const Layout = ({ children, className = "" }: LayoutProps) => {
   return (
-    <div className="min-h-screen bg-[#fef8ee] pb-16 md:pb-0">
+    <div className={`min-h-screen bg-[#fef8ee] pb-16 md:pb-0 ${className}`}>
       <Header />
       <main className="container mx-auto py-8">
         {children}

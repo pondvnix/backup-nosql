@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { getEncodedMetaInfo } from '../utils/metaConfig';
 import { loadExternalScript } from '../utils/scriptLoader';
@@ -34,6 +35,11 @@ export const MetaTags = () => {
       ogImageMeta.setAttribute('content', metaInfo.getDecodedValue('imageUrl'));
     }
 
+    const ogUrlMeta = document.querySelector('meta[property="og:url"]');
+    if (ogUrlMeta) {
+      ogUrlMeta.setAttribute('content', metaInfo.getDecodedValue('siteUrl'));
+    }
+
     // อัพเดท Twitter tags
     const twitterImageMeta = document.querySelector('meta[name="twitter:image"]');
     if (twitterImageMeta) {
@@ -47,4 +53,6 @@ export const MetaTags = () => {
   }, []);
 
   return null;
-}; 
+};
+
+export default MetaTags;

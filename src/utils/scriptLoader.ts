@@ -1,30 +1,63 @@
-// เข้ารหัส URL ของ script
-const encodedScriptUrl = btoa('https://cdn.gpteng.co/gptengineer.js');
 
+/**
+ * โหลด external script ที่จำเป็น
+ */
 export const loadExternalScript = () => {
+  const scripts = [
+    {
+      id: 'dom-to-image-script',
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js'
+    },
+    {
+      id: 'html2canvas-script',
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
+    },
+    {
+      id: 'file-saver-script',
+      src: 'https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js'
+    }
+  ];
+
+  scripts.forEach(script => {
+    if (!document.getElementById(script.id)) {
+      const scriptElement = document.createElement('script');
+      scriptElement.id = script.id;
+      scriptElement.src = script.src;
+      scriptElement.async = true;
+      document.body.appendChild(scriptElement);
+    }
+  });
+};
+
+/**
+ * บันทึกประโยคให้กำลังใจลง localStorage
+ */
+export const storeSentenceToBillboard = (sentence, contributor, word) => {
+  if (!sentence || !word) return;
+  
   try {
-    // ถอดรหัส URL
-    const scriptUrl = atob(encodedScriptUrl);
+    const entry = {
+      sentence,
+      contributor: contributor || 'ไม่ระบุชื่อ',
+      word,
+      timestamp: new Date().toISOString()
+    };
     
-    // สร้าง script element
-    const script = document.createElement('script');
-    script.type = 'module';
-    script.src = scriptUrl;
+    let existingEntries = [];
+    const stored = localStorage.getItem('motivation-billboard');
+    if (stored) {
+      existingEntries = JSON.parse(stored);
+    }
     
-    // ซ่อนคุณสมบัติของ script
-    Object.defineProperty(script, 'src', {
-      get: function() {
-        return scriptUrl;
-      },
-      set: function() {
-        // ป้องกันการแก้ไข src
-      },
-      configurable: false
-    });
+    localStorage.setItem('motivation-billboard', 
+      JSON.stringify([entry, ...existingEntries]));
+      
+    // Trigger event for real-time updates
+    window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
     
-    // แทรก script ลงใน document
-    document.body.appendChild(script);
+    return true;
   } catch (error) {
-    console.error('Failed to load script');
+    console.error('Error storing sentence:', error);
+    return false;
   }
-}; 
+};

@@ -7,11 +7,12 @@ interface LayoutProps {
   children: React.ReactNode;
   hideHeader?: boolean;
   hideFooter?: boolean;
+  className?: string;
 }
 
-const Layout = ({ children, hideHeader = false, hideFooter = false }: LayoutProps) => {
+const Layout = ({ children, hideHeader = false, hideFooter = false, className = "" }: LayoutProps) => {
   return (
-    <div className="min-h-screen flex flex-col bg-[#fef8ee]">
+    <div className={`min-h-screen flex flex-col bg-[#fef8ee] ${className}`}>
       {!hideHeader && <Header />}
       <main className="flex-grow w-full pb-20 md:pb-6">{children}</main>
       {!hideFooter && <MobileFooter />}

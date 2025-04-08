@@ -9,7 +9,7 @@ interface MetaConfig {
 
 export const updateMetaTitleAndDescription = (config: MetaConfig): void => {
   // Update title tag
-  document.title = config.title || 'คำลังใจ - แพลตฟอร์มสร้างกำลังใจด้วยภาษาไทย';
+  document.title = config.title || '"คำ" ลังใจ';
   
   // Find meta tags or create them if they don't exist
   const updateOrCreateMetaTag = (name: string, content: string) => {
@@ -80,14 +80,40 @@ export const getEncodedMetaInfo = () => {
   };
 
   const metaInfo = {
-    title: encodeData("Word Stream Encouragement"),
-    description: encodeData("Word-Stream-Encouragement"),
-    author: encodeData("pond-dev"),
-    twitterHandle: encodeData("@pond_dev"),
-    imageUrl: encodeData("https://wpmart.co/wp-content/uploads/2024/09/cropped-Favicon_WP-1-192x192.png")
+    title: encodeData('"คำ" ลังใจ'),
+    description: encodeData('ร่วมสร้างประโยคกำลังใจที่ยาวที่สุด โดยเพิ่มคำของคุณต่อท้ายคำอื่นๆ เพื่อส่งต่อกำลังใจให้กับผู้ป่วยและบุคลากรทางการแพทย์'),
+    author: encodeData('ผลิตภัณฑ์ดอยคำ'),
+    twitterHandle: encodeData('@doikham_th'),
+    imageUrl: encodeData('/og-image.jpg'),
+    siteUrl: encodeData('https://preview--retro-terminal-blocks.lovable.app')
   };
 
   return {
     getDecodedValue: (key: keyof typeof metaInfo) => decodeData(metaInfo[key])
   };
+};
+
+// New function to dynamically set OG meta tags for sharing TomatoBox images
+export const setDynamicShareMetaInfo = (imageUrl: string, title: string, description: string) => {
+  const updateOrCreateMetaTag = (name: string, content: string) => {
+    let meta = document.querySelector(`meta[property="${name}"]`) || document.querySelector(`meta[name="${name}"]`);
+    
+    if (meta) {
+      meta.setAttribute('content', content);
+    } else {
+      const newMeta = document.createElement('meta');
+      const isOgTag = name.startsWith('og:');
+      const attribute = isOgTag ? 'property' : 'name';
+      newMeta.setAttribute(attribute, name);
+      newMeta.setAttribute('content', content);
+      document.head.appendChild(newMeta);
+    }
+  };
+  
+  updateOrCreateMetaTag('og:image', imageUrl);
+  updateOrCreateMetaTag('og:title', title);
+  updateOrCreateMetaTag('og:description', description);
+  updateOrCreateMetaTag('twitter:image', imageUrl);
+  updateOrCreateMetaTag('twitter:title', title);
+  updateOrCreateMetaTag('twitter:description', description);
 };

@@ -3,6 +3,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Facebook, Twitter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { setDynamicShareMetaInfo } from "@/utils/metaConfig";
 
 export interface ShareButtonProps {
   platform: "facebook" | "twitter";
@@ -11,6 +12,7 @@ export interface ShareButtonProps {
   text?: string;
   title?: string;
   className?: string;
+  imageUrl?: string;
 }
 
 export const ShareButton = ({
@@ -20,6 +22,7 @@ export const ShareButton = ({
   text,
   title,
   className,
+  imageUrl,
 }: ShareButtonProps) => {
   const { toast } = useToast();
   
@@ -32,6 +35,15 @@ export const ShareButton = ({
   const encodedText = encodeURIComponent(defaultText);
   
   const handleShare = () => {
+    // Set dynamic meta tags for better sharing experience if image is provided
+    if (imageUrl) {
+      setDynamicShareMetaInfo(
+        imageUrl,
+        title || '"คำ" ลังใจ - กล่องคำลังใจ',
+        text || 'กล่องคำลังใจจากผลิตภัณฑ์ดอยคำ'
+      );
+    }
+    
     let shareUrl = "";
     let windowTitle = "";
     
