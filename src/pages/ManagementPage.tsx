@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import Layout from "../components/Layout";
 import ClearDataButtons from "../components/ClearDataButtons";
 import MotivationalSentence from "../components/MotivationalSentence";
+import { getContributorName } from "@/utils/contributorManager";
 
 // Utils
 import { 
@@ -32,7 +33,8 @@ import {
   Template,
   TemplateSentiment,
   templateObjectsToStrings,
-  stringToTemplateObjects
+  stringToTemplateObjects,
+  addWord
 } from "../utils/wordModeration";
 import { extractSentimentFromTemplate } from "../utils/sentimentConsistency";
 
@@ -77,14 +79,28 @@ const ManagementPage = () => {
     };
   }, []);
 
-  const addWord = () => {
+  const addNewWord = () => {
     if (word.trim()) {
       const defaultTemplate: Template = {
         template: `${word.trim()} คือสิ่งสำคัญในชีวิต`,
         sentiment: 'positive'
       };
       
+      const contributor = getContributorName();
+      
       addWordToDatabase(word.trim(), 'positive', 1, [defaultTemplate]);
+      
+      addWord(word.trim());
+      
+      const event = new CustomEvent('motivationalSentenceGenerated', {
+        detail: {
+          word: word.trim(),
+          contributor: contributor,
+          sentence: `${word.trim()} คือสิ่งสำคัญในชีวิต`,
+          sentiment: 'positive'
+        }
+      });
+      window.dispatchEvent(event);
       
       setWord("");
       
@@ -178,6 +194,18 @@ const ManagementPage = () => {
     
     setAllWords(updatedWords);
     setEditModalOpen(false);
+    
+    const contributor = getContributorName();
+    if (templates.length > 0) {
+      const event = new CustomEvent('word-database-updated', {
+        detail: {
+          word: currentEditWord.word,
+          templates: templateObjectsToStrings(templates),
+          sentiment: firstTemplateSentiment
+        }
+      });
+      window.dispatchEvent(event);
+    }
     
     toast({
       title: "อัพเดทคำสำเร็จ",
@@ -354,7 +382,7 @@ const ManagementPage = () => {
                     />
                   </div>
                   <div className="flex items-end">
-                    <Button onClick={addWord} className="w-full flex gap-2">
+                    <Button onClick={addNewWord} className="w-full flex gap-2">
                       <Plus className="h-4 w-4" />
                       <span>เพิ่มคำ</span>
                     </Button>

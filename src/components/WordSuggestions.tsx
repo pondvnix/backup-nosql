@@ -8,7 +8,7 @@ import { ArrowRight, Sparkles, Search, X } from "lucide-react";
 import { getWordSentiment } from "@/utils/sentimentAnalysis";
 import { filterWordsByCategory } from "@/utils/wordCategorization";
 import { addWord, getRecentWords } from "@/utils/wordModeration";
-import { promptForContributorName } from "@/utils/contributorManager";
+import { getContributorName } from "@/utils/contributorManager";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
@@ -60,8 +60,8 @@ const WordSuggestions = ({
 
   // จัดการการคลิกที่คำ
   const handleWordClick = (word: string) => {
-    // บันทึกชื่อผู้ใช้ (จะแสดง prompt ถ้ายังไม่ได้ตั้งชื่อ)
-    promptForContributorName();
+    // ใช้ชื่อผู้ใช้ที่มีอยู่แล้วโดยไม่ต้องแสดง popup
+    const contributorName = getContributorName();
     
     // เรียกฟังก์ชันจากคอมโพเนนต์แม่
     onWordSelect(word);

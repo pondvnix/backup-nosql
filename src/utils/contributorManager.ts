@@ -38,19 +38,10 @@ export const hasContributorName = (): boolean => {
 
 /**
  * แสดง dialog ให้ผู้ใช้ป้อนชื่อผู้ร่วมสร้าง (ถ้ายังไม่มี)
- * คืนค่าชื่อที่ได้
+ * คืนค่าชื่อที่ได้ - ปรับปรุงให้ไม่แสดง popup และใช้ชื่อ default แทน
  */
 export const promptForContributorName = (): string => {
-  if (hasContributorName()) {
-    return getContributorName();
-  }
-  
-  const name = window.prompt('กรุณาระบุชื่อผู้ให้กำลังใจ', '');
-  
-  if (name !== null && name.trim() !== '') {
-    saveContributorName(name.trim());
-    return name.trim();
-  }
-  
-  return DEFAULT_CONTRIBUTOR_NAME;
+  // ไม่มีการแสดง popup อีกต่อไป เนื่องจากมีการระบุชื่อในส่วนอื่นแล้ว
+  // แทนที่จะถาม ให้นำชื่อที่มีอยู่แล้วมาใช้หรือใช้ค่า default
+  return getContributorName();
 };
