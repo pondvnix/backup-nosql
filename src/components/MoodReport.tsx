@@ -1,19 +1,23 @@
+
 import React, { useState, useEffect } from "react";
 import { getMotivationalSentences } from "@/utils/motivationSentenceManager";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Smile, Meh, Frown, Heart, Clock } from "lucide-react";
+
 export interface MoodReportProps {
   limit?: number;
   refreshKey?: number;
   sentences?: any[];
 }
+
 const MoodReport = ({
   limit = 10,
   refreshKey = 0,
   sentences: providedSentences
 }: MoodReportProps) => {
   const [sentences, setSentences] = useState<any[]>([]);
+
   useEffect(() => {
     if (providedSentences) {
       setSentences(providedSentences.slice(0, limit));
@@ -22,6 +26,7 @@ const MoodReport = ({
       setSentences(storedSentences.slice(0, limit));
     }
   }, [limit, refreshKey, providedSentences]);
+
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -36,6 +41,7 @@ const MoodReport = ({
       return "ไม่ระบุเวลา";
     }
   };
+
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
       case 'positive':
@@ -46,6 +52,7 @@ const MoodReport = ({
         return <Meh className="h-4 w-4 text-blue-500" />;
     }
   };
+
   const getSentimentBadgeVariant = (sentiment: string) => {
     switch (sentiment) {
       case 'positive':
@@ -57,7 +64,7 @@ const MoodReport = ({
     }
   };
 
-  // New function to highlight the focus word in orange
+  // Enhanced function to highlight the focus word in orange
   const highlightWord = (sentence: string, word: string) => {
     if (!word || !sentence) return sentence;
     const regex = new RegExp(`(${word})`, 'gi');
@@ -69,6 +76,7 @@ const MoodReport = ({
       return part;
     });
   };
+
   return <div className="space-y-4 font-sarabun">
       {sentences.length === 0 ? <p className="text-center text-muted-foreground py-8">
           ยังไม่มีประโยคให้กำลังใจ โปรดสร้างประโยคใหม่
@@ -110,4 +118,5 @@ const MoodReport = ({
           </Card>)}
     </div>;
 };
+
 export default MoodReport;

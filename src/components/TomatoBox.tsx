@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useRef } from "react";
 import html2canvas from "html2canvas";
+import domtoimage from "dom-to-image";
+import { saveAs } from "file-saver";
 import { Button } from "@/components/ui/button";
 import { Copy, Download, Facebook, Twitter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -23,31 +26,46 @@ const TomatoBox = ({
 }: TomatoBoxProps) => {
   const [imageUrl, setImageUrl] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const {
-    toast
-  } = useToast();
+  const tomatoBoxRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
-  // Generate the tomato box image
+  // Generate the tomato box image using dom-to-image for better quality
   const generateTomatoBoxImage = async () => {
     setIsGenerating(true);
     try {
       const tomatoBoxElement = document.getElementById('tomato-box-content');
       if (tomatoBoxElement) {
-        const canvas = await html2canvas(tomatoBoxElement, {
-          backgroundColor: "#ffffff",
-          scale: 2,
-          // Higher resolution
-          useCORS: true,
-          // Allow cross-origin images
-          allowTaint: true,
-          // Allow tainted canvas
-          logging: true // Enable logging for debugging
-        });
-        const imageUrl = canvas.toDataURL('image/png');
-        setImageUrl(imageUrl);
+        // Try dom-to-image first (higher quality)
+        try {
+          const dataUrl = await domtoimage.toPng(tomatoBoxElement, {
+            quality: 1.0,
+            bgcolor: "#ffffff",
+            style: {
+              display: "block",
+            }
+          });
+          setImageUrl(dataUrl);
+        } catch (domError) {
+          console.error("Dom-to-image failed, falling back to html2canvas:", domError);
+          // Fallback to html2canvas
+          const canvas = await html2canvas(tomatoBoxElement, {
+            backgroundColor: "#ffffff",
+            scale: 2, // Higher resolution
+            useCORS: true, // Allow cross-origin images
+            allowTaint: true, // Allow tainted canvas
+            logging: true // Enable logging for debugging
+          });
+          const imageUrl = canvas.toDataURL('image/png');
+          setImageUrl(imageUrl);
+        }
       }
     } catch (error) {
       console.error("Error generating tomato box image:", error);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถสร้างรูปภาพได้ กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive"
+      });
     } finally {
       setIsGenerating(false);
     }
@@ -83,6 +101,26 @@ const TomatoBox = ({
     }
   };
 
+  // Save image function with better error handling
+  const saveImage = () => {
+    try {
+      if (imageUrl) {
+        saveAs(imageUrl, `doikham_box_${word}_${contributor}.png`);
+        toast({
+          title: "บันทึกสำเร็จ",
+          description: "กล่องน้ำมะเขือเทศถูกบันทึกลงในอุปกรณ์ของคุณแล้ว"
+        });
+      }
+    } catch (error) {
+      console.error("บันทึกล้มเหลว:", error);
+      toast({
+        title: "บันทึกล้มเหลว",
+        description: "ไม่สามารถบันทึกรูปภาพได้ กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive"
+      });
+    }
+  };
+
   // New function to highlight words in the sentence
   const highlightWordsInSentence = (sentence: string | undefined, focusWord: string) => {
     if (!sentence || !focusWord) return sentence;
@@ -95,9 +133,10 @@ const TomatoBox = ({
       return part;
     });
   };
+
   return <div className="space-y-6 font-sarabun">
       {/* Hidden div that will be converted to image */}
-      <div id="tomato-box-content" className="bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto" style={{
+      <div id="tomato-box-content" ref={tomatoBoxRef} className="bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto" style={{
       display: "block"
     }}>
         <div className="relative border-4 border-red-600 p-6 rounded-lg bg-gradient-to-r from-red-50 to-orange-50">
@@ -190,11 +229,11 @@ const TomatoBox = ({
             </div>
             
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
-              {/* Download button */}
-              <a href={imageUrl} download={`doikham_box_${word}_${contributor}.png`} className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 gap-2 animate-fade-in">
+              {/* Download button - now using saveImage function */}
+              <Button onClick={saveImage} className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 gap-2 animate-fade-in">
                 <Download className="h-4 w-4" />
                 ดาวน์โหลด
-              </a>
+              </Button>
               
               {/* Share to Facebook */}
               <ShareButton platform="facebook" url={window.location.href} sectionId="tomato-box-section" text={`กล่องคำลังใจดอยคำ: "${word}" โดย ${contributor}`} className="bg-blue-600 text-white hover:bg-blue-700 h-10 animate-fade-in" />
@@ -208,6 +247,11 @@ const TomatoBox = ({
                 คัดลอก
               </Button>
             </div>
+            
+            {/* Regenerate button */}
+            <Button onClick={generateTomatoBoxImage} variant="outline" className="mt-4 gap-2 text-orange-700 border-orange-200 hover:bg-orange-100">
+              สร้างรูปภาพใหม่
+            </Button>
           </div>
         </Card>}
 
@@ -216,4 +260,5 @@ const TomatoBox = ({
         </div>}
     </div>;
 };
+
 export default TomatoBox;
