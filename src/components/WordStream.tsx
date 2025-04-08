@@ -1,102 +1,18 @@
-
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import WordForm from "./WordForm";
-import TomatoBox from "./TomatoBox";
-import SentenceAnalysis from "./SentenceAnalysis";
-import MotivationalSentence from "./MotivationalSentence";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { analyzeSentence } from "@/utils/sentenceAnalysis";
-import Leaderboard from "./Leaderboard";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PlusCircle, RefreshCw, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { stringToTemplateObjects } from "@/utils/wordModeration";
+import WordForm from "@/components/WordForm";
+import { getContributorName } from "@/utils/contributorManager";
+import { useToast } from "@/hooks/use-toast";
 
-interface Word {
-  id: string;
-  text: string;
-  contributor: string;
-  timestamp: Date;
+interface WordStreamProps {
+  onAddWord?: (word: string) => void;
 }
 
-interface MotivationalSentenceEntry {
-  sentence: string;
-  word: string;
-  contributor: string;
-  timestamp: Date;
-  polarity?: 'positive' | 'neutral' | 'negative';
-  score?: number;
-  sentiment?: 'positive' | 'neutral' | 'negative';
-}
-
-const fetchWords = async (): Promise<Word[]> => {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const storedWords = localStorage.getItem('encouragement-words');
-  if (storedWords) {
-    return JSON.parse(storedWords);
-  }
-  
-  return [];
-};
-
-const fetchSentences = async (): Promise<MotivationalSentenceEntry[]> => {
-  try {
-    const storedSentences = localStorage.getItem('motivation-sentences');
-    if (storedSentences) {
-      const sentences = JSON.parse(storedSentences);
-      
-      return sentences.map((sentence: MotivationalSentenceEntry) => {
-        if (sentence.sentence.startsWith('${บวก}')) {
-          return {
-            ...sentence,
-            sentence: sentence.sentence.replace('${บวก}', ''),
-            sentiment: 'positive'
-          };
-        } else if (sentence.sentence.startsWith('${กลาง}')) {
-          return {
-            ...sentence,
-            sentence: sentence.sentence.replace('${กลาง}', ''),
-            sentiment: 'neutral'
-          };
-        } else if (sentence.sentence.startsWith('${ลบ}')) {
-          return {
-            ...sentence,
-            sentence: sentence.sentence.replace('${ลบ}', ''),
-            sentiment: 'negative'
-          };
-        }
-        return sentence;
-      });
-    }
-    return [];
-  } catch (error) {
-    console.error("Error fetching sentences:", error);
-    return [];
-  }
-};
-
-const addNewWord = async (newWord: Omit<Word, 'id' | 'timestamp'>): Promise<Word> => {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const word: Word = {
-    id: Date.now().toString(),
-    text: newWord.text,
-    contributor: newWord.contributor || "ไม่ระบุชื่อ",
-    timestamp: new Date(),
-  };
-  
-  const storedWords = localStorage.getItem('encouragement-words');
-  const words = storedWords ? JSON.parse(storedWords) : [];
-  const updatedWords = [...words, word];
-  localStorage.setItem('encouragement-words', JSON.stringify(updatedWords));
-  
-  return word;
-};
-
-const WordStream = () => {
+const WordStream = ({ onAddWord }: WordStreamProps) => {
   const { toast } = useToast();
   const [lastWord, setLastWord] = useState<Word | null>(null);
   const [analysisResult, setAnalysisResult] = useState(null);
@@ -105,19 +21,27 @@ const WordStream = () => {
   const [shouldDisplaySentence, setShouldDisplaySentence] = useState(false);
   const [allSentences, setAllSentences] = useState<MotivationalSentenceEntry[]>([]);
   const queryClient = useQueryClient();
-  
+
+  const handleNewWord = (word: string) => {
+    if (onAddWord) {
+      onAddWord(word);
+    }
+    
+    // Add your other logic for adding words to the stream
+  };
+
   const { data: words = [], isLoading: isLoadingWords } = useQuery({
     queryKey: ['encouragement-words'],
     queryFn: fetchWords,
     refetchInterval: 1000,
   });
-  
+
   const { data: sentences = [] } = useQuery({
     queryKey: ['motivation-sentences'],
     queryFn: fetchSentences,
     refetchInterval: 1000,
   });
-  
+
   const removeDuplicateSentences = (sentences: MotivationalSentenceEntry[]): MotivationalSentenceEntry[] => {
     const uniqueIds = new Set();
     return sentences.filter(sentence => {
@@ -127,45 +51,44 @@ const WordStream = () => {
       return true;
     });
   };
-  
+
   useEffect(() => {
     if (sentences.length > 0) {
       const uniqueSentences = removeDuplicateSentences(sentences);
       setAllSentences(uniqueSentences);
     }
   }, [sentences]);
-  
+
   useEffect(() => {
     if (words.length > 0) {
       const wordTexts = words.map(word => word.text);
-      // Pass the array of words directly to analyzeSentence
       const result = analyzeSentence(wordTexts);
       setAnalysisResult(result);
     }
   }, [words]);
-  
+
   useEffect(() => {
     const handleDatabaseUpdate = () => {
       queryClient.invalidateQueries({ queryKey: ['encouragement-words'] });
       queryClient.invalidateQueries({ queryKey: ['motivation-sentences'] });
       setRefreshTrigger(prev => prev + 1);
     };
-    
+
     window.addEventListener('word-database-updated', handleDatabaseUpdate);
     window.addEventListener('motivation-billboard-updated', handleDatabaseUpdate);
-    
+
     return () => {
       window.removeEventListener('word-database-updated', handleDatabaseUpdate);
       window.removeEventListener('motivation-billboard-updated', handleDatabaseUpdate);
     };
   }, [queryClient]);
-  
+
   useEffect(() => {
     const handleSentenceGenerated = (event: CustomEvent) => {
       if (event.detail && event.detail.sentence) {
         let sentence = event.detail.sentence;
         let sentiment: 'positive' | 'neutral' | 'negative' | undefined = undefined;
-        
+
         if (sentence.startsWith('${บวก}')) {
           sentiment = 'positive';
           sentence = sentence.replace('${บวก}', '');
@@ -176,40 +99,40 @@ const WordStream = () => {
           sentiment = 'negative';
           sentence = sentence.replace('${ลบ}', '');
         }
-        
+
         setMotivationalSentence(sentence);
         setShouldDisplaySentence(true);
-        
+
         storeSentenceForBillboard(
-          sentence, 
-          event.detail.word, 
-          event.detail.contributor, 
-          event.detail.polarity, 
+          sentence,
+          event.detail.word,
+          event.detail.contributor,
+          event.detail.polarity,
           event.detail.score,
           sentiment
         );
       }
     };
-    
+
     window.addEventListener('motivationalSentenceGenerated', 
       handleSentenceGenerated as EventListener);
-    
+
     return () => {
       window.removeEventListener('motivationalSentenceGenerated', 
         handleSentenceGenerated as EventListener);
     };
   }, []);
-  
+
   const storeSentenceForBillboard = (
-    sentence: string, 
-    word: string, 
-    contributor: string, 
+    sentence: string,
+    word: string,
+    contributor: string,
     polarity?: 'positive' | 'neutral' | 'negative',
     score?: number,
     sentiment?: 'positive' | 'neutral' | 'negative'
   ) => {
     if (!word) return;
-    
+
     const billboardEntry = {
       sentence,
       word,
@@ -219,7 +142,7 @@ const WordStream = () => {
       score,
       sentiment
     };
-    
+
     let existingEntries = [];
     try {
       const stored = localStorage.getItem('motivation-sentences');
@@ -233,27 +156,27 @@ const WordStream = () => {
       console.error("Error parsing stored sentences:", error);
       existingEntries = [];
     }
-    
+
     const uniqueEntries = removeDuplicateSentences([billboardEntry, ...existingEntries]);
     localStorage.setItem('motivation-sentences', JSON.stringify(uniqueEntries));
-    
+
     window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
     queryClient.invalidateQueries({ queryKey: ['motivation-sentences'] });
   };
-  
+
   const { mutate, isPending: isAddingWord } = useMutation({
     mutationFn: addNewWord,
     onSuccess: (newWord) => {
       queryClient.setQueryData(['encouragement-words'], (old: Word[] = []) => [...old, newWord]);
       setLastWord(newWord);
-      
+
       setRefreshTrigger(prev => prev + 1);
-      
+
       queryClient.invalidateQueries({ queryKey: ['contributor-stats'] });
-      
+
       toast({
         title: "เพิ่มคำสำเร็จ!",
-        description: `"${newWord.text}" ได้ถูกเพิ่มเข้าสู่ประโยคกำลังใจแล้ว`,
+        description: `"${newWord.text}" ได้ถูกเพิ่มเข้าสู่ประโยคกำลังใจแล้ว",
       });
     },
     onError: (error) => {
@@ -265,17 +188,17 @@ const WordStream = () => {
       });
     },
   });
-  
+
   const handleAddWord = (text: string, contributor: string, template?: string) => {
     mutate({ text, contributor: contributor || 'ไม่ระบุชื่อ' });
   };
 
   const renderSentimentBadge = (sentiment?: 'positive' | 'neutral' | 'negative') => {
     if (!sentiment) return null;
-    
+
     let variant: 'success' | 'destructive' | 'secondary' = 'secondary';
     let text = 'กลาง';
-    
+
     if (sentiment === 'positive') {
       variant = 'success';
       text = 'บวก';
@@ -283,7 +206,7 @@ const WordStream = () => {
       variant = 'destructive';
       text = 'ลบ';
     }
-    
+
     return (
       <Badge variant={variant} className="ml-2 text-xs">
         {text}

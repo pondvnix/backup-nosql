@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Smile, Meh, Frown, ArrowUp, ArrowDown, Sparkles, Activity } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
+import { getMotivationalSentences } from "@/utils/motivationSentenceManager";
 
 interface MotivationalSentence {
   word: string;
@@ -14,13 +15,34 @@ interface MotivationalSentence {
   polarity?: 'positive' | 'neutral' | 'negative';
 }
 
-interface MoodReportProps {
-  sentences: MotivationalSentence[];
+export interface MoodReportProps {
+  sentences?: MotivationalSentence[];
+  limit?: number;
 }
 
-const MoodReport = ({ sentences }: MoodReportProps) => {
+const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
+  // Use the prop sentences if provided, otherwise get from local storage
+  const sentences = useMemo(() => {
+    if (propSentences && Array.isArray(propSentences) && propSentences.length > 0) {
+      return propSentences;
+    }
+    return getMotivationalSentences();
+  }, [propSentences]);
+
+  // Limit the number of sentences if limit is provided
+  const limitedSentences = useMemo(() => {
+    if (limit && sentences.length > limit) {
+      return sentences.slice(0, limit);
+    }
+    return sentences;
+  }, [sentences, limit]);
+
   // Sort sentences by timestamp
   const sortedSentences = useMemo(() => {
+    if (!Array.isArray(sentences) || sentences.length === 0) {
+      return [];
+    }
+    
     return [...sentences].sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
@@ -28,6 +50,14 @@ const MoodReport = ({ sentences }: MoodReportProps) => {
 
   // Get the top words by mood
   const topWordsByMood = useMemo(() => {
+    if (!Array.isArray(sentences) || sentences.length === 0) {
+      return {
+        positive: [],
+        neutral: [],
+        negative: []
+      };
+    }
+    
     const positiveWords: Record<string, number> = {};
     const neutralWords: Record<string, number> = {};
     const negativeWords: Record<string, number> = {};
@@ -60,6 +90,10 @@ const MoodReport = ({ sentences }: MoodReportProps) => {
 
   // Calculate trend over time (last 7 days)
   const moodTrend = useMemo(() => {
+    if (!Array.isArray(sentences) || sentences.length === 0) {
+      return [];
+    }
+    
     const days = 7;
     const result = [];
     
@@ -110,6 +144,17 @@ const MoodReport = ({ sentences }: MoodReportProps) => {
 
   // Calculate overall mood statistics
   const moodStats = useMemo(() => {
+    if (!Array.isArray(sentences) || sentences.length === 0) {
+      return {
+        positive: 0,
+        neutral: 0,
+        negative: 0,
+        total: 0,
+        mostCommonMood: 'neutral',
+        mostCommonCount: 0
+      };
+    }
+    
     const stats = {
       positive: 0,
       neutral: 0,
@@ -480,44 +525,50 @@ const MoodReport = ({ sentences }: MoodReportProps) => {
           <CardDescription>ประโยคกำลังใจล่าสุดแยกตามความรู้สึก</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ความรู้สึก</TableHead>
-                <TableHead>คะแนน</TableHead>
-                <TableHead>คำ</TableHead>
-                <TableHead>ประโยคกำลังใจ</TableHead>
-                <TableHead>ผู้ให้กำลังใจ</TableHead>
-                <TableHead>วันที่</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedSentences.slice(0, 10).map((sentence, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    {getMoodIcon(sentence.polarity || 'neutral')}
-                  </TableCell>
-                  <TableCell>
-                    {getMoodScore(sentence.polarity)}
-                  </TableCell>
-                  <TableCell className="font-medium text-primary">
-                    {sentence.word}
-                  </TableCell>
-                  <TableCell>
-                    {sentence.sentence}
-                  </TableCell>
-                  <TableCell>
-                    {sentence.contributor || 'ไม่ระบุชื่อ'}
-                  </TableCell>
-                  <TableCell className="text-xs whitespace-nowrap">
-                    {new Date(sentence.timestamp).toLocaleString('th-TH', {
-                      timeZone: 'Asia/Bangkok'
-                    })}
-                  </TableCell>
+          {sortedSentences.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ความรู้สึก</TableHead>
+                  <TableHead>คะแนน</TableHead>
+                  <TableHead>คำ</TableHead>
+                  <TableHead>ประโยคกำลังใจ</TableHead>
+                  <TableHead>ผู้ให้กำลังใจ</TableHead>
+                  <TableHead>วันที่</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(limit ? sortedSentences.slice(0, limit) : sortedSentences).map((sentence, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      {getMoodIcon(sentence.polarity || 'neutral')}
+                    </TableCell>
+                    <TableCell>
+                      {getMoodScore(sentence.polarity)}
+                    </TableCell>
+                    <TableCell className="font-medium text-primary">
+                      {sentence.word}
+                    </TableCell>
+                    <TableCell>
+                      {sentence.sentence}
+                    </TableCell>
+                    <TableCell>
+                      {sentence.contributor || 'ไม่ระบุชื่อ'}
+                    </TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {new Date(sentence.timestamp).toLocaleString('th-TH', {
+                        timeZone: 'Asia/Bangkok'
+                      })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              ไม่มีประโยคกำลังใจล่าสุด
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

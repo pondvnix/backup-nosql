@@ -1,4 +1,3 @@
-
 // นิยามรูปแบบข้อมูลประโยคให้กำลังใจ
 export interface MotivationalSentence {
   word: string;
@@ -9,6 +8,7 @@ export interface MotivationalSentence {
   score?: number;
   timestamp: string | Date;
   id?: string;
+  polarity?: 'positive' | 'neutral' | 'negative';
 }
 
 // ฟังก์ชันบันทึกประโยคให้กำลังใจ

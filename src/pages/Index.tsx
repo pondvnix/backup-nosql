@@ -9,7 +9,7 @@ import { Smile, EyeIcon, UsersIcon, ChevronDown, Clock, BarChart2 } from "lucide
 import { getContributorName, setContributorName } from "@/utils/contributorManager";
 import MotivationalSentence from "@/components/MotivationalSentence";
 import WordSuggestions from "@/components/WordSuggestions";
-import { saveMotivationalSentence } from "@/utils/motivationSentenceManager";
+import { saveMotivationalSentence, getMotivationalSentences } from "@/utils/motivationSentenceManager";
 import WordStream from "@/components/WordStream";
 import TomatoBox from "@/components/TomatoBox";
 import Leaderboard from "@/components/Leaderboard";
@@ -21,6 +21,7 @@ const Index = () => {
   const [name, setName] = useState<string>("");
   const [isNameSet, setIsNameSet] = useState<boolean>(false);
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [sentences, setSentences] = useState(getMotivationalSentences());
   const { toast } = useToast();
 
   // โหลดชื่อผู้ร่วมสร้างเมื่อ component ถูกโหลด
@@ -30,6 +31,19 @@ const Index = () => {
       setName(storedName);
       setIsNameSet(true);
     }
+  }, []);
+
+  // Update sentences when they change
+  useEffect(() => {
+    const handleUpdate = () => {
+      setSentences(getMotivationalSentences());
+    };
+    
+    window.addEventListener('motivation-billboard-updated', handleUpdate);
+    
+    return () => {
+      window.removeEventListener('motivation-billboard-updated', handleUpdate);
+    };
   }, []);
 
   // จัดการเมื่อผู้ใช้บันทึกชื่อ
@@ -205,7 +219,7 @@ const Index = () => {
               
               <Card className="border-none shadow-xl overflow-hidden">
                 <CardContent className="p-6">
-                  <WordStream />
+                  <WordStream onAddWord={handleWordSelect} />
                 </CardContent>
               </Card>
             </div>
@@ -225,7 +239,7 @@ const Index = () => {
               <div className="max-w-3xl mx-auto">
                 <Card className="border-none shadow-xl overflow-hidden bg-white">
                   <CardContent className="p-6">
-                    <TomatoBox />
+                    <TomatoBox word={selectedWords[0] || "กำลังใจ"} contributor={name} />
                   </CardContent>
                 </Card>
               </div>
@@ -245,7 +259,7 @@ const Index = () => {
               
               <Card className="border-none shadow-xl overflow-hidden">
                 <CardContent className="p-6">
-                  <Leaderboard />
+                  <Leaderboard allSentences={sentences} />
                 </CardContent>
               </Card>
             </div>
@@ -267,7 +281,7 @@ const Index = () => {
                   
                   <Card className="border-none shadow-lg overflow-hidden">
                     <CardContent className="p-6">
-                      <MoodReport limit={5} />
+                      <MoodReport sentences={sentences} limit={5} />
                     </CardContent>
                   </Card>
                 </div>
@@ -284,7 +298,7 @@ const Index = () => {
                   
                   <Card className="border-none shadow-lg overflow-hidden">
                     <CardContent className="p-6">
-                      <StatsDashboard />
+                      <StatsDashboard sentences={sentences} />
                     </CardContent>
                   </Card>
                 </div>
