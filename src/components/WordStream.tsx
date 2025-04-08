@@ -1,12 +1,54 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, RefreshCw, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { PlusCircle, RefreshCw, ChevronRight, ChevronLeft, Sparkles, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import WordForm from "@/components/WordForm";
 import { getContributorName } from "@/utils/contributorManager";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import MotivationalSentence from "@/components/MotivationalSentence";
+import TomatoBox from "@/components/TomatoBox";
+import SentenceAnalysis from "@/components/SentenceAnalysis";
+import Leaderboard from "@/components/Leaderboard";
+import { analyzeSentence } from "@/utils/sentenceAnalysis";
+
+// Define needed interfaces for TypeScript
+interface Word {
+  text: string;
+  contributor: string;
+}
+
+interface MotivationalSentenceEntry {
+  word: string;
+  sentence: string;
+  contributor?: string;
+  template?: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  score?: number;
+  timestamp: string | Date;
+  id?: string;
+  polarity?: 'positive' | 'neutral' | 'negative';
+}
+
+// Mock functions for fetching data (these would be implemented elsewhere)
+const fetchWords = async () => {
+  // Placeholder implementation
+  return [];
+};
+
+const fetchSentences = async () => {
+  // Placeholder implementation
+  return [];
+};
+
+const addNewWord = async ({ text, contributor }: { text: string; contributor: string }) => {
+  // Placeholder implementation
+  return { text, contributor };
+};
 
 interface WordStreamProps {
   onAddWord?: (word: string) => void;
@@ -176,7 +218,7 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
 
       toast({
         title: "เพิ่มคำสำเร็จ!",
-        description: `"${newWord.text}" ได้ถูกเพิ่มเข้าสู่ประโยคกำลังใจแล้ว",
+        description: `"${newWord.text}" ได้ถูกเพิ่มเข้าสู่ประโยคกำลังใจแล้ว`
       });
     },
     onError: (error) => {
@@ -262,8 +304,6 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
               <TomatoBox 
                 word={lastWord.text} 
                 contributor={lastWord.contributor} 
-                sentence={motivationalSentence}
-                selectedWords={wordTexts}
               />
             </div>
           )}

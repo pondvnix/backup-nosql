@@ -1,11 +1,14 @@
+
 // Add a props interface at the top of the file
 export interface TomatoBoxProps {
   word: string;
   contributor: string;
+  sentence?: string;
+  selectedWords?: string[];
 }
 
 // Make sure the component accepts the props
-const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ระบุชื่อ" }: TomatoBoxProps) => {
+const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ระบุชื่อ", sentence, selectedWords }: TomatoBoxProps) => {
   // Function to generate the Tomato Box image URL
   const generateTomatoBoxURL = () => {
     const apiEndpoint = `https://tomato.nayoo.co/api/generate?word=${encodeURIComponent(word)}&name=${encodeURIComponent(contributor)}`;
