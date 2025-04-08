@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,6 @@ import SentenceAnalysis from "@/components/SentenceAnalysis";
 import Leaderboard from "@/components/Leaderboard";
 import { analyzeSentence } from "@/utils/sentenceAnalysis";
 
-// Define needed interfaces for TypeScript
 interface Word {
   text: string;
   contributor: string;
@@ -34,19 +32,15 @@ interface MotivationalSentenceEntry {
   polarity?: 'positive' | 'neutral' | 'negative';
 }
 
-// Mock functions for fetching data (these would be implemented elsewhere)
 const fetchWords = async () => {
-  // Placeholder implementation
   return [];
 };
 
 const fetchSentences = async () => {
-  // Placeholder implementation
   return [];
 };
 
 const addNewWord = async ({ text, contributor }: { text: string; contributor: string }) => {
-  // Placeholder implementation
   return { text, contributor };
 };
 
@@ -68,8 +62,6 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
     if (onAddWord) {
       onAddWord(word);
     }
-    
-    // Add your other logic for adding words to the stream
   };
 
   const { data: words = [], isLoading: isLoadingWords } = useQuery({
@@ -85,8 +77,12 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
   });
 
   const removeDuplicateSentences = (sentences: MotivationalSentenceEntry[]): MotivationalSentenceEntry[] => {
+    if (!Array.isArray(sentences)) {
+      return [];
+    }
     const uniqueIds = new Set();
     return sentences.filter(sentence => {
+      if (!sentence) return false;
       const id = `${sentence.word}-${sentence.sentence}-${sentence.contributor}`;
       if (uniqueIds.has(id)) return false;
       uniqueIds.add(id);
@@ -95,14 +91,14 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
   };
 
   useEffect(() => {
-    if (sentences.length > 0) {
+    if (Array.isArray(sentences) && sentences.length > 0) {
       const uniqueSentences = removeDuplicateSentences(sentences);
       setAllSentences(uniqueSentences);
     }
   }, [sentences]);
 
   useEffect(() => {
-    if (words.length > 0) {
+    if (Array.isArray(words) && words.length > 0) {
       const wordTexts = words.map(word => word.text);
       const result = analyzeSentence(wordTexts);
       setAnalysisResult(result);
@@ -231,8 +227,9 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
     },
   });
 
-  const handleAddWord = (text: string, contributor: string, template?: string) => {
+  const handleAddWord = (text: string, contributor: string) => {
     mutate({ text, contributor: contributor || 'ไม่ระบุชื่อ' });
+    if (onAddWord) onAddWord(text);
   };
 
   const renderSentimentBadge = (sentiment?: 'positive' | 'neutral' | 'negative') => {
@@ -256,7 +253,7 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
     );
   };
 
-  const wordTexts = words.map(word => word.text);
+  const wordTexts = Array.isArray(words) ? words.map(word => word.text) : [];
 
   return (
     <div className="space-y-6">
@@ -276,7 +273,7 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
             เลือกหนึ่งคำเพื่อต่อเติมประโยคกำลังใจให้ยาวที่สุด
           </p>
           <WordForm 
-            onAddWord={handleAddWord} 
+            onAddWord={handleNewWord} 
             isLoading={isAddingWord} 
             existingWords={wordTexts}
             disableSuggestionRefresh={true}
@@ -288,7 +285,7 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
         <div className="space-y-6">
           <h3 className="text-xl font-semibold flex items-center">
             ประโยคกำลังใจปัจจุบัน
-            {shouldDisplaySentence && motivationalSentence && allSentences.length > 0 && 
+            {shouldDisplaySentence && motivationalSentence && Array.isArray(allSentences) && allSentences.length > 0 && 
               renderSentimentBadge(allSentences[0].sentiment)}
           </h3>
           
@@ -304,6 +301,8 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
               <TomatoBox 
                 word={lastWord.text} 
                 contributor={lastWord.contributor} 
+                sentence={motivationalSentence}
+                selectedWords={wordTexts}
               />
             </div>
           )}
@@ -320,7 +319,7 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
         <div className="w-full">
           <Leaderboard 
             refreshTrigger={refreshTrigger} 
-            allSentences={allSentences}
+            allSentences={allSentences || []}
           />
         </div>
       </div>

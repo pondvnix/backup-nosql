@@ -1,3 +1,4 @@
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { useState, useEffect } from "react";
@@ -18,7 +19,7 @@ interface QuoteManagementTableProps {
   showAllUsers?: boolean;
 }
 
-const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementTableProps) => {
+const MotivationQuoteTable = ({ quotes = [], showAllUsers = false }: QuoteManagementTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [displayedQuotes, setDisplayedQuotes] = useState<Quote[]>([]);
   const quotesPerPage = 10;

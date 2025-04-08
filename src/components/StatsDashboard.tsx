@@ -14,7 +14,8 @@ const StatsDashboard = ({ sentences: propSentences }: StatsDashboardProps) => {
     if (propSentences && Array.isArray(propSentences)) {
       return propSentences;
     }
-    return getMotivationalSentences();
+    const storedSentences = getMotivationalSentences();
+    return Array.isArray(storedSentences) ? storedSentences : [];
   }, [propSentences]);
 
   // Calculate total sentences
@@ -26,11 +27,13 @@ const StatsDashboard = ({ sentences: propSentences }: StatsDashboardProps) => {
     let neutral = 0;
     let negative = 0;
 
-    sentences.forEach((sentence: any) => {
-      if (sentence.polarity === 'positive') positive++;
-      else if (sentence.polarity === 'negative') negative++;
-      else neutral++;
-    });
+    if (Array.isArray(sentences)) {
+      sentences.forEach((sentence: any) => {
+        if (sentence.polarity === 'positive') positive++;
+        else if (sentence.polarity === 'negative') negative++;
+        else neutral++;
+      });
+    }
 
     return { positive, neutral, negative };
   }, [sentences]);
@@ -39,10 +42,12 @@ const StatsDashboard = ({ sentences: propSentences }: StatsDashboardProps) => {
   const topContributors = useMemo(() => {
     const contributorCounts: Record<string, number> = {};
 
-    sentences.forEach((sentence: any) => {
-      const contributor = sentence.contributor || 'ไม่ระบุชื่อ';
-      contributorCounts[contributor] = (contributorCounts[contributor] || 0) + 1;
-    });
+    if (Array.isArray(sentences)) {
+      sentences.forEach((sentence: any) => {
+        const contributor = sentence.contributor || 'ไม่ระบุชื่อ';
+        contributorCounts[contributor] = (contributorCounts[contributor] || 0) + 1;
+      });
+    }
 
     const sortedContributors = Object.entries(contributorCounts)
       .sort(([, countA], [, countB]) => countB - countA)
@@ -55,10 +60,14 @@ const StatsDashboard = ({ sentences: propSentences }: StatsDashboardProps) => {
   const sentencesPerDay = useMemo(() => {
     const dailyCounts: Record<string, number> = {};
 
-    sentences.forEach((sentence: any) => {
-      const date = new Date(sentence.timestamp).toLocaleDateString();
-      dailyCounts[date] = (dailyCounts[date] || 0) + 1;
-    });
+    if (Array.isArray(sentences)) {
+      sentences.forEach((sentence: any) => {
+        if (sentence && sentence.timestamp) {
+          const date = new Date(sentence.timestamp).toLocaleDateString();
+          dailyCounts[date] = (dailyCounts[date] || 0) + 1;
+        }
+      });
+    }
 
     const sortedDays = Object.entries(dailyCounts)
       .sort(([dateA], [dateB]) => new Date(dateA).getTime() - new Date(dateB).getTime());
