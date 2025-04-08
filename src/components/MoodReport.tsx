@@ -1,4 +1,3 @@
-
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -18,18 +17,17 @@ interface MotivationalSentence {
 export interface MoodReportProps {
   sentences?: MotivationalSentence[];
   limit?: number;
+  refreshKey?: number;
 }
 
-const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
-  // Use the prop sentences if provided, otherwise get from local storage
+const MoodReport = ({ sentences: propSentences, limit, refreshKey }: MoodReportProps) => {
   const sentences = useMemo(() => {
     if (propSentences && Array.isArray(propSentences) && propSentences.length > 0) {
       return propSentences;
     }
     return getMotivationalSentences();
-  }, [propSentences]);
+  }, [propSentences, refreshKey]);
 
-  // Limit the number of sentences if limit is provided
   const limitedSentences = useMemo(() => {
     if (limit && sentences.length > limit) {
       return sentences.slice(0, limit);
@@ -37,7 +35,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
     return sentences;
   }, [sentences, limit]);
 
-  // Sort sentences by timestamp
   const sortedSentences = useMemo(() => {
     if (!Array.isArray(sentences) || sentences.length === 0) {
       return [];
@@ -48,7 +45,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
     );
   }, [sentences]);
 
-  // Get the top words by mood
   const topWordsByMood = useMemo(() => {
     if (!Array.isArray(sentences) || sentences.length === 0) {
       return {
@@ -88,7 +84,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
     };
   }, [sentences]);
 
-  // Calculate trend over time (last 7 days)
   const moodTrend = useMemo(() => {
     if (!Array.isArray(sentences) || sentences.length === 0) {
       return [];
@@ -97,11 +92,9 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
     const days = 7;
     const result = [];
     
-    // Group by day
     const dayGroups: Record<string, MotivationalSentence[]> = {};
     const now = new Date();
     
-    // Initialize all days (including those with no data)
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(date.getDate() - i);
@@ -109,18 +102,15 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
       dayGroups[dayKey] = [];
     }
     
-    // Group sentences by day
     sentences.forEach(sentence => {
       const date = new Date(sentence.timestamp);
       const dayKey = date.toISOString().split('T')[0];
       
-      // Only include last 7 days
       if (dayGroups[dayKey] !== undefined) {
         dayGroups[dayKey].push(sentence);
       }
     });
     
-    // Calculate mood counts for each day
     for (const [day, daySentences] of Object.entries(dayGroups)) {
       const counts = {
         date: day,
@@ -142,7 +132,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
     return result;
   }, [sentences]);
 
-  // Calculate overall mood statistics
   const moodStats = useMemo(() => {
     if (!Array.isArray(sentences) || sentences.length === 0) {
       return {
@@ -170,7 +159,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
       else stats.neutral++;
     });
     
-    // Determine most common mood
     if (stats.positive >= stats.neutral && stats.positive >= stats.negative) {
       stats.mostCommonMood = 'positive';
       stats.mostCommonCount = stats.positive;
@@ -185,13 +173,11 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
     return stats;
   }, [sentences]);
 
-  // Format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
   };
 
-  // Get mood icon
   const getMoodIcon = (mood: string) => {
     switch (mood) {
       case 'positive':
@@ -203,7 +189,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
     }
   };
 
-  // Get mood color
   const getMoodColor = (mood: string) => {
     switch (mood) {
       case 'positive':
@@ -215,7 +200,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
     }
   };
 
-  // Get mood name in Thai
   const getMoodName = (mood: string) => {
     switch (mood) {
       case 'positive':
@@ -226,37 +210,32 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
         return 'กลาง';
     }
   };
-  
-  // Get mood score based on polarity
+
   const getMoodScore = (polarity: string | undefined): number => {
     switch (polarity) {
       case 'positive':
-        return 2;  // ความรู้สึกเชิงบวก = 2 คะแนน
+        return 2;
       case 'neutral':
-        return 1;  // ความรู้สึกกลาง = 1 คะแนน
+        return 1;
       case 'negative':
-        return -1; // ความรู้สึกเชิงลบ = -1 คะแนน
+        return -1;
       default:
         return 0;
     }
   };
 
-  // Calculate polarity distribution for the pie chart
   const polarityData = useMemo(() => [
     { name: 'เชิงบวก', value: moodStats.positive, color: '#4ade80' },
     { name: 'กลาง', value: moodStats.neutral, color: '#60a5fa' },
     { name: 'เชิงลบ', value: moodStats.negative, color: '#f87171' }
   ], [moodStats]);
 
-  // Get badge for mood trend
   const getMoodTrendBadge = () => {
-    // Need at least 2 days of data to show trend
     if (moodTrend.length < 2) return null;
     
     const today = moodTrend[moodTrend.length - 1];
     const yesterday = moodTrend[moodTrend.length - 2];
     
-    // Calculate positive ratio
     const todayRatio = today.total > 0 ? today.positive / today.total : 0;
     const yesterdayRatio = yesterday.total > 0 ? yesterday.positive / yesterday.total : 0;
     
@@ -281,7 +260,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Mood Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-green-50 border-green-200">
           <CardContent className="pt-6">
@@ -335,9 +313,7 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
         </Card>
       </div>
 
-      {/* Mood Distribution and Trend */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Mood Distribution Pie Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -381,7 +357,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
           </CardContent>
         </Card>
 
-        {/* Mood Trend Line Chart */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -441,7 +416,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
         </Card>
       </div>
 
-      {/* Top Words by Mood */}
       <Card>
         <CardHeader>
           <CardTitle>คำยอดนิยมตามความรู้สึก</CardTitle>
@@ -449,7 +423,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Positive Words */}
             <div className="space-y-2">
               <div className="flex items-center mb-2">
                 <Smile className="h-5 w-5 text-green-500 mr-2" />
@@ -471,7 +444,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
               )}
             </div>
 
-            {/* Neutral Words */}
             <div className="space-y-2">
               <div className="flex items-center mb-2">
                 <Meh className="h-5 w-5 text-blue-500 mr-2" />
@@ -493,7 +465,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
               )}
             </div>
 
-            {/* Negative Words */}
             <div className="space-y-2">
               <div className="flex items-center mb-2">
                 <Frown className="h-5 w-5 text-red-500 mr-2" />
@@ -518,7 +489,6 @@ const MoodReport = ({ sentences: propSentences, limit }: MoodReportProps) => {
         </CardContent>
       </Card>
 
-      {/* Recent Sentences by Mood */}
       <Card>
         <CardHeader>
           <CardTitle>ประโยคล่าสุดตามความรู้สึก</CardTitle>
