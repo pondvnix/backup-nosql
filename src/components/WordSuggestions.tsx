@@ -12,6 +12,12 @@ import { getContributorName } from "@/utils/contributorManager";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
+interface WordEntry {
+  word: string;
+  templates?: string[];
+  polarity?: string;
+}
+
 interface WordSuggestionsProps {
   onWordSelect: (word: string, template?: string) => void;
   selectedWords?: string[];
@@ -29,17 +35,40 @@ const WordSuggestions = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("suggested");
   const [recentWords, setRecentWords] = useState<string[]>([]);
-  
-  // คำแนะนำตามประเภท
-  const positiveWords = ["สุข", "รัก", "หวัง", "ยิ้ม", "กล้า", "ฝัน", "ชนะ", "ศรัทธา", "ขอบคุณ", "เมตตา"];
-  const neutralWords = ["คิด", "เวลา", "เริ่ม", "ยอมรับ", "เข้าใจ", "เรียนรู้", "ปรับตัว", "สมดุล", "ทางออก"];
-  const negativeWords = ["เศร้า", "เหนื่อย", "ยาก", "กลัว", "สับสน", "ผิดหวัง", "เจ็บปวด", "ล้มเหลว"];
+  const [databaseWords, setDatabaseWords] = useState<WordEntry[]>([]);
   
   // ดึงคำล่าสุดเมื่อโหลดคอมโพเนนต์
   useEffect(() => {
     const words = getRecentWords();
     setRecentWords(words);
+    
+    // ดึงคำจากฐานข้อมูล
+    loadDatabaseWords();
+    
+    // ตั้ง event listener สำหรับการอัปเดตฐานข้อมูล
+    const handleDatabaseUpdate = () => {
+      loadDatabaseWords();
+    };
+    
+    window.addEventListener('word-database-updated', handleDatabaseUpdate);
+    
+    return () => {
+      window.removeEventListener('word-database-updated', handleDatabaseUpdate);
+    };
   }, []);
+
+  // โหลดข้อมูลคำจาก localStorage
+  const loadDatabaseWords = () => {
+    try {
+      const storedData = localStorage.getItem("word-polarity-database");
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        setDatabaseWords(parsedData);
+      }
+    } catch (e) {
+      console.error("Error loading word database:", e);
+    }
+  };
 
   // กรองคำตามหมวดหมู่ที่เลือก
   const filteredWords = () => {
@@ -47,12 +76,11 @@ const WordSuggestions = ({
       return [];
     }
     
-    let words = [];
-    // เนื่องจากเราต้องการแสดงทั้ง positive, neutral และ negative ใน suggested
-    words = [...positiveWords, ...neutralWords, ...negativeWords];
+    // ใช้คำจากฐานข้อมูลแทนค่าคงที่
+    const words = databaseWords.map(entry => entry.word);
     
     if (searchTerm) {
-      return words.filter(word => word.includes(searchTerm));
+      return words.filter(word => typeof word === 'string' && word.includes(searchTerm));
     }
     
     return words;
