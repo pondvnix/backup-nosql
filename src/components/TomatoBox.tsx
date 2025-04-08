@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import html2canvas from "html2canvas";
 import domtoimage from "dom-to-image";
@@ -9,7 +8,6 @@ import { useToast } from "@/hooks/use-toast";
 import ShareButton from "@/components/ShareButton";
 import { Card } from "@/components/ui/card";
 
-// Add a props interface at the top of the file
 export interface TomatoBoxProps {
   word: string;
   contributor: string;
@@ -17,7 +15,6 @@ export interface TomatoBoxProps {
   selectedWords?: string[];
 }
 
-// Make sure the component accepts the props
 const TomatoBox = ({
   word = "กำลังใจ",
   contributor = "ไม่ระบุชื่อ",
@@ -30,34 +27,66 @@ const TomatoBox = ({
   const tomatoBoxRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Check if fonts are loaded
   useEffect(() => {
+    const checkFontsLoaded = () => {
+      if (document.fonts && document.fonts.check('1em Sarabun')) {
+        setFontsLoaded(true);
+        return true;
+      }
+      return false;
+    };
+
+    if (checkFontsLoaded()) {
+      return;
+    }
+
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(() => {
-        setFontsLoaded(true);
+        setTimeout(() => {
+          if (checkFontsLoaded()) {
+            return;
+          }
+          setTimeout(() => setFontsLoaded(true), 1000);
+        }, 200);
       });
     } else {
-      // Fallback for browsers not supporting document.fonts
-      setTimeout(() => setFontsLoaded(true), 1000);
+      setTimeout(() => setFontsLoaded(true), 1500);
     }
   }, []);
 
-  // Generate the tomato box image using dom-to-image for better quality
   const generateTomatoBoxImage = async () => {
     setIsGenerating(true);
     try {
       const tomatoBoxElement = document.getElementById('tomato-box-content');
       if (tomatoBoxElement) {
-        // Apply specific styling to ensure correct rendering
+        if (document.fonts && !document.fonts.check('1em Sarabun')) {
+          try {
+            await document.fonts.load('1em Sarabun');
+            await new Promise(resolve => setTimeout(resolve, 300));
+          } catch (e) {
+            console.log("Font loading error:", e);
+          }
+        }
+
         const originalStyle = tomatoBoxElement.getAttribute('style') || '';
         tomatoBoxElement.setAttribute('style', 
-          `${originalStyle} font-family: 'Sarabun', sans-serif !important; display: block !important; visibility: visible !important;`
+          `${originalStyle} font-family: 'Sarabun', sans-serif !important; 
+           display: block !important; visibility: visible !important;`
         );
 
-        // Wait a moment to ensure styles are applied
+        const textElements = tomatoBoxElement.querySelectorAll('p, h1, h2, h3, h4, h5, h6, span, div');
+        textElements.forEach(el => {
+          (el as HTMLElement).style.fontFamily = "'Sarabun', sans-serif";
+        });
+
+        const wordElement = tomatoBoxElement.querySelector('.word-highlight');
+        if (wordElement) {
+          (wordElement as HTMLElement).style.fontFamily = "'Sarabun', sans-serif";
+          (wordElement as HTMLElement).style.fontWeight = "500";
+        }
+
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Try dom-to-image first (higher quality)
         try {
           const dataUrl = await domtoimage.toPng(tomatoBoxElement, {
             quality: 1.0,
@@ -67,29 +96,33 @@ const TomatoBox = ({
               visibility: "visible",
               fontFamily: "'Sarabun', sans-serif",
             },
-            cacheBust: true, // Avoid caching issues
-            fontEmbedCSS: document.querySelector('style')?.innerHTML || '',
+            width: tomatoBoxElement.offsetWidth,
+            height: tomatoBoxElement.offsetHeight,
+            cacheBust: true,
           });
           setImageUrl(dataUrl);
         } catch (domError) {
           console.error("Dom-to-image failed, falling back to html2canvas:", domError);
-          // Fallback to html2canvas
           const canvas = await html2canvas(tomatoBoxElement, {
             backgroundColor: "#ffffff",
-            scale: 2, // Higher resolution
-            useCORS: true, // Allow cross-origin images
-            allowTaint: true, // Allow tainted canvas
-            logging: true, // Enable logging for debugging
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: true,
             onclone: (clonedDoc) => {
-              // Force font family in the cloned document
               const clonedElement = clonedDoc.getElementById('tomato-box-content');
               if (clonedElement) {
                 clonedElement.style.fontFamily = "'Sarabun', sans-serif";
-                // Apply styles to all text elements inside
                 const textElements = clonedElement.querySelectorAll('p, h1, h2, h3, h4, h5, h6, span, div');
                 textElements.forEach(el => {
                   (el as HTMLElement).style.fontFamily = "'Sarabun', sans-serif";
                 });
+                
+                const wordElement = clonedElement.querySelector('.word-highlight');
+                if (wordElement) {
+                  (wordElement as HTMLElement).style.fontFamily = "'Sarabun', sans-serif";
+                  (wordElement as HTMLElement).style.fontWeight = "500";
+                }
               }
             }
           });
@@ -97,7 +130,6 @@ const TomatoBox = ({
           setImageUrl(imageUrl);
         }
 
-        // Restore the original style
         tomatoBoxElement.setAttribute('style', originalStyle);
       }
     } catch (error) {
@@ -112,18 +144,19 @@ const TomatoBox = ({
     }
   };
 
-  // Generate image when component mounts or when props change or when fonts load
   useEffect(() => {
     if (fontsLoaded) {
-      generateTomatoBoxImage();
+      const timer = setTimeout(() => {
+        generateTomatoBoxImage();
+      }, 300);
+      
+      return () => clearTimeout(timer);
     }
   }, [word, contributor, sentence, selectedWords, fontsLoaded]);
 
-  // Copy to clipboard function with improved browser compatibility
   const copyToClipboard = async () => {
     try {
       if (imageUrl) {
-        // For modern browsers supporting ClipboardItem
         if (navigator.clipboard && ClipboardItem) {
           const blob = await fetch(imageUrl).then(r => r.blob());
           const item = new ClipboardItem({
@@ -135,7 +168,6 @@ const TomatoBox = ({
             description: "กล่องน้ำมะเขือเทศถูกคัดลอกไปยังคลิปบอร์ดแล้ว"
           });
         } else {
-          // Fallback for older browsers - create a temporary element
           const tempImg = document.createElement('img');
           tempImg.src = imageUrl;
           
@@ -146,7 +178,6 @@ const TomatoBox = ({
           tempContainer.appendChild(tempImg);
           document.body.appendChild(tempContainer);
           
-          // Select and copy
           const range = document.createRange();
           range.selectNode(tempContainer);
           window.getSelection()?.removeAllRanges();
@@ -176,7 +207,6 @@ const TomatoBox = ({
     }
   };
 
-  // Save image function with better error handling
   const saveImage = () => {
     try {
       if (imageUrl) {
@@ -190,13 +220,12 @@ const TomatoBox = ({
       console.error("บันทึกล้มเหลว:", error);
       toast({
         title: "บันทึกล้มเหลว",
-        description: "ไม่สามารถบันทึกรูปภาพได้ กรุณาลองใหม่อีกครั้ง",
+        description: "ไม่สามาร���บันทึกรูปภาพได้ กรุณาลองใหม่อีกครั้ง",
         variant: "destructive"
       });
     }
   };
 
-  // Data URL to Blob conversion for sharing
   const dataURLtoBlob = (dataURL: string): Blob => {
     const arr = dataURL.split(',');
     const mime = arr[0].match(/:(.*?);/)![1];
@@ -209,28 +238,25 @@ const TomatoBox = ({
     return new Blob([u8arr], { type: mime });
   };
 
-  // New function to highlight words in the sentence
   const highlightWordsInSentence = (sentence: string | undefined, focusWord: string) => {
     if (!sentence || !focusWord) return sentence;
     const regex = new RegExp(`(${focusWord})`, 'gi');
     const parts = sentence.split(regex);
     return parts.map((part, index) => {
       if (part.toLowerCase() === focusWord.toLowerCase()) {
-        return <span key={index} className="bg-orange-200 text-orange-800 rounded px-[6px] mx-[6px]">{part}</span>;
+        return <span key={index} className="bg-orange-200 text-orange-800 rounded px-[6px] mx-[6px] word-highlight" style={{fontFamily: "'Sarabun', sans-serif"}}>{part}</span>;
       }
       return part;
     });
   };
 
   return <div className="space-y-6 font-sarabun">
-      {/* Hidden div that will be converted to image */}
       <div id="tomato-box-content" ref={tomatoBoxRef} className="bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto" style={{
       display: "block",
       fontFamily: "'Sarabun', sans-serif",
       width: "100%"
     }}>
         <div className="relative border-4 border-red-600 p-6 rounded-lg bg-gradient-to-r from-red-50 to-orange-50" style={{ fontFamily: "'Sarabun', sans-serif" }}>
-          {/* Doikham Logo and Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="bg-red-600 h-12 w-12 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
@@ -246,7 +272,6 @@ const TomatoBox = ({
             </div>
           </div>
           
-          {/* Main Content */}
           <div className="flex items-center gap-4 mb-6">
             <div className="w-1/3 flex-shrink-0">
               <div className="relative aspect-square overflow-hidden rounded-md shadow-sm border-2 border-red-200">
@@ -257,7 +282,7 @@ const TomatoBox = ({
             <div className="w-2/3">
               <div className="bg-white py-3 px-4 rounded-lg shadow-inner border border-red-100">
                 <h2 className="text-xl font-semibold text-red-800 mb-1 font-sarabun" style={{ fontFamily: "'Sarabun', sans-serif" }}>กล่องคำลังใจ</h2>
-                <p className="text-orange-500 font-medium text-lg mb-2 font-sarabun" style={{ fontFamily: "'Sarabun', sans-serif" }}>"{word}"</p>
+                <p className="text-orange-500 font-medium text-lg mb-2 font-sarabun word-highlight" style={{ fontFamily: "'Sarabun', sans-serif" }}>"{word}"</p>
                 <div className="text-xs text-gray-500 mt-1 flex justify-between font-sarabun" style={{ fontFamily: "'Sarabun', sans-serif" }}>
                   <span>ขนาด 100%</span>
                   <span>โดย {contributor}</span>
@@ -266,7 +291,6 @@ const TomatoBox = ({
             </div>
           </div>
           
-          {/* New section for the motivational sentence with orange styling and word highlighting */}
           {sentence && <div className="mb-4 bg-white p-4 rounded-lg shadow border border-orange-200">
               <div className="relative">
                 <div className="absolute -top-2 -left-2 bg-orange-50 border border-orange-200 rounded-full p-1">
@@ -280,17 +304,15 @@ const TomatoBox = ({
               </div>
             </div>}
           
-          {/* Selected Words */}
           {selectedWords && selectedWords.length > 0 && <div className="bg-white p-3 rounded-lg shadow-sm border border-red-100">
               <p className="text-xs font-medium mb-2 text-red-700 font-sarabun" style={{ fontFamily: "'Sarabun', sans-serif" }}>ส่วนประกอบ:</p>
               <div className="flex flex-wrap gap-1.5 justify-start">
-                {selectedWords.map((selectedWord, index) => <span key={index} className={`px-2 py-0.5 ${selectedWord.toLowerCase() === word.toLowerCase() ? 'bg-orange-200 text-orange-900' : 'bg-orange-100 text-orange-800'} text-xs rounded-full border border-orange-200 font-sarabun`} style={{ fontFamily: "'Sarabun', sans-serif" }}>
+                {selectedWords.map((selectedWord, index) => <span key={index} className={`px-2 py-0.5 ${selectedWord.toLowerCase() === word.toLowerCase() ? 'bg-orange-200 text-orange-900 word-highlight' : 'bg-orange-100 text-orange-800'} text-xs rounded-full border border-orange-200 font-sarabun`} style={{ fontFamily: "'Sarabun', sans-serif" }}>
                     {selectedWord}
                   </span>)}
               </div>
             </div>}
           
-          {/* Footer */}
           <div className="mt-4 pt-3 border-t border-red-200 flex justify-between items-center">
             <div className="text-xs text-red-700 font-sarabun" style={{ fontFamily: "'Sarabun', sans-serif" }}>
               <p>ผลิตโดย โครงการส่วนพระองค์ สวนจิตรลดา</p>
@@ -301,7 +323,6 @@ const TomatoBox = ({
             </div>
           </div>
 
-          {/* Doikham brand watermark */}
           <div className="absolute bottom-2 right-2 opacity-20">
             <div className="text-red-800 font-bold text-xs" style={{ fontFamily: "'Sarabun', sans-serif" }}>
               ดอยคำ
@@ -310,7 +331,6 @@ const TomatoBox = ({
         </div>
       </div>
 
-      {/* Display the generated image */}
       {imageUrl && <Card className="p-4 bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
           <div className="text-center">
             <h3 className="text-lg font-semibold text-orange-800 mb-4 font-sarabun">กล่องคำลังใจของคุณ</h3>
@@ -319,13 +339,11 @@ const TomatoBox = ({
             </div>
             
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
-              {/* Download button - now using saveImage function */}
               <Button onClick={saveImage} className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 gap-2 animate-fade-in">
                 <Download className="h-4 w-4" />
                 ดาวน์โหลด
               </Button>
               
-              {/* Share to Facebook */}
               <ShareButton 
                 platform="facebook" 
                 url={window.location.href} 
@@ -336,7 +354,6 @@ const TomatoBox = ({
                 className="bg-blue-600 text-white hover:bg-blue-700 h-10 animate-fade-in" 
               />
               
-              {/* Share to Twitter */}
               <ShareButton 
                 platform="twitter" 
                 url={window.location.href} 
@@ -347,14 +364,12 @@ const TomatoBox = ({
                 className="bg-black text-white hover:bg-gray-800 h-10 animate-fade-in" 
               />
               
-              {/* Copy to clipboard */}
               <Button onClick={copyToClipboard} variant="outline" className="gap-2 bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 h-10 animate-fade-in">
                 <Copy className="h-4 w-4" />
                 คัดลอก
               </Button>
             </div>
             
-            {/* Regenerate button */}
             <Button onClick={generateTomatoBoxImage} variant="outline" className="mt-4 gap-2 text-orange-700 border-orange-200 hover:bg-orange-100">
               สร้างรูปภาพใหม่
             </Button>
