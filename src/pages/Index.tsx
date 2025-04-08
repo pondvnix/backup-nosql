@@ -10,6 +10,7 @@ import { getContributorName, setContributorName } from "@/utils/contributorManag
 import MotivationalSentence from "@/components/MotivationalSentence";
 import WordSuggestions from "@/components/WordSuggestions";
 import { saveMotivationalSentence } from "@/utils/motivationSentenceManager";
+import WordStream from "@/components/WordStream";
 
 const Index = () => {
   const [name, setName] = useState<string>("");
@@ -167,6 +168,25 @@ const Index = () => {
                   </CardContent>
                 </Card>
               </div>
+            </div>
+            
+            {/* Section "คำ"ลังใจและอื่นๆ ที่ต้องการแสดง */}
+            <div className="mt-8">
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold text-center">
+                    "คำ"ลังใจ
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-center mb-4">
+                    ร่วมสร้างประโยคกำลังใจที่ยาวที่สุด โดยเพิ่มคำของคุณต่อท้ายคำอื่นๆ เพื่อส่งต่อกำลังใจให้กับผู้ป่วยและบุคลากรทางการแพทย์
+                  </p>
+                  
+                  {/* WordStream Component */}
+                  <WordStream />
+                </CardContent>
+              </Card>
             </div>
           </>
         )}
