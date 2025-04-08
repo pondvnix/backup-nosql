@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,15 +33,15 @@ interface MotivationalSentenceEntry {
   polarity?: 'positive' | 'neutral' | 'negative';
 }
 
-const fetchWords = async () => {
+const fetchWords = async (): Promise<Word[]> => {
   return [];
 };
 
-const fetchSentences = async () => {
+const fetchSentences = async (): Promise<MotivationalSentenceEntry[]> => {
   return [];
 };
 
-const addNewWord = async ({ text, contributor }: { text: string; contributor: string }) => {
+const addNewWord = async ({ text, contributor }: { text: string; contributor: string }): Promise<Word> => {
   return { text, contributor };
 };
 
@@ -51,10 +52,10 @@ interface WordStreamProps {
 const WordStream = ({ onAddWord }: WordStreamProps) => {
   const { toast } = useToast();
   const [lastWord, setLastWord] = useState<Word | null>(null);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
   const [motivationalSentence, setMotivationalSentence] = useState<string>("");
-  const [shouldDisplaySentence, setShouldDisplaySentence] = useState(false);
+  const [shouldDisplaySentence, setShouldDisplaySentence] = useState<boolean>(false);
   const [allSentences, setAllSentences] = useState<MotivationalSentenceEntry[]>([]);
   const queryClient = useQueryClient();
 
@@ -319,7 +320,7 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
         <div className="w-full">
           <Leaderboard 
             refreshTrigger={refreshTrigger} 
-            allSentences={allSentences || []}
+            allSentences={Array.isArray(allSentences) ? allSentences : []}
           />
         </div>
       </div>

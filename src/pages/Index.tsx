@@ -1,20 +1,20 @@
+
 import { useState, useEffect } from "react";
-import Layout from "@/components/Layout";
+import Layout from "@/layouts/Layout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Smile, EyeIcon, UsersIcon, ChevronDown, Clock, BarChart2 } from "lucide-react";
+import { Heart, EyeIcon, UsersIcon, Clock, BarChart2 } from "lucide-react";
 import { getContributorName, setContributorName } from "@/utils/contributorManager";
 import MotivationalSentence from "@/components/MotivationalSentence";
-import WordSuggestions from "@/components/WordSuggestions";
 import { saveMotivationalSentence, getMotivationalSentences } from "@/utils/motivationSentenceManager";
 import WordStream from "@/components/WordStream";
 import TomatoBox from "@/components/TomatoBox";
 import Leaderboard from "@/components/Leaderboard";
 import MoodReport from "@/components/MoodReport";
 import StatsDashboard from "@/components/StatsDashboard";
-import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const [name, setName] = useState<string>("");
@@ -84,7 +84,7 @@ const Index = () => {
     <Layout>
       {!isNameSet ? (
         // หน้าใส่ชื่อ
-        <div className="mx-auto max-w-lg px-4 py-12">
+        <div className="w-full max-w-lg px-4 py-12 mx-auto">
           <Card className="border-2 border-primary/20 shadow-lg">
             <CardHeader className="text-center pb-4">
               <CardTitle className="text-2xl md:text-3xl text-center font-bold bg-gradient-to-r from-primary to-orange-500 bg-clip-text text-transparent">
@@ -115,7 +115,7 @@ const Index = () => {
                 onClick={handleSetName}
                 disabled={!name.trim()}
               >
-                <Smile className="h-4 w-4 mr-2" />
+                <Heart className="h-4 w-4 mr-2" />
                 เริ่มสร้างประโยคให้กำลังใจ
               </Button>
             </CardContent>
@@ -124,108 +124,91 @@ const Index = () => {
       ) : (
         // หน้าหลักระบบ
         <div className="w-full space-y-12 pb-20">
-          {/* Hero Section - สร้างประโยคให้กำลังใจ */}
+          {/* Hero Section - สร้างประโยคให้กำลังใจ - Combined with WordStream */}
           <section className="w-full bg-gradient-to-b from-orange-50 to-white py-8">
-            <div className="container mx-auto px-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 space-y-4">
-                  <Card className="border-none shadow-lg bg-white/80 backdrop-blur">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-primary">
-                        <Smile className="h-6 w-6 text-primary" />
-                        <span>ยินดีต้อนรับคุณ {name}</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="mb-4 text-lg">
-                        เลือกคำจากรายการด้านล่างเพื่อสร้างประโยคให้กำลังใจที่มีคำเหล่านั้น
-                      </p>
-                      
-                      {/* คำที่เลือกแล้ว */}
-                      {selectedWords.length > 0 && (
-                        <div className="mb-4 animate-fade-in">
-                          <h3 className="text-sm font-medium mb-2">คำที่เลือกแล้ว:</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedWords.map((word, index) => (
-                              <div 
-                                key={index} 
-                                className="px-3 py-1 bg-primary/10 rounded-full text-primary animate-fade-in-left"
-                                style={{ animationDelay: `${index * 0.1}s` }}
-                              >
-                                {word}
-                              </div>
-                            ))}
+            <div className="w-full px-4 max-w-7xl mx-auto">
+              <Card className="border-none shadow-lg bg-white/80 backdrop-blur overflow-hidden">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-primary">
+                    <Heart className="h-6 w-6 text-primary" />
+                    <span>ยินดีต้อนรับคุณ {name}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="suggestions" className="w-full">
+                    <TabsList className="mb-4 w-full">
+                      <TabsTrigger value="suggestions" className="flex-1">คำแนะนำ</TabsTrigger>
+                      <TabsTrigger value="stream" className="flex-1">สร้างประโยคกำลังใจ</TabsTrigger>
+                      <TabsTrigger value="guide" className="flex-1">คำแนะนำการใช้งาน</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="suggestions" className="mt-0">
+                      <div className="space-y-4">
+                        <p className="text-lg">
+                          เลือกคำจากรายการด้านล่างเพื่อสร้างประโยคให้กำลังใจที่มีคำเหล่านั้น
+                        </p>
+                        
+                        {/* คำที่เลือกแล้ว */}
+                        {selectedWords.length > 0 && (
+                          <div className="mb-4 animate-fade-in">
+                            <h3 className="text-sm font-medium mb-2">คำที่เลือกแล้ว:</h3>
+                            <div className="flex flex-wrap gap-2">
+                              {selectedWords.map((word, index) => (
+                                <div 
+                                  key={index} 
+                                  className="px-3 py-1 bg-primary/10 rounded-full text-primary animate-fade-in-left"
+                                  style={{ animationDelay: `${index * 0.1}s` }}
+                                >
+                                  {word}
+                                </div>
+                              ))}
+                            </div>
                           </div>
+                        )}
+                        
+                        {/* แสดงประโยคให้กำลังใจ */}
+                        <div className="mb-6">
+                          <MotivationalSentence selectedWords={selectedWords} />
                         </div>
-                      )}
-                      
-                      {/* แสดงประโยคให้กำลังใจ */}
-                      <div className="mb-6">
-                        <MotivationalSentence selectedWords={selectedWords} />
                       </div>
-                      
-                      {/* แสดงคำแนะนำ */}
-                      <WordSuggestions onWordSelect={handleWordSelect} selectedWords={selectedWords} />
-                    </CardContent>
-                  </Card>
-                </div>
-                <div>
-                  <Card className="border-none shadow-lg bg-white/80 backdrop-blur">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-primary">
-                        <EyeIcon className="h-5 w-5" />
-                        <span>คำแนะนำการใช้งาน</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="p-3 bg-secondary rounded-md">
-                        <h3 className="font-medium mb-2">วิธีการสร้างประโยคให้กำลังใจ</h3>
-                        <ol className="space-y-2 list-decimal ml-5">
-                          <li>เลือกคำจากรายการ "คำแนะนำ" ด้านล่าง</li>
-                          <li>คลิกที่คำที่ต้องการใช้</li>
-                          <li>ระบบจะสร้างประโยคให้กำลังใจที่มีคำนั้น</li>
-                          <li>ประโยคจะถูกบันทึกและแสดงในส่วน "ประโยคให้กำลังใจ"</li>
-                        </ol>
+                    </TabsContent>
+                    
+                    <TabsContent value="stream" className="mt-0">
+                      <WordStream onAddWord={handleWordSelect} />
+                    </TabsContent>
+                    
+                    <TabsContent value="guide" className="mt-0">
+                      <div className="space-y-4">
+                        <div className="p-3 bg-secondary rounded-md">
+                          <h3 className="font-medium mb-2">วิธีการสร้างประโยคให้กำลังใจ</h3>
+                          <ol className="space-y-2 list-decimal ml-5">
+                            <li>เลือกคำจากรายการ "คำแนะนำ" ด้านล่าง</li>
+                            <li>คลิกที่คำที่ต้องการใช้</li>
+                            <li>ระบบจะสร้างประโยคให้กำลังใจที่มีคำนั้น</li>
+                            <li>ประโยคจะถูกบันทึกและแสดงในส่วน "ประโยคให้กำลังใจ"</li>
+                          </ol>
+                        </div>
+                        
+                        <div className="p-3 bg-primary/10 rounded-md">
+                          <h3 className="font-medium mb-2">ประเภทความรู้สึก</h3>
+                          <ul className="space-y-2">
+                            <li className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                              <span>เชิงบวก - ประโยคที่ให้ความรู้สึกดี (2 คะแนน)</span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                              <span>กลาง - ประโยคที่เป็นกลาง (1 คะแนน)</span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                              <span>เชิงลบ - ประโยคที่ท้าทาย (-1 คะแนน)</span>
+                            </li>
+                          </ul>
+                        </div>
                       </div>
-                      
-                      <div className="p-3 bg-primary/10 rounded-md">
-                        <h3 className="font-medium mb-2">ประเภทความรู้สึก</h3>
-                        <ul className="space-y-2">
-                          <li className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                            <span>เชิงบวก - ประโยคที่ให้ความรู้สึกดี (2 คะแนน)</span>
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                            <span>กลาง - ประโยคที่เป็นกลาง (1 คะแนน)</span>
-                          </li>
-                          <li className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                            <span>เชิงลบ - ประโยคที่ท้าทาย (-1 คะแนน)</span>
-                          </li>
-                        </ul>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </div>
-          </section>
-          
-          {/* Section "คำ"ลังใจ */}
-          <section className="w-full bg-gradient-to-r from-orange-50 to-orange-100 py-10">
-            <div className="container mx-auto px-4">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-primary mb-2">"คำ"ลังใจ</h2>
-                <p className="text-lg max-w-2xl mx-auto">
-                  ร่วมสร้างประโยคกำลังใจที่ยาวที่สุด โดยเพิ่มคำของคุณต่อท้ายคำอื่นๆ เพื่อส่งต่อกำลังใจให้กับผู้ป่วยและบุคลากรทางการแพทย์
-                </p>
-                <div className="w-20 h-1 bg-primary mx-auto mt-4 mb-6 rounded-full"></div>
-              </div>
-              
-              <Card className="border-none shadow-xl overflow-hidden">
-                <CardContent className="p-6">
-                  <WordStream onAddWord={handleWordSelect} />
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             </div>
@@ -233,7 +216,7 @@ const Index = () => {
           
           {/* Section กล่องน้ำมะเขือเทศ */}
           <section className="w-full bg-white py-10">
-            <div className="container mx-auto px-4">
+            <div className="w-full px-4 max-w-7xl mx-auto">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-primary mb-2">กล่องน้ำมะเขือเทศของคุณ</h2>
                 <p className="text-lg max-w-2xl mx-auto">
@@ -242,23 +225,21 @@ const Index = () => {
                 <div className="w-20 h-1 bg-primary mx-auto mt-4 mb-6 rounded-full"></div>
               </div>
               
-              <div className="max-w-3xl mx-auto">
-                <Card className="border-none shadow-xl overflow-hidden bg-white">
-                  <CardContent className="p-6">
-                    <TomatoBox 
-                      word={selectedWords[0] || "กำลังใจ"} 
-                      contributor={name}
-                      selectedWords={selectedWords} 
-                    />
-                  </CardContent>
-                </Card>
-              </div>
+              <Card className="border-none shadow-xl overflow-hidden bg-white max-w-3xl mx-auto">
+                <CardContent className="p-6">
+                  <TomatoBox 
+                    word={selectedWords[0] || "กำลังใจ"} 
+                    contributor={name}
+                    selectedWords={selectedWords} 
+                  />
+                </CardContent>
+              </Card>
             </div>
           </section>
           
           {/* Section อันดับผู้ร่วมสร้างกำลังใจ */}
           <section className="w-full bg-gradient-to-b from-orange-50 to-white py-10">
-            <div className="container mx-auto px-4">
+            <div className="w-full px-4 max-w-7xl mx-auto">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-primary mb-2">อันดับผู้ร่วมสร้างกำลังใจ</h2>
                 <p className="text-lg max-w-2xl mx-auto">
@@ -269,7 +250,7 @@ const Index = () => {
               
               <Card className="border-none shadow-xl overflow-hidden">
                 <CardContent className="p-6">
-                  <Leaderboard allSentences={sentences} />
+                  <Leaderboard allSentences={Array.isArray(sentences) ? sentences : []} />
                 </CardContent>
               </Card>
             </div>
@@ -277,7 +258,7 @@ const Index = () => {
           
           {/* Section สถิติและประโยคกำลังใจล่าสุด */}
           <section className="w-full bg-white py-10">
-            <div className="container mx-auto px-4">
+            <div className="w-full px-4 max-w-7xl mx-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* ประโยคกำลังใจล่าสุด */}
                 <div>
@@ -291,7 +272,7 @@ const Index = () => {
                   
                   <Card className="border-none shadow-lg overflow-hidden">
                     <CardContent className="p-6">
-                      <MoodReport sentences={sentences} limit={5} />
+                      <MoodReport sentences={Array.isArray(sentences) ? sentences : []} limit={5} />
                     </CardContent>
                   </Card>
                 </div>
@@ -308,7 +289,7 @@ const Index = () => {
                   
                   <Card className="border-none shadow-lg overflow-hidden">
                     <CardContent className="p-6">
-                      <StatsDashboard sentences={sentences} />
+                      <StatsDashboard sentences={Array.isArray(sentences) ? sentences : []} />
                     </CardContent>
                   </Card>
                 </div>
