@@ -100,6 +100,16 @@ export const addWordToDatabase = (
   score: number, 
   templates: Template[]
 ): void => {
+  if (!word || typeof word !== 'string') {
+    console.error("Invalid word:", word);
+    return;
+  }
+  
+  if (!templates || !Array.isArray(templates)) {
+    templates = [];
+    console.warn("Invalid templates array for word:", word);
+  }
+  
   try {
     const storedData = localStorage.getItem("word-polarity-database");
     const database = storedData ? JSON.parse(storedData) : [];
@@ -143,6 +153,11 @@ export const updateWordPolarity = (
   score: number,
   templates?: Template[]
 ): void => {
+  if (!word || typeof word !== 'string') {
+    console.error("Invalid word:", word);
+    return;
+  }
+  
   try {
     const storedData = localStorage.getItem("word-polarity-database");
     const database = storedData ? JSON.parse(storedData) : [];
@@ -177,6 +192,11 @@ export const updateWordPolarity = (
  * @param word Word to delete
  */
 export const deleteWord = (word: string): void => {
+  if (!word || typeof word !== 'string') {
+    console.error("Invalid word:", word);
+    return;
+  }
+  
   try {
     const storedData = localStorage.getItem("word-polarity-database");
     if (!storedData) return;
@@ -256,12 +276,17 @@ export const templateObjectsToStrings = (templates: Template[]): string[] => {
   }
   
   return templates.map(template => {
+    if (!template || typeof template !== 'object') {
+      console.warn("Invalid template object:", template);
+      return "${กลาง}";
+    }
+    
     const sentimentPrefix = 
       template.sentiment === 'positive' ? '${บวก}' :
       template.sentiment === 'negative' ? '${ลบ}' :
       '${กลาง}';
       
-    return `${sentimentPrefix}${template.template}`;
+    return `${sentimentPrefix}${template.template || ''}`;
   });
 };
 
