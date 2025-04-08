@@ -8,15 +8,20 @@ import { Smile, Meh, Frown, Heart, Clock } from "lucide-react";
 export interface MoodReportProps {
   limit?: number;
   refreshKey?: number;
+  sentences?: any[];
 }
 
-const MoodReport = ({ limit = 10, refreshKey = 0 }: MoodReportProps) => {
+const MoodReport = ({ limit = 10, refreshKey = 0, sentences: providedSentences }: MoodReportProps) => {
   const [sentences, setSentences] = useState<any[]>([]);
   
   useEffect(() => {
-    const storedSentences = getMotivationalSentences();
-    setSentences(storedSentences.slice(0, limit));
-  }, [limit, refreshKey]);
+    if (providedSentences) {
+      setSentences(providedSentences.slice(0, limit));
+    } else {
+      const storedSentences = getMotivationalSentences();
+      setSentences(storedSentences.slice(0, limit));
+    }
+  }, [limit, refreshKey, providedSentences]);
 
   const formatDate = (dateString: string) => {
     try {

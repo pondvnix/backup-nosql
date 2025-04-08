@@ -14,6 +14,7 @@ import MoodReport from "@/components/MoodReport";
 import { getContributorName, setContributorName } from "@/utils/contributorManager";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import TomatoBox from "@/components/TomatoBox";
+import { getMotivationalSentences } from "@/utils/motivationSentenceManager";
 
 const Index = () => {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
@@ -24,6 +25,7 @@ const Index = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [allWordsUsed, setAllWordsUsed] = useState(false);
   const [isContributorValid, setIsContributorValid] = useState(false);
+  const [recentSentences, setRecentSentences] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -33,6 +35,28 @@ const Index = () => {
     if (metaDescription) {
       metaDescription.setAttribute('content', 'แพลตฟอร์มสำหรับแชร์ข้อความให้กำลังใจและสร้างแรงบันดาลใจด้วยภาษาไทย');
     }
+  }, []);
+
+  // Load most recent sentences
+  useEffect(() => {
+    const loadRecentSentences = () => {
+      const sentences = getMotivationalSentences();
+      setRecentSentences(sentences.slice(0, 5));
+    };
+    
+    loadRecentSentences();
+    
+    // Add event listener for real-time updates
+    const handleSentenceUpdate = () => {
+      loadRecentSentences();
+      setRefreshTrigger(prev => prev + 1);
+    };
+    
+    window.addEventListener('motivation-billboard-updated', handleSentenceUpdate);
+    
+    return () => {
+      window.removeEventListener('motivation-billboard-updated', handleSentenceUpdate);
+    };
   }, []);
 
   const loadSuggestedWords = useCallback(() => {
@@ -143,6 +167,9 @@ const Index = () => {
         title: "เลือกคำสำเร็จ",
         description: `คำว่า "${word}" ถูกเลือกเรียบร้อยแล้ว`,
       });
+      
+      // Refresh sentences after selection
+      setRefreshTrigger(prev => prev + 1);
     }
   };
 
@@ -173,6 +200,23 @@ const Index = () => {
       );
     }
   };
+
+  // Listen for motivationalSentenceGenerated events
+  useEffect(() => {
+    const handleSentenceGenerated = (event: CustomEvent) => {
+      if (event.detail && event.detail.sentence) {
+        setDisplaySentence(event.detail.sentence);
+      }
+    };
+
+    window.addEventListener('motivationalSentenceGenerated', 
+      handleSentenceGenerated as EventListener);
+
+    return () => {
+      window.removeEventListener('motivationalSentenceGenerated', 
+        handleSentenceGenerated as EventListener);
+    };
+  }, []);
 
   return (
     <Layout>
@@ -218,6 +262,7 @@ const Index = () => {
                       onChange={(e) => setContributor(e.target.value)}
                       className="mb-4"
                       required
+                      aria-required="true"
                     />
                     <Button 
                       type="button" 
@@ -229,7 +274,7 @@ const Index = () => {
                   </div>
                   {!isContributorValid && (
                     <p className="text-xs text-red-500 mt-1">
-                      กรุณาใส่ชื่อผู้ร่วมสร้างกำลังใจก่อนเพิ่มคำ
+                      กรุณาใส่ชื่อผู้ร่วมสร้างกำลังใจก่อนเพิ่มคำ (จำเป็น)
                     </p>
                   )}
                 </div>
@@ -358,7 +403,11 @@ const Index = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <MoodReport limit={5} refreshKey={refreshTrigger} />
+                <MoodReport 
+                  limit={5} 
+                  refreshKey={refreshTrigger} 
+                  sentences={recentSentences}
+                />
               </CardContent>
             </Card>
           </div>
@@ -366,7 +415,7 @@ const Index = () => {
           <div className="flex justify-center">
             <Button 
               variant="outline" 
-              className="flex items-center gap-2"
+              className="flex items-center gap-1"
               onClick={() => window.location.href = "/logs"}
             >
               ดูทั้งหมด

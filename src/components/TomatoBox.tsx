@@ -121,17 +121,18 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
             </div>
           </div>
           
-          {/* Sentence */}
+          {/* New section for the motivational sentence with orange styling */}
           {sentence && (
-            <div className="mb-4 bg-white p-3 rounded-lg shadow border border-red-100">
+            <div className="mb-4 bg-white p-4 rounded-lg shadow border border-orange-200">
               <div className="relative">
-                <div className="absolute -top-2 -left-2 bg-red-50 border border-red-200 rounded-full p-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
+                <div className="absolute -top-2 -left-2 bg-orange-50 border border-orange-200 rounded-full p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500">
                     <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
                     <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
                   </svg>
                 </div>
-                <p className="text-sm italic text-gray-700 pl-5 font-sarabun">"{sentence}"</p>
+                <h3 className="text-orange-800 font-medium mb-1 pl-5">ประโยคให้กำลังใจ</h3>
+                <p className="text-sm italic text-orange-700 pl-5 font-sarabun">"{sentence}"</p>
               </div>
             </div>
           )}
