@@ -1,3 +1,4 @@
+
 // Add any missing function to the file
 export const saveWordUse = (word: string): void => {
   try {
@@ -33,6 +34,35 @@ export const getContributorName = (): string => {
     return stored || 'ผู้ใช้';
   } catch (error) {
     console.error('Error getting contributor name:', error);
+    return 'ผู้ใช้';
+  }
+};
+
+export const saveContributorName = (name: string): void => {
+  try {
+    localStorage.setItem('contributor-name', name);
+  } catch (error) {
+    console.error('Error saving contributor name:', error);
+  }
+};
+
+export const promptForContributorName = (): string => {
+  try {
+    let name = getContributorName();
+    
+    if (name === 'ผู้ใช้') {
+      // Only prompt if using the default name
+      const input = prompt('กรุณาระบุชื่อผู้เขียนประโยค:', '');
+      
+      if (input && input.trim() !== '') {
+        name = input.trim();
+        saveContributorName(name);
+      }
+    }
+    
+    return name;
+  } catch (error) {
+    console.error('Error prompting for contributor name:', error);
     return 'ผู้ใช้';
   }
 };
