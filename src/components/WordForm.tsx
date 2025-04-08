@@ -288,8 +288,8 @@ const WordForm = ({
         <TabsContent value="suggestions" className="mt-4 animate-fade-in">
           {contributor.trim() ? (
             <WordSuggestions
-              existingWords={existingWords}
-              onSelectWord={handleSelectSuggestion}
+              selectedWords={existingWords}
+              onWordSelect={handleSelectSuggestion}
               disableAutoRefresh={disableSuggestionRefresh}
               showMultipleTemplates={showMultipleTemplates}
             />

@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getContributorStats } from "@/utils/wordModeration";
@@ -35,7 +34,6 @@ const fetchContributorStats = async (): Promise<Contributor[]> => {
   return Object.entries(stats).map(([name, count]) => ({ name, count }));
 };
 
-// ปรับปรุงฟังก์ชันให้มีการ debounce โดยใช้ memoization
 const fetchMotivationalSentences = (): MotivationalSentence[] => {
   const stored = localStorage.getItem('motivation-sentences');
   if (stored) {
@@ -50,23 +48,19 @@ const fetchMotivationalSentences = (): MotivationalSentence[] => {
   return [];
 };
 
-// ปรับปรุงฟังก์ชัน removeDuplicateSentences ให้มีการใช้ unique ID ที่ดีขึ้น
 const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
   const uniqueMap = new Map<string, MotivationalSentence>();
   
   sentences.forEach(sentence => {
-    // ใช้ ID ที่มีอยู่แล้ว หรือสร้างขึ้นใหม่จากข้อมูลที่มี
     const uniqueId = sentence.id || 
                     `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'unknown'}-${
                       new Date(sentence.timestamp || new Date()).getTime()
                     }`;
     
-    // หากเป็นรายการใหม่หรือมี timestamp ใหม่กว่า จึงทำการอัปเดต
     if (!uniqueMap.has(uniqueId) || 
         new Date(sentence.timestamp || 0).getTime() > 
         new Date(uniqueMap.get(uniqueId)!.timestamp || 0).getTime()) {
       
-      // ดึงชื่อผู้ร่วมสร้างจาก localStorage หากข้อมูลที่มีไม่สมบูรณ์
       const contributor = sentence.contributor ? sentence.contributor : 
                          localStorage.getItem('contributor-name') || 'ไม่ระบุชื่อ';
       
@@ -105,7 +99,6 @@ const analyzeSentencesByTemplate = (sentences: MotivationalSentence[]): Motivati
   });
 };
 
-// Clean text by removing sentiment markers
 const cleanText = (text: string): string => {
   return text
     .replace(/\$\{บวก\}/g, '')
@@ -116,7 +109,6 @@ const cleanText = (text: string): string => {
 const highlightWord = (sentence: string, word: string): React.ReactNode => {
   if (!sentence || !word) return cleanText(sentence);
   
-  // First clean the sentence from template markers
   const cleanedSentence = cleanText(sentence);
   
   const parts = cleanedSentence.split(new RegExp(`(${word})`, 'gi'));
@@ -154,9 +146,8 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     queryKey: ['contributor-stats'],
     queryFn: fetchContributorStats,
     enabled: !propContributors,
-    // เพิ่ม staleTime และ cacheTime เพื่อลดความถี่ในการโหลดข้อมูล
-    staleTime: 5000, // 5 วินาที
-    cacheTime: 10000, // 10 วินาที
+    staleTime: 5000,
+    gcTime: 10000,
   });
 
   const [motivationalSentences, setMotivationalSentences] = useState<MotivationalSentence[]>([]);
@@ -169,7 +160,6 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     longestSentence: { text: '', length: 0, contributor: '' }
   });
 
-  // ใช้ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ทุกครั้งที่ render
   const calculateStatistics = useCallback((sentences: MotivationalSentence[]) => {
     const uniqueUsers = new Set(sentences.map(s => s.contributor || 'Anonymous')).size;
     
@@ -185,7 +175,6 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
       else if (score < 0) negativeSentences++;
       else neutralSentences++;
       
-      // Clean the sentence before measuring length
       const cleanedSentence = cleanText(sentence.sentence);
       
       if (cleanedSentence && cleanedSentence.length > longestSentence.length) {
@@ -207,7 +196,6 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     });
   }, []);
 
-  // สร้างฟังก์ชันแยกเพื่อโหลดและอัปเดตข้อมูล โดยใช้ debounce
   const fetchAndUpdateSentences = useCallback(() => {
     if (!propSentences) {
       const sentences = fetchMotivationalSentences();
@@ -217,10 +205,8 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     }
   }, [propSentences, calculateStatistics]);
 
-  // ปรับปรุง useEffect ให้มี dependencies ที่ถูกต้อง
   useEffect(() => {
     if (refreshTrigger && !propContributors) {
-      // ใช้ setTimeout เพื่อทำ debounce สำหรับการ refetch
       const debounceRefetch = setTimeout(() => {
         refetch();
         
@@ -246,7 +232,6 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
   useEffect(() => {
     fetchAndUpdateSentences();
     
-    // สร้างฟังก์ชันที่มี debounce เพื่อป้องกันการโหลดข้อมูลซ้ำซ้อน
     let debounceTimer: NodeJS.Timeout | null = null;
     
     const handleSentenceUpdate = () => {
@@ -255,7 +240,7 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
         
         debounceTimer = setTimeout(() => {
           fetchAndUpdateSentences();
-        }, 500); // delay 500ms to avoid multiple fetches
+        }, 500);
       }
     };
     
@@ -263,7 +248,6 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     window.addEventListener('motivation-billboard-updated', handleSentenceUpdate);
     window.addEventListener('word-database-updated', handleSentenceUpdate);
     
-    // ปรับเพิ่ม interval เป็น 5 วินาที เพื่อลดความถี่การโหลดข้อมูล
     const intervalId = setInterval(fetchAndUpdateSentences, 5000);
     
     return () => {
@@ -279,7 +263,6 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
   const sortedContributors = [...contributors].sort((a, b) => b.count - a.count);
   const topContributors = sortedContributors.slice(0, 10);
 
-  // ตรวจสอบให้แน่ใจว่าเราใช้ uniqueSentences ที่ถูกต้อง
   const uniqueLatestSentences = motivationalSentences.length > 0 ? 
     removeDuplicateSentences(motivationalSentences).slice(-5).reverse() : [];
 

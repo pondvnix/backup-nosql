@@ -17,9 +17,16 @@ import { saveMotivationalSentence } from "@/utils/motivationSentenceManager";
 interface WordSuggestionsProps {
   onWordSelect: (word: string) => void;
   selectedWords?: string[];
+  disableAutoRefresh?: boolean;
+  showMultipleTemplates?: boolean;
 }
 
-const WordSuggestions = ({ onWordSelect, selectedWords = [] }: WordSuggestionsProps) => {
+const WordSuggestions = ({ 
+  onWordSelect, 
+  selectedWords = [], 
+  disableAutoRefresh = false,
+  showMultipleTemplates = false 
+}: WordSuggestionsProps) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("positive");

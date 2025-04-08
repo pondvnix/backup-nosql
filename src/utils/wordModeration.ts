@@ -9,7 +9,7 @@ export interface Template {
   sentiment: TemplateSentiment;
 }
 
-// Helper function to standardize contributor names - ปรับปรุงเพื่อรับรองว่าชื่อจะไม่เป็นค่าว่างหรือ undefined
+// Helper function to standardize contributor names
 export const standardizeContributorName = (contributor?: string): string => {
   // ตรวจสอบว่าเป็น null หรือ undefined
   if (contributor === null || contributor === undefined) {
@@ -26,6 +26,38 @@ export const standardizeContributorName = (contributor?: string): string => {
     // ลองดึงจาก localStorage ถ้าค่าที่รับมาเป็นสตริงว่าง
     const storedContributor = localStorage.getItem('contributor-name');
     return storedContributor && storedContributor.trim() ? storedContributor.trim() : 'ไม่ระบุชื่อ';
+  }
+};
+
+// Implement the missing functions
+// Recent words handling functions
+export const addWord = (word: string): void => {
+  const recentWords = getRecentWords();
+  
+  // Add the word to the beginning of the array if it doesn't exist
+  if (!recentWords.includes(word)) {
+    recentWords.unshift(word);
+    
+    // Keep only the most recent 10 words
+    const limitedWords = recentWords.slice(0, 10);
+    
+    localStorage.setItem('recent-words', JSON.stringify(limitedWords));
+  } else {
+    // If the word exists, move it to the front
+    const filteredWords = recentWords.filter(w => w !== word);
+    filteredWords.unshift(word);
+    
+    localStorage.setItem('recent-words', JSON.stringify(filteredWords.slice(0, 10)));
+  }
+};
+
+export const getRecentWords = (): string[] => {
+  try {
+    const storedWords = localStorage.getItem('recent-words');
+    return storedWords ? JSON.parse(storedWords) : [];
+  } catch (error) {
+    console.error("Error reading recent words from localStorage:", error);
+    return [];
   }
 };
 
@@ -72,7 +104,7 @@ export const moderateText = (text: string): boolean => {
     'เหี้ย', 'สัส', 'ควย', 'เหี้', 'เย็ด', 'มึง', 'กู', 'ไอ้', 'fuck', 'shit', 'porn'
   ];
   
-  // ตรวจสอบว่ามีคำที่อาจจะเป็นปัญหาหรือไม่
+  // ตรวจสอบว่ามีคำที่อาจจะเป็นปัญหาห���ือไม่
   const lowerText = text.toLowerCase();
   return problematicWords.some(word => lowerText.includes(word));
 };
