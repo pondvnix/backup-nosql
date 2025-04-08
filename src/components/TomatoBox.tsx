@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, Download, Facebook, Twitter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ShareButton from "@/components/ShareButton";
+import { Card } from "@/components/ui/card";
 
 // Add a props interface at the top of the file
 export interface TomatoBoxProps {
@@ -75,43 +76,84 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
     <div className="space-y-6">
       {/* Hidden div that will be converted to image */}
       <div id="tomato-box-content" className="bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto" style={{ display: "block" }}>
-        <div className="border-4 border-red-600 p-6 rounded-lg bg-red-50">
-          <div className="text-center relative">
-            {/* Create a small tomato logo/icon at the top */}
-            <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 bg-white p-2 rounded-full border-2 border-red-600">
-              <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-lg">ดอยคำ</span>
+        <div className="relative border-4 border-red-600 p-6 rounded-lg bg-gradient-to-r from-red-50 to-orange-50">
+          {/* Doikham Logo and Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-600 h-12 w-12 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
+                <span>ดอยคำ</span>
+              </div>
+              <div>
+                <h3 className="text-red-800 font-bold">ผลิตภัณฑ์ดอยคำ</h3>
+                <p className="text-xs text-red-600">โครงการส่วนพระองค์</p>
+              </div>
+            </div>
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded">
+              กล่องน้ำมะเขือเทศ
+            </div>
+          </div>
+          
+          {/* Main Content */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-1/3 flex-shrink-0">
+              <div className="relative aspect-square overflow-hidden rounded-md shadow-sm border-2 border-red-200">
+                <img 
+                  src="https://img.th.my-best.com/product_images/ce41644a1e7e304e755ac435ea9827ee.png?ixlib=rails-4.3.1&q=70&lossless=0&w=800&h=800&fit=clip&s=ef32b4f80be0dc2e6bb165897baa6116" 
+                  alt="Doikham Tomato Juice" 
+                  className="object-cover w-full h-full"
+                />
               </div>
             </div>
             
-            <h2 className="text-2xl font-bold text-red-700 mb-3 mt-4">กล่องน้ำมะเขือเทศดอยคำ</h2>
-            <div className="text-3xl font-bold my-4 py-4 px-2 border-y-2 border-red-400 bg-white rounded-md shadow-inner">
-              "{word}"
-            </div>
-            
-            <p className="text-lg mt-3 font-medium text-red-800">โดย: {contributor}</p>
-            
-            {sentence && (
-              <div className="mt-5 p-3 bg-white rounded-lg shadow-sm border border-red-200">
-                <p className="text-md italic text-red-800">"{sentence}"</p>
-              </div>
-            )}
-            
-            {selectedWords && selectedWords.length > 0 && (
-              <div className="mt-4">
-                <p className="text-sm font-medium mb-2 text-red-700">คำที่เลือก:</p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {selectedWords.map((selectedWord, index) => (
-                    <span key={index} className="px-3 py-1 bg-red-100 text-red-800 text-xs rounded-full border border-red-300">
-                      {selectedWord}
-                    </span>
-                  ))}
+            <div className="w-2/3">
+              <div className="bg-white py-3 px-4 rounded-lg shadow-inner border border-red-100">
+                <h2 className="text-xl font-semibold text-red-800 mb-1">น้ำมะเขือเทศเข้มข้น</h2>
+                <p className="text-orange-500 font-medium text-lg mb-2">"{word}"</p>
+                <div className="text-xs text-gray-500 mt-1 flex justify-between">
+                  <span>ขนาด 100%</span>
+                  <span>โดย {contributor}</span>
                 </div>
               </div>
-            )}
-            
-            <div className="mt-4 text-xs text-red-500 font-medium">
-              กล่องน้ำมะเขือเทศดอยคำ - ข้อความให้กำลังใจตามแบบของคุณ
+            </div>
+          </div>
+          
+          {/* Sentence */}
+          {sentence && (
+            <div className="mb-4 bg-white p-3 rounded-lg shadow border border-red-100">
+              <div className="relative">
+                <div className="absolute -top-2 -left-2 bg-red-50 border border-red-200 rounded-full p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
+                    <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
+                    <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
+                  </svg>
+                </div>
+                <p className="text-sm italic text-gray-700 pl-5">"{sentence}"</p>
+              </div>
+            </div>
+          )}
+          
+          {/* Selected Words */}
+          {selectedWords && selectedWords.length > 0 && (
+            <div className="bg-white p-3 rounded-lg shadow-sm border border-red-100">
+              <p className="text-xs font-medium mb-2 text-red-700">ส่วนประกอบ:</p>
+              <div className="flex flex-wrap gap-1.5 justify-start">
+                {selectedWords.map((selectedWord, index) => (
+                  <span key={index} className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs rounded-full border border-orange-200">
+                    {selectedWord}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Footer */}
+          <div className="mt-4 pt-3 border-t border-red-200 flex justify-between items-center">
+            <div className="text-xs text-red-700">
+              <p>ผลิตโดย โครงการส่วนพระองค์ สวนจิตรลดา</p>
+              <p>กล่องน้ำมะเขือเทศดอยคำ - ข้อความให้กำลังใจ</p>
+            </div>
+            <div className="text-xs text-red-600 bg-white px-2 py-1 rounded-full border border-red-200">
+              กำลังใจ
             </div>
           </div>
         </div>
@@ -119,58 +161,63 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
 
       {/* Display the generated image */}
       {imageUrl && (
-        <div className="text-center">
-          <img
-            src={imageUrl}
-            alt="Tomato Box"
-            className="max-w-full h-auto mx-auto rounded-lg shadow-md border-2 border-red-100"
-          />
-          
-          <div className="mt-6 flex flex-wrap gap-2 justify-center">
-            {/* Download button */}
-            <a
-              href={imageUrl}
-              download={`doikham_tomato_box_${word}_${contributor}.png`}
-              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 gap-2"
-            >
-              <Download className="h-4 w-4" />
-              ดาวน์โหลด
-            </a>
+        <Card className="p-4 bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-orange-800 mb-4">กล่องน้ำมะเขือเทศดอยคำของคุณ</h3>
+            <div className="bg-white p-2 rounded-lg shadow-md mb-4">
+              <img
+                src={imageUrl}
+                alt="Tomato Box"
+                className="max-w-full h-auto mx-auto rounded-lg"
+              />
+            </div>
             
-            {/* Share to Facebook */}
-            <ShareButton 
-              platform="facebook" 
-              url={window.location.href} 
-              sectionId="tomato-box-section"
-              text={`กล่องน้ำมะเขือเทศดอยคำ: "${word}" โดย ${contributor}`}
-              className="bg-blue-500 text-white hover:bg-blue-600"
-            />
-            
-            {/* Share to Twitter */}
-            <ShareButton 
-              platform="twitter" 
-              url={window.location.href} 
-              sectionId="tomato-box-section"
-              text={`กล่องน้ำมะเขือเทศดอยคำ: "${word}" โดย ${contributor}`}
-              className="bg-sky-500 text-white hover:bg-sky-600"
-            />
-            
-            {/* Copy to clipboard */}
-            <Button 
-              onClick={copyToClipboard} 
-              variant="outline" 
-              className="gap-2 bg-gray-100 hover:bg-gray-200"
-            >
-              <Copy className="h-4 w-4" />
-              คัดลอก
-            </Button>
+            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* Download button */}
+              <a
+                href={imageUrl}
+                download={`doikham_tomato_box_${word}_${contributor}.png`}
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 gap-2 animate-fade-in"
+              >
+                <Download className="h-4 w-4" />
+                ดาวน์โหลด
+              </a>
+              
+              {/* Share to Facebook */}
+              <ShareButton 
+                platform="facebook" 
+                url={window.location.href} 
+                sectionId="tomato-box-section"
+                text={`กล่องน้ำมะเขือเทศดอยคำ: "${word}" โดย ${contributor}`}
+                className="bg-blue-600 text-white hover:bg-blue-700 h-10 animate-fade-in"
+              />
+              
+              {/* Share to Twitter */}
+              <ShareButton 
+                platform="twitter" 
+                url={window.location.href} 
+                sectionId="tomato-box-section"
+                text={`กล่องน้ำมะเขือเทศดอยคำ: "${word}" โดย ${contributor}`}
+                className="bg-black text-white hover:bg-gray-800 h-10 animate-fade-in"
+              />
+              
+              {/* Copy to clipboard */}
+              <Button 
+                onClick={copyToClipboard} 
+                variant="outline" 
+                className="gap-2 bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 h-10 animate-fade-in"
+              >
+                <Copy className="h-4 w-4" />
+                คัดลอก
+              </Button>
+            </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {isGenerating && (
-        <div className="text-center py-4">
-          <p>กำลังสร้างกล่องน้ำมะเขือเทศ...</p>
+        <div className="text-center py-4 animate-pulse">
+          <p className="text-orange-600">กำลังสร้างกล่องน้ำมะเขือเทศ...</p>
         </div>
       )}
     </div>
