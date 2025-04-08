@@ -31,6 +31,9 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
         const canvas = await html2canvas(tomatoBoxElement, {
           backgroundColor: "#ffffff",
           scale: 2, // Higher resolution
+          useCORS: true, // Allow cross-origin images
+          allowTaint: true, // Allow tainted canvas
+          logging: true, // Enable logging for debugging
         });
         
         const imageUrl = canvas.toDataURL('image/png');
@@ -81,14 +84,14 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="bg-red-600 h-12 w-12 rounded-full flex items-center justify-center text-white font-semibold shadow-md">
-                <span>ดอยคำ</span>
+                <span className="font-sarabun">ดอยคำ</span>
               </div>
               <div>
-                <h3 className="text-red-800 font-bold">ผลิตภัณฑ์ดอยคำ</h3>
-                <p className="text-xs text-red-600">โครงการส่วนพระองค์</p>
+                <h3 className="text-red-800 font-bold font-sarabun">ผลิตภัณฑ์ดอยคำ</h3>
+                <p className="text-xs text-red-600 font-sarabun">โครงการส่วนพระองค์</p>
               </div>
             </div>
-            <div className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded">
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded font-sarabun">
               กล่องคำลังใจ
             </div>
           </div>
@@ -101,15 +104,16 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
                   src="https://img.th.my-best.com/product_images/ce41644a1e7e304e755ac435ea9827ee.png?ixlib=rails-4.3.1&q=70&lossless=0&w=800&h=800&fit=clip&s=ef32b4f80be0dc2e6bb165897baa6116" 
                   alt="Doikham Tomato Juice" 
                   className="object-cover w-full h-full"
+                  crossOrigin="anonymous"
                 />
               </div>
             </div>
             
             <div className="w-2/3">
               <div className="bg-white py-3 px-4 rounded-lg shadow-inner border border-red-100">
-                <h2 className="text-xl font-semibold text-red-800 mb-1">กล่องคำลังใจ</h2>
-                <p className="text-orange-500 font-medium text-lg mb-2">"{word}"</p>
-                <div className="text-xs text-gray-500 mt-1 flex justify-between">
+                <h2 className="text-xl font-semibold text-red-800 mb-1 font-sarabun">กล่องคำลังใจ</h2>
+                <p className="text-orange-500 font-medium text-lg mb-2 font-sarabun">"{word}"</p>
+                <div className="text-xs text-gray-500 mt-1 flex justify-between font-sarabun">
                   <span>ขนาด 100%</span>
                   <span>โดย {contributor}</span>
                 </div>
@@ -127,7 +131,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
                     <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
                   </svg>
                 </div>
-                <p className="text-sm italic text-gray-700 pl-5">"{sentence}"</p>
+                <p className="text-sm italic text-gray-700 pl-5 font-sarabun">"{sentence}"</p>
               </div>
             </div>
           )}
@@ -135,10 +139,10 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
           {/* Selected Words */}
           {selectedWords && selectedWords.length > 0 && (
             <div className="bg-white p-3 rounded-lg shadow-sm border border-red-100">
-              <p className="text-xs font-medium mb-2 text-red-700">ส่วนประกอบ:</p>
+              <p className="text-xs font-medium mb-2 text-red-700 font-sarabun">ส่วนประกอบ:</p>
               <div className="flex flex-wrap gap-1.5 justify-start">
                 {selectedWords.map((selectedWord, index) => (
-                  <span key={index} className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs rounded-full border border-orange-200">
+                  <span key={index} className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs rounded-full border border-orange-200 font-sarabun">
                     {selectedWord}
                   </span>
                 ))}
@@ -148,12 +152,19 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
           
           {/* Footer */}
           <div className="mt-4 pt-3 border-t border-red-200 flex justify-between items-center">
-            <div className="text-xs text-red-700">
+            <div className="text-xs text-red-700 font-sarabun">
               <p>ผลิตโดย โครงการส่วนพระองค์ สวนจิตรลดา</p>
               <p>กล่องคำลังใจ - ข้อความให้กำลังใจ</p>
             </div>
-            <div className="text-xs text-red-600 bg-white px-2 py-1 rounded-full border border-red-200">
+            <div className="text-xs text-red-600 bg-white px-2 py-1 rounded-full border border-red-200 font-sarabun">
               กำลังใจ
+            </div>
+          </div>
+
+          {/* Doikham brand watermark */}
+          <div className="absolute bottom-2 right-2 opacity-20">
+            <div className="text-red-800 font-bold text-xs">
+              ดอยคำ
             </div>
           </div>
         </div>
@@ -163,7 +174,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
       {imageUrl && (
         <Card className="p-4 bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-orange-800 mb-4">กล่องคำลังใจของคุณ</h3>
+            <h3 className="text-lg font-semibold text-orange-800 mb-4 font-sarabun">กล่องคำลังใจของคุณ</h3>
             <div className="bg-white p-2 rounded-lg shadow-md mb-4">
               <img
                 src={imageUrl}
@@ -217,7 +228,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
 
       {isGenerating && (
         <div className="text-center py-4 animate-pulse">
-          <p className="text-orange-600">กำลังสร้างกล่องคำลังใจ...</p>
+          <p className="text-orange-600 font-sarabun">กำลังสร้างกล่องคำลังใจ...</p>
         </div>
       )}
     </div>

@@ -13,6 +13,7 @@ import MotivationalSentence from "@/components/MotivationalSentence";
 import MoodReport from "@/components/MoodReport";
 import { getContributorName, setContributorName } from "@/utils/contributorManager";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import TomatoBox from "@/components/TomatoBox";
 
 const Index = () => {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
@@ -22,6 +23,7 @@ const Index = () => {
   const [displaySentence, setDisplaySentence] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [allWordsUsed, setAllWordsUsed] = useState(false);
+  const [isContributorValid, setIsContributorValid] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -49,14 +51,17 @@ const Index = () => {
 
   useEffect(() => {
     const savedContributor = getContributorName();
-    if (savedContributor) {
+    if (savedContributor && savedContributor !== 'ไม่ระบุชื่อ') {
       setContributor(savedContributor);
+      setIsContributorValid(true);
     }
   }, []);
 
   useEffect(() => {
-    loadSuggestedWords();
-  }, [loadSuggestedWords]);
+    if (isContributorValid) {
+      loadSuggestedWords();
+    }
+  }, [loadSuggestedWords, isContributorValid]);
 
   useEffect(() => {
     if (contributor) {
@@ -64,7 +69,23 @@ const Index = () => {
     }
   }, [contributor]);
 
+  const validateContributor = () => {
+    if (!contributor.trim()) {
+      toast({
+        title: "กรุณาระบุชื่อ",
+        description: "กรุณาใส่ชื่อผู้ร่วมสร้างกำลังใจก่อนเพิ่มคำ",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    setIsContributorValid(true);
+    return true;
+  };
+
   const handleWordSubmit = () => {
+    if (!validateContributor()) return;
+    
     if (!inputWord.trim()) {
       toast({
         title: "ข้อความว่างเปล่า",
@@ -107,6 +128,8 @@ const Index = () => {
   };
 
   const handleSuggestedWordClick = (word: string) => {
+    if (!validateContributor()) return;
+    
     if (!selectedWords.includes(word)) {
       setSelectedWords([...selectedWords, word]);
       
@@ -185,13 +208,30 @@ const Index = () => {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-3">
                 <div>
-                  <label className="text-sm font-medium mb-1 block">ชื่อผู้ร่วมสร้างกำลังใจ</label>
-                  <Input
-                    placeholder="ชื่อของคุณ"
-                    value={contributor}
-                    onChange={(e) => setContributor(e.target.value)}
-                    className="mb-4"
-                  />
+                  <label className="text-sm font-medium mb-1 block">
+                    ชื่อผู้ร่วมสร้างกำลังใจ <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="ชื่อของคุณ"
+                      value={contributor}
+                      onChange={(e) => setContributor(e.target.value)}
+                      className="mb-4"
+                      required
+                    />
+                    <Button 
+                      type="button" 
+                      onClick={validateContributor}
+                      variant="outline"
+                    >
+                      ยืนยัน
+                    </Button>
+                  </div>
+                  {!isContributorValid && (
+                    <p className="text-xs text-red-500 mt-1">
+                      กรุณาใส่ชื่อผู้ร่วมสร้างกำลังใจก่อนเพิ่มคำ
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">คำที่ต้องการเพิ่ม</label>
@@ -200,8 +240,15 @@ const Index = () => {
                       placeholder="เช่น กำลังใจ, ความสุข, ความหวัง"
                       value={inputWord}
                       onChange={(e) => setInputWord(e.target.value)}
+                      disabled={!isContributorValid}
                     />
-                    <Button type="button" onClick={handleWordSubmit}>เพิ่ม</Button>
+                    <Button 
+                      type="button" 
+                      onClick={handleWordSubmit}
+                      disabled={!isContributorValid}
+                    >
+                      เพิ่ม
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -241,7 +288,14 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {allWordsUsed ? (
+              {!isContributorValid ? (
+                <Alert className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    กรุณาใส่ชื่อผู้ร่วมสร้างกำลังใจก่อนเพื่อแสดงคำแนะนำ
+                  </AlertDescription>
+                </Alert>
+              ) : allWordsUsed ? (
                 <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
@@ -270,6 +324,7 @@ const Index = () => {
                   variant="ghost" 
                   className="text-sm flex items-center gap-1"
                   onClick={loadSuggestedWords}
+                  disabled={!isContributorValid}
                 >
                   <ThumbsUp className="h-4 w-4" />
                   สุ่มคำใหม่
@@ -278,6 +333,17 @@ const Index = () => {
             </CardContent>
           </Card>
         </section>
+
+        {selectedWords.length > 0 && contributor && (
+          <section className="mb-8">
+            <TomatoBox 
+              word={selectedWords[selectedWords.length - 1] || "กำลังใจ"} 
+              contributor={contributor}
+              sentence={displaySentence}
+              selectedWords={selectedWords}
+            />
+          </section>
+        )}
 
         <section className="space-y-8 w-full">
           <div className="w-full">
