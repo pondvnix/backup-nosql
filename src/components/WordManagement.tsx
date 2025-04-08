@@ -11,15 +11,14 @@ import WordEditModal from "./WordEditModal";
 import WordConfirmDeleteModal from "./WordConfirmDeleteModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { getWordDatabase, updateWordDatabase, getSentimentAnalysis } from "@/utils/wordModeration";
+import { 
+  getWordDatabase, 
+  updateWordDatabase, 
+  getSentimentAnalysis,
+  WordEntry
+} from "@/utils/wordModeration";
 import { wordPolarityDatabase as defaultWordDatabase } from "@/utils/sentenceAnalysis";
 import { saveWordUse } from "@/utils/contributorManager";
-
-interface WordEntry {
-  word: string;
-  templates?: string[];
-  isCustom?: boolean;
-}
 
 const WordManagement = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -33,7 +32,7 @@ const WordManagement = () => {
 
   // โหลดข้อมูลคำทั้งหมด
   useEffect(() => {
-    const loadDatabase = async () => {
+    const loadDatabase = () => {
       try {
         // โหลดจาก localStorage ก่อน
         const dbFromStorage = getWordDatabase();
@@ -64,7 +63,18 @@ const WordManagement = () => {
     };
     
     loadDatabase();
-  }, [toast]);
+    
+    // เพิ่ม event listener สำหรับการอัพเดทฐานข้อมูล
+    const handleDatabaseUpdated = () => {
+      loadDatabase();
+    };
+    
+    window.addEventListener('word-database-updated', handleDatabaseUpdated);
+    
+    return () => {
+      window.removeEventListener('word-database-updated', handleDatabaseUpdated);
+    };
+  }, [toast, searchQuery]);
 
   // กรองคำตามคำค้นหา
   const filterWords = (db: WordEntry[], query: string) => {

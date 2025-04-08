@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { 
   Dialog, 
   DialogContent, 
@@ -30,6 +30,7 @@ const WordAddModal = ({ isOpen, onClose, onSave }: WordAddModalProps) => {
   const [wordText, setWordText] = useState("");
   const [templateInput, setTemplateInput] = useState("");
   const [templates, setTemplates] = useState<string[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   const handleAddTemplate = () => {
@@ -91,23 +92,27 @@ const WordAddModal = ({ isOpen, onClose, onSave }: WordAddModalProps) => {
   };
 
   const insertSpecialTag = (tag: string) => {
-    const textareaElement = document.getElementById("add-template-input") as HTMLTextAreaElement;
-    const cursorPosition = textareaElement?.selectionStart || templateInput.length;
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const startPos = textarea.selectionStart;
+    const endPos = textarea.selectionEnd;
+    
     const newText = 
-      templateInput.substring(0, cursorPosition) + 
+      templateInput.substring(0, startPos) + 
       tag + 
-      templateInput.substring(cursorPosition);
+      templateInput.substring(endPos);
+    
     setTemplateInput(newText);
     
     // Focus back to the textarea
     setTimeout(() => {
-      const input = document.getElementById("add-template-input") as HTMLTextAreaElement;
-      if (input) {
-        input.focus();
-        input.selectionStart = cursorPosition + tag.length;
-        input.selectionEnd = cursorPosition + tag.length;
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.selectionStart = startPos + tag.length;
+        textareaRef.current.selectionEnd = startPos + tag.length;
       }
-    }, 50);
+    }, 10);
   };
 
   return (
@@ -170,6 +175,7 @@ const WordAddModal = ({ isOpen, onClose, onSave }: WordAddModalProps) => {
             <div className="flex gap-2">
               <Textarea 
                 id="add-template-input"
+                ref={textareaRef}
                 value={templateInput} 
                 onChange={(e) => setTemplateInput(e.target.value)}
                 placeholder="พิมพ์แม่แบบประโยค เช่น '${บวก}การมี${คำ}ในชีวิตทำให้เรารู้สึกดีขึ้น'"

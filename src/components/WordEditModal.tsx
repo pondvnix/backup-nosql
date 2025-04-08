@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Dialog, 
   DialogContent, 
@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-// Remove the invalid import from useToaster
 
 interface WordEntry {
   word: string;
@@ -32,6 +31,7 @@ const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) =>
   const [wordText, setWordText] = useState("");
   const [templates, setTemplates] = useState<string[]>([]);
   const [templateInput, setTemplateInput] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
   // Load word data when the modal opens or word changes
@@ -111,25 +111,29 @@ const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) =>
     setTemplateInput("");
   };
 
-  // เพิ่มฟังก์ชันสำหรับปุ่มเพิ่มคำอัตโนมัติ
+  // Fix the function for handling special tags insertion
   const insertSpecialTag = (tag: string) => {
-    const textareaElement = document.getElementById("template-input") as HTMLTextAreaElement;
-    const cursorPosition = textareaElement?.selectionStart || templateInput.length;
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const startPos = textarea.selectionStart;
+    const endPos = textarea.selectionEnd;
+    
     const newText = 
-      templateInput.substring(0, cursorPosition) + 
+      templateInput.substring(0, startPos) + 
       tag + 
-      templateInput.substring(cursorPosition);
+      templateInput.substring(endPos);
+    
     setTemplateInput(newText);
     
-    // Focus กลับไปที่ช่องข้อความ
+    // Focus back to the textarea and position cursor after the inserted tag
     setTimeout(() => {
-      const input = document.getElementById("template-input") as HTMLTextAreaElement;
-      if (input) {
-        input.focus();
-        input.selectionStart = cursorPosition + tag.length;
-        input.selectionEnd = cursorPosition + tag.length;
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.selectionStart = startPos + tag.length;
+        textareaRef.current.selectionEnd = startPos + tag.length;
       }
-    }, 50);
+    }, 10);
   };
 
   return (
@@ -192,6 +196,7 @@ const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) =>
             <div className="flex gap-2">
               <Textarea 
                 id="template-input"
+                ref={textareaRef}
                 value={templateInput} 
                 onChange={(e) => setTemplateInput(e.target.value)}
                 placeholder="พิมพ์แม่แบบประโยค เช่น '${บวก}การมี${คำ}ในชีวิตทำให้เรารู้สึกดีขึ้น'"
