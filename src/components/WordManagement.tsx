@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +14,8 @@ import {
   getWordDatabase, 
   updateWordDatabase, 
   getSentimentAnalysis,
-  WordEntry
+  WordEntry,
+  addWord
 } from "@/utils/wordModeration";
 import { wordPolarityDatabase as defaultWordDatabase } from "@/utils/sentenceAnalysis";
 
@@ -29,26 +29,21 @@ const WordManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
-  // โหลดข้อมูลคำทั้งหมด
   useEffect(() => {
     const loadDatabase = () => {
       try {
-        // โหลดจาก localStorage ก่อน
         const dbFromStorage = getWordDatabase();
         
-        // ถ้าไม่มีข้อมูลใน localStorage ให้ใช้ค่าเริ่มต้น
         let database: WordEntry[] = [];
         if (dbFromStorage && Array.isArray(dbFromStorage) && dbFromStorage.length > 0) {
           database = dbFromStorage;
         } else {
-          // ใช้ฐานข้อมูลเริ่มต้น แต่ทำเครื่องหมายว่าไม่ใช่คำที่ผู้ใช้เพิ่ม
           database = defaultWordDatabase.map(entry => ({
             ...entry,
             isCustom: false
           }));
         }
         
-        // อัพเดทสถานะ
         setWordDatabase(database);
         filterWords(database, searchQuery);
       } catch (error) {
@@ -63,7 +58,6 @@ const WordManagement = () => {
     
     loadDatabase();
     
-    // เพิ่ม event listener สำหรับการอัพเดทฐานข้อมูล
     const handleDatabaseUpdated = () => {
       loadDatabase();
     };
@@ -75,7 +69,6 @@ const WordManagement = () => {
     };
   }, [toast, searchQuery]);
 
-  // กรองคำตามคำค้นหา
   const filterWords = (db: WordEntry[], query: string) => {
     if (!query.trim()) {
       setFilteredWords(db);
@@ -89,23 +82,19 @@ const WordManagement = () => {
     setFilteredWords(filtered);
   };
 
-  // อัพเดทการค้นหาเมื่อผู้ใช้พิมพ์
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
     filterWords(wordDatabase, query);
   };
 
-  // บันทึกฐานข้อมูลคำลงใน localStorage
   const saveDatabase = (newDatabase: WordEntry[]) => {
     try {
       updateWordDatabase(newDatabase);
       setWordDatabase(newDatabase);
       filterWords(newDatabase, searchQuery);
       
-      // แจ้งเตือนถึงการอัพเดต
       window.dispatchEvent(new CustomEvent('word-database-updated'));
-      
     } catch (error) {
       console.error("Error saving word database:", error);
       toast({
@@ -116,9 +105,7 @@ const WordManagement = () => {
     }
   };
 
-  // เพิ่มคำใหม่
   const handleAddWord = (newWord: WordEntry) => {
-    // ตรวจสอบว่ามีคำนี้ในฐานข้อมูลแล้วหรือไม่
     const exists = wordDatabase.some(entry => entry.word.toLowerCase() === newWord.word.toLowerCase());
     
     if (exists) {
@@ -130,40 +117,33 @@ const WordManagement = () => {
       return;
     }
     
-    // เพิ่มคำใหม่เข้าไปในฐานข้อมูล
     const updatedDatabase = [
       ...wordDatabase,
       { 
         ...newWord,
-        isCustom: true  // ทำเครื่องหมายว่าเป็นคำที่ผู้ใช้เพิ่ม
+        isCustom: true
       }
     ];
     
-    // บันทึกฐานข้อมูล
     saveDatabase(updatedDatabase);
     
-    // แจ้งเตือน
     toast({
       title: "เพิ่มคำสำเร็จ",
       description: `เพิ่มคำว่า "${newWord.word}" เข้าสู่ฐานข้อมูลแล้ว`,
     });
     
-    // บันทึกประวัติการใช้งาน
     const wordEntry: WordEntry = {
       word: newWord.word,
       templates: newWord.templates || []
     };
     addWord(wordEntry);
     
-    // ปิด modal
     setIsAddModalOpen(false);
   };
 
-  // แก้ไขคำ
   const handleEditWord = (updatedWord: WordEntry) => {
     if (!selectedWord) return;
     
-    // สำหรับคำที่เหมือนเดิม ตรวจสอบว่ามี word อื่นที่ซ้ำกันหรือไม่
     if (updatedWord.word.toLowerCase() !== selectedWord.word.toLowerCase()) {
       const exists = wordDatabase.some(entry => 
         entry.word.toLowerCase() === updatedWord.word.toLowerCase() && 
@@ -180,51 +160,41 @@ const WordManagement = () => {
       }
     }
     
-    // อัพเดทคำใน database
     const updatedDatabase = wordDatabase.map(entry => 
       entry.word.toLowerCase() === selectedWord.word.toLowerCase() 
-        ? { ...updatedWord, isCustom: entry.isCustom || true }  // รักษาสถานะ isCustom หรือทำให้เป็น true
+        ? { ...updatedWord, isCustom: entry.isCustom || true }
         : entry
     );
     
-    // บันทึกฐานข้อมูล
     saveDatabase(updatedDatabase);
     
-    // แจ้งเตือน
     toast({
       title: "แก้ไขคำสำเร็จ",
-      description: `แก้ไขคำว่า "${selectedWord.word}" เป็น "${updatedWord.word}" แล้ว`,
+      description: `แก้ไขคำว่า "${selectedWord.word}" ��ป็น "${updatedWord.word}" แล้ว`,
     });
     
-    // ปิด modal และล้างค่าที่เลือก
     setIsEditModalOpen(false);
     setSelectedWord(null);
   };
 
-  // ลบคำ
   const handleDeleteWord = () => {
     if (!selectedWord) return;
     
-    // ลบคำออกจากฐานข้อมูล
     const updatedDatabase = wordDatabase.filter(entry => 
       entry.word.toLowerCase() !== selectedWord.word.toLowerCase()
     );
     
-    // บันทึกฐานข้อมูล
     saveDatabase(updatedDatabase);
     
-    // แจ้งเตือน
     toast({
       title: "ลบคำสำเร็จ",
       description: `ลบคำว่า "${selectedWord.word}" ออกจากฐานข้อมูลแล้ว`,
     });
     
-    // ปิด modal และล้างค่าที่เลือก
     setIsDeleteModalOpen(false);
     setSelectedWord(null);
   };
 
-  // คำนวณจำนวนคำที่มีในฐานข้อมูล
   const totalWords = wordDatabase.length;
   const customWords = wordDatabase.filter(word => word.isCustom).length;
 

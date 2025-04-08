@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,9 +101,9 @@ const WordForm = ({
     const trimmedWord = word.trim();
     const trimmedContributor = contributor.trim() || "ไม่ระบุชื่อ";
 
-    const validation = validateWordInput(trimmedWord, trimmedContributor);
+    const validation = validateWordInput(trimmedWord, [trimmedContributor]);
     
-    if (!validation.isValid) {
+    if (!validation.valid) {
       toast({
         title: validation.message,
         variant: "destructive",

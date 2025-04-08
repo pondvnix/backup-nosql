@@ -138,7 +138,52 @@ const ManagementPage = () => {
     }
   };
 
-  const checkTemplates = (templates: Template[]): boolean => {
+  const getSentimentInfo = (template: string | undefined): { text: string, sentiment: TemplateSentiment } => {
+    if (!template || typeof template !== 'string') {
+      return { text: '', sentiment: TemplateSentiment.NEUTRAL };
+    }
+    
+    if (template.includes('${บวก}')) {
+      return { text: template.replace('${บวก}', ''), sentiment: TemplateSentiment.POSITIVE };
+    }
+    if (template.includes('${กลาง}')) {
+      return { text: template.replace('${กลาง}', ''), sentiment: TemplateSentiment.NEUTRAL };
+    }
+    if (template.includes('${ลบ}')) {
+      return { text: template.replace('${ลบ}', ''), sentiment: TemplateSentiment.NEGATIVE };
+    }
+    return { text: template, sentiment: TemplateSentiment.POSITIVE };
+  };
+
+  const insertSentimentPlaceholder = (sentiment: TemplateSentiment) => {
+    if (!textareaRef || !textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const startPos = textarea.selectionStart || 0;
+    const endPos = textarea.selectionEnd || 0;
+    
+    const placeholder = 
+      sentiment === TemplateSentiment.POSITIVE ? '${บวก}' :
+      sentiment === TemplateSentiment.NEGATIVE ? '${ลบ}' :
+      '${กลาง}';
+      
+    const newText = 
+      templateText.substring(0, startPos) + 
+      placeholder + 
+      templateText.substring(endPos);
+    
+    setTemplateText(newText);
+    
+    setTimeout(() => {
+      if (textareaRef && textareaRef.current) {
+        const newCursorPos = startPos + placeholder.length;
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
+  const checkTemplates = (templates: string[]): boolean => {
     if (hasDuplicateTemplates(templates)) {
       setHasTemplateError(true);
       setTemplateErrorMessage("มีแม่แบบประโยคที่ซ้ำกัน กรุณาตรวจสอบ");
@@ -271,51 +316,6 @@ const ManagementPage = () => {
         textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
       }
     }, 0);
-  };
-
-  const insertSentimentPlaceholder = (sentiment: TemplateSentiment) => {
-    if (!textareaRef || !textareaRef.current) return;
-    
-    const textarea = textareaRef.current;
-    const startPos = textarea.selectionStart || 0;
-    const endPos = textarea.selectionEnd || 0;
-    
-    const placeholder = 
-      sentiment === TemplateSentiment.POSITIVE ? '${บวก}' :
-      sentiment === TemplateSentiment.NEGATIVE ? '${ลบ}' :
-      '${กลาง}';
-      
-    const newText = 
-      templateText.substring(0, startPos) + 
-      placeholder + 
-      templateText.substring(endPos);
-    
-    setTemplateText(newText);
-    
-    setTimeout(() => {
-      if (textareaRef && textareaRef.current) {
-        const newCursorPos = startPos + placeholder.length;
-        textareaRef.current.focus();
-        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
-      }
-    }, 0);
-  };
-
-  const getSentimentInfo = (template: string | undefined): { text: string, sentiment: TemplateSentiment } => {
-    if (!template || typeof template !== 'string') {
-      return { text: '', sentiment: 'neutral' };
-    }
-    
-    if (template.includes('${บวก}')) {
-      return { text: template.replace('${บวก}', ''), sentiment: 'positive' };
-    }
-    if (template.includes('${กลาง}')) {
-      return { text: template.replace('${กลาง}', ''), sentiment: 'neutral' };
-    }
-    if (template.includes('${ลบ}')) {
-      return { text: template.replace('${ลบ}', ''), sentiment: 'negative' };
-    }
-    return { text: template, sentiment: 'positive' };
   };
 
   const getGroupedWords = (): Record<string, WordEntry[]> => {
