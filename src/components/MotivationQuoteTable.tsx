@@ -34,7 +34,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     // Deduplicate quotes based on text content
     const uniqueQuotes = quotes.reduce((acc: Quote[], current) => {
       if (!current || typeof current !== 'object') return acc;
-      if (!current.text) return acc;
+      if (!current.text || typeof current.text !== 'string') return acc;
       
       const isDuplicate = acc.find(item => item.text === current.text);
       if (!isDuplicate) {
@@ -44,9 +44,11 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
     }, []);
     
     // Sort quotes by date (newest first)
-    const sortedQuotes = [...uniqueQuotes].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    const sortedQuotes = [...uniqueQuotes].sort((a, b) => {
+      const dateA = a.date instanceof Date ? a.date.getTime() : 0;
+      const dateB = b.date instanceof Date ? b.date.getTime() : 0;
+      return dateB - dateA;
+    });
     
     setDisplayedQuotes(sortedQuotes);
   }, [quotes]);
@@ -84,7 +86,7 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
   };
   
   // Format date to local Thai time (GMT+7)
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | null | undefined) => {
     if (!date || !(date instanceof Date)) {
       return '';
     }
@@ -225,15 +227,17 @@ const MotivationQuoteTable = ({ quotes, showAllUsers = false }: QuoteManagementT
                       </TableCell>
                       <TableCell>{getSentimentScore(quote)}</TableCell>
                       {showAllUsers && (
-                        <TableCell>{quote.userId || 'ไม่ระบุชื่อ'}</TableCell>
+                        <TableCell>{typeof quote.userId === 'string' ? quote.userId : 'ไม่ระบุชื่อ'}</TableCell>
                       )}
                       {showAllUsers && (
                         <TableCell className="font-medium text-primary">
-                          {quote.word || '-'}
+                          {typeof quote.word === 'string' ? quote.word : '-'}
                         </TableCell>
                       )}
                       <TableCell className="font-medium">
-                        {quote.word ? highlightWord(quote.text, quote.word) : cleanTemplateText(quote.text)}
+                        {typeof quote.word === 'string' && typeof quote.text === 'string' ? 
+                         highlightWord(quote.text, quote.word) : 
+                         cleanTemplateText(typeof quote.text === 'string' ? quote.text : '')}
                       </TableCell>
                       {showAllUsers && (
                         <TableCell className="text-xs">{formatDate(quote.date)}</TableCell>

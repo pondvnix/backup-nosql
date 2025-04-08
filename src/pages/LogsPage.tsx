@@ -34,11 +34,23 @@ const LogsPage = () => {
   // Load used templates
   useEffect(() => {
     const loadUsedTemplates = () => {
-      const templates = getUsedTemplates();
-      
-      // Sort by timestamp (newest first)
-      const sortedTemplates = templates.sort((a, b) => b.timestamp - a.timestamp);
-      setUsedTemplates(sortedTemplates);
+      try {
+        const templates = getUsedTemplates();
+        
+        // Ensure we have valid templates
+        const validTemplates = Array.isArray(templates) ? templates.filter(template => 
+          template && typeof template === 'object' && 
+          typeof template.word === 'string' && 
+          typeof template.template === 'string'
+        ) : [];
+        
+        // Sort by timestamp (newest first)
+        const sortedTemplates = validTemplates.sort((a, b) => b.timestamp - a.timestamp);
+        setUsedTemplates(sortedTemplates);
+      } catch (error) {
+        console.error("Error loading templates:", error);
+        setUsedTemplates([]);
+      }
     };
     
     loadUsedTemplates();
@@ -55,7 +67,7 @@ const LogsPage = () => {
   
   // Get sentiment from template
   const getSentimentFromTemplate = (template: string): 'positive' | 'neutral' | 'negative' => {
-    if (!template) return 'neutral';
+    if (!template || typeof template !== 'string') return 'neutral';
     
     if (template.includes('${บวก}')) return 'positive';
     if (template.includes('${ลบ}')) return 'negative';
@@ -67,6 +79,8 @@ const LogsPage = () => {
   
   // Clean template text by removing sentiment markers
   const cleanTemplateText = (text: string): string => {
+    if (!text || typeof text !== 'string') return '';
+    
     return text
       .replace(/\$\{บวก\}/g, '')
       .replace(/\$\{กลาง\}/g, '')
@@ -79,10 +93,17 @@ const LogsPage = () => {
   };
   
   // Filter templates based on search term
-  const filteredTemplates = usedTemplates.filter(template => 
-    template.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cleanTemplateText(template.template).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredTemplates = usedTemplates.filter(template => {
+    if (!searchTerm || typeof searchTerm !== 'string') return true;
+    if (!template || typeof template !== 'object') return false;
+    
+    const word = typeof template.word === 'string' ? template.word.toLowerCase() : '';
+    const templateText = typeof template.template === 'string' ? 
+      cleanTemplateText(template.template).toLowerCase() : '';
+    const search = searchTerm.toLowerCase();
+    
+    return word.includes(search) || templateText.includes(search);
+  });
   
   // Pagination logic
   const indexOfLastTemplate = currentPage * templatesPerPage;
@@ -198,6 +219,11 @@ const LogsPage = () => {
                         </TableHeader>
                         <TableBody>
                           {currentTemplates.map((template, index) => {
+                            // Skip invalid template data
+                            if (!template || typeof template !== 'object' || !template.template || typeof template.template !== 'string') {
+                              return null;
+                            }
+                            
                             const sentiment = getSentimentFromTemplate(template.template);
                             const cleanedText = cleanTemplateText(template.template);
                             

@@ -19,15 +19,22 @@ const BillboardLog = () => {
   const loadSentences = useCallback(() => {
     try {
       const loadedSentences = getMotivationalSentences();
-      const sortedSentences = [...loadedSentences].sort((a, b) => {
-        const timeA = new Date(a.timestamp).getTime();
-        const timeB = new Date(b.timestamp).getTime();
+      
+      // Validate received sentences
+      const validSentences = Array.isArray(loadedSentences) ? loadedSentences.filter(sentence => 
+        sentence && typeof sentence === 'object'
+      ) : [];
+      
+      const sortedSentences = [...validSentences].sort((a, b) => {
+        const timeA = new Date(a.timestamp || 0).getTime();
+        const timeB = new Date(b.timestamp || 0).getTime();
         return timeB - timeA;
       });
       
       setSentences(sortedSentences);
     } catch (error) {
       console.error("Error loading sentences:", error);
+      setSentences([]);
     }
   }, []);
   
@@ -105,15 +112,15 @@ const BillboardLog = () => {
   
   // กรองประโยคตามคำค้นหา
   const filteredSentences = sentences.filter(sentence => {
-    if (!searchTerm) return true;
+    if (!searchTerm || typeof searchTerm !== 'string') return true;
+    if (!sentence || typeof sentence !== 'object') return false;
     
-    const word = sentence.word || '';
-    const sentenceText = sentence.sentence || '';
-    const contributor = sentence.contributor || '';
+    const word = typeof sentence.word === 'string' ? sentence.word.toLowerCase() : '';
+    const sentenceText = typeof sentence.sentence === 'string' ? sentence.sentence.toLowerCase() : '';
+    const contributor = typeof sentence.contributor === 'string' ? sentence.contributor.toLowerCase() : '';
+    const search = searchTerm.toLowerCase();
     
-    return word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           sentenceText.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           contributor.toLowerCase().includes(searchTerm.toLowerCase());
+    return word.includes(search) || sentenceText.includes(search) || contributor.includes(search);
   });
   
   // คำนวณหน้าปัจจุบัน
@@ -180,32 +187,49 @@ const BillboardLog = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {currentSentences.map((sentence) => (
-                    <TableRow key={sentence.id || `sentence-${sentence.word}-${new Date(sentence.timestamp).getTime()}`}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getSentimentIcon(sentence.sentiment)}
-                          <Badge variant={getSentimentBadgeVariant(sentence.sentiment)}>
-                            {getPolarityText(sentence.sentiment)}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {sentence.contributor || 'ไม่ระบุชื่อ'}
-                      </TableCell>
-                      <TableCell className="font-medium text-primary">
-                        {sentence.word || ''}
-                      </TableCell>
-                      <TableCell>
-                        {highlightWord(sentence.sentence, sentence.word)}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs">
-                        {new Date(sentence.timestamp).toLocaleString('th-TH', {
-                          timeZone: 'Asia/Bangkok'
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {currentSentences.map((sentence, index) => {
+                    // Skip invalid sentence data
+                    if (!sentence || typeof sentence !== 'object') {
+                      return null;
+                    }
+                    
+                    // Generate a valid key
+                    const key = sentence.id || `sentence-${index}-${typeof sentence.timestamp === 'object' ? 
+                      new Date(sentence.timestamp).getTime() : 
+                      typeof sentence.timestamp === 'number' ? 
+                        sentence.timestamp : 
+                        index}`;
+                        
+                    return (
+                      <TableRow key={key}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getSentimentIcon(sentence.sentiment)}
+                            <Badge variant={getSentimentBadgeVariant(sentence.sentiment)}>
+                              {getPolarityText(sentence.sentiment)}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {typeof sentence.contributor === 'string' ? sentence.contributor : 'ไม่ระบุชื่อ'}
+                        </TableCell>
+                        <TableCell className="font-medium text-primary">
+                          {typeof sentence.word === 'string' ? sentence.word : ''}
+                        </TableCell>
+                        <TableCell>
+                          {highlightWord(sentence.sentence, sentence.word)}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs">
+                          {sentence.timestamp ? 
+                            new Date(sentence.timestamp).toLocaleString('th-TH', {
+                              timeZone: 'Asia/Bangkok'
+                            }) : 
+                            ''
+                          }
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

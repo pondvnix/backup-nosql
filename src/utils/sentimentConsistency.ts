@@ -11,13 +11,13 @@ export const extractSentimentFromTemplate = (template: string | undefined): { se
   text = template;
 
   // Check for sentiment prefixes and remove them
-  if (template.includes('${บวก}')) {
+  if (typeof template === 'string' && template.includes('${บวก}')) {
     sentiment = 'positive';
     text = template.replace('${บวก}', '');
-  } else if (template.includes('${กลาง}')) {
+  } else if (typeof template === 'string' && template.includes('${กลาง}')) {
     sentiment = 'neutral';
     text = template.replace('${กลาง}', '');
-  } else if (template.includes('${ลบ}')) {
+  } else if (typeof template === 'string' && template.includes('${ลบ}')) {
     sentiment = 'negative';
     text = template.replace('${ลบ}', '');
   }
@@ -49,17 +49,20 @@ export const analyzeSentimentFromSentence = (sentence: string | undefined, templ
   let positiveCount = 0;
   let negativeCount = 0;
 
-  positiveWords.forEach(word => {
-    if (validSentence.toLowerCase().includes(word.toLowerCase())) {
-      positiveCount++;
-    }
-  });
+  // Only process if sentence is a string
+  if (typeof validSentence === 'string') {
+    positiveWords.forEach(word => {
+      if (validSentence.toLowerCase().includes(word.toLowerCase())) {
+        positiveCount++;
+      }
+    });
 
-  negativeWords.forEach(word => {
-    if (validSentence.toLowerCase().includes(word.toLowerCase())) {
-      negativeCount++;
-    }
-  });
+    negativeWords.forEach(word => {
+      if (validSentence.toLowerCase().includes(word.toLowerCase())) {
+        negativeCount++;
+      }
+    });
+  }
 
   // Calculate sentiment score
   const score = positiveCount - negativeCount;
