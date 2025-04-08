@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -34,14 +34,12 @@ import {
   TemplateSentiment,
   templateObjectsToStrings,
   stringToTemplateObjects,
-  addWord
+  addWord,
+  getWordDatabase,
+  updateWordDatabase,
+  WordEntry
 } from "../utils/wordModeration";
 import { extractSentimentFromTemplate } from "../utils/sentimentConsistency";
-
-interface WordEntry {
-  word: string;
-  templates?: string[];
-}
 
 const ManagementPage = () => {
   const { toast } = useToast();
@@ -51,7 +49,7 @@ const ManagementPage = () => {
   const [currentEditWord, setCurrentEditWord] = useState<WordEntry | null>(null);
   const [templateText, setTemplateText] = useState("");
   const [cursorPosition, setCursorPosition] = useState<number | null>(null);
-  const [textareaRef, setTextareaRef] = useState<HTMLTextAreaElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [deleteConfirmModalOpen, setDeleteConfirmModalOpen] = useState(false);
   const [wordToDelete, setWordToDelete] = useState<string | null>(null);
   const [hasTemplateError, setHasTemplateError] = useState(false);
@@ -60,11 +58,8 @@ const ManagementPage = () => {
   useEffect(() => {
     const loadWords = () => {
       try {
-        const storedData = localStorage.getItem("word-polarity-database");
-        if (storedData) {
-          const parsedData = JSON.parse(storedData);
-          setAllWords(parsedData);
-        }
+        const wordDatabaseData = getWordDatabase();
+        setAllWords(wordDatabaseData);
       } catch (e) {
         console.error("Error loading word database:", e);
       }
@@ -131,20 +126,11 @@ const ManagementPage = () => {
     setTemplateErrorMessage("");
     
     if (word.templates && word.templates.length > 0) {
-      const templates = stringToTemplateObjects(
-        Array.isArray(word.templates) ? 
-          word.templates.filter(t => typeof t === 'string') : 
-          []
-      );
+      const safeTemplates = Array.isArray(word.templates) 
+        ? word.templates.filter(t => typeof t === 'string')
+        : [];
       
-      const templateLines = templates.map(t => {
-        const sentimentPrefix = 
-          t.sentiment === 'positive' ? '${บวก}' :
-          t.sentiment === 'negative' ? '${ลบ}' :
-          '${กลาง}';
-        return `${sentimentPrefix}${t.template}`;
-      });
-      setTemplateText(templateLines.join(',\n'));
+      setTemplateText(safeTemplates.join(',\n'));
     } else {
       setTemplateText('');
     }
@@ -182,11 +168,12 @@ const ManagementPage = () => {
       templates
     );
     
+    const templateStrings = templateObjectsToStrings(templates);
     const updatedWords = allWords.map(w => {
       if (w.word === currentEditWord.word) {
         return { 
           ...currentEditWord, 
-          templates: templateObjectsToStrings(templates) 
+          templates: templateStrings
         };
       }
       return w;
@@ -196,16 +183,7 @@ const ManagementPage = () => {
     setEditModalOpen(false);
     
     const contributor = getContributorName();
-    if (templates.length > 0) {
-      const event = new CustomEvent('word-database-updated', {
-        detail: {
-          word: currentEditWord.word,
-          templates: templateObjectsToStrings(templates),
-          sentiment: firstTemplateSentiment
-        }
-      });
-      window.dispatchEvent(event);
-    }
+    window.dispatchEvent(new CustomEvent('word-database-updated'));
     
     toast({
       title: "อัพเดทคำสำเร็จ",
@@ -266,17 +244,21 @@ const ManagementPage = () => {
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setTemplateText(e.target.value);
-    setCursorPosition(e.target.selectionStart);
+    
+    if (e.target && typeof e.target.selectionStart === 'number') {
+      setCursorPosition(e.target.selectionStart);
+    }
     
     const templates = parseTemplates(e.target.value);
     checkTemplates(templates);
   };
 
   const insertWordVariable = (word: string) => {
-    if (!textareaRef) return;
+    if (!textareaRef || !textareaRef.current) return;
     
-    const startPos = textareaRef.selectionStart || 0;
-    const endPos = textareaRef.selectionEnd || 0;
+    const textarea = textareaRef.current;
+    const startPos = textarea.selectionStart || 0;
+    const endPos = textarea.selectionEnd || 0;
     
     const newText = 
       templateText.substring(0, startPos) + 
@@ -286,19 +268,20 @@ const ManagementPage = () => {
     setTemplateText(newText);
     
     setTimeout(() => {
-      if (textareaRef) {
+      if (textareaRef && textareaRef.current) {
         const newCursorPos = startPos + `\${${word}}`.length;
-        textareaRef.focus();
-        textareaRef.setSelectionRange(newCursorPos, newCursorPos);
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
       }
     }, 0);
   };
 
   const insertSentimentPlaceholder = (sentiment: TemplateSentiment) => {
-    if (!textareaRef) return;
+    if (!textareaRef || !textareaRef.current) return;
     
-    const startPos = textareaRef.selectionStart || 0;
-    const endPos = textareaRef.selectionEnd || 0;
+    const textarea = textareaRef.current;
+    const startPos = textarea.selectionStart || 0;
+    const endPos = textarea.selectionEnd || 0;
     
     const placeholder = 
       sentiment === 'positive' ? '${บวก}' :
@@ -313,10 +296,10 @@ const ManagementPage = () => {
     setTemplateText(newText);
     
     setTimeout(() => {
-      if (textareaRef) {
+      if (textareaRef && textareaRef.current) {
         const newCursorPos = startPos + placeholder.length;
-        textareaRef.focus();
-        textareaRef.setSelectionRange(newCursorPos, newCursorPos);
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
       }
     }, 0);
   };
@@ -587,7 +570,7 @@ const ManagementPage = () => {
                       value={templateText}
                       onChange={handleTextareaChange}
                       rows={6}
-                      ref={(ref) => setTextareaRef(ref)}
+                      ref={textareaRef}
                       className={cn(
                         "font-mono text-sm",
                         hasTemplateError && "border-red-500 focus-visible:ring-red-500"

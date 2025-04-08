@@ -13,12 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-
-interface WordEntry {
-  word: string;
-  templates?: string[];
-  isCustom?: boolean;
-}
+import { WordEntry } from "@/utils/wordModeration";
 
 interface WordAddModalProps {
   isOpen: boolean;
@@ -95,8 +90,8 @@ const WordAddModal = ({ isOpen, onClose, onSave }: WordAddModalProps) => {
     if (!textareaRef.current) return;
     
     const textarea = textareaRef.current;
-    const startPos = textarea.selectionStart;
-    const endPos = textarea.selectionEnd;
+    const startPos = textarea.selectionStart || 0;
+    const endPos = textarea.selectionEnd || 0;
     
     const newText = 
       templateInput.substring(0, startPos) + 
@@ -109,8 +104,8 @@ const WordAddModal = ({ isOpen, onClose, onSave }: WordAddModalProps) => {
     setTimeout(() => {
       if (textareaRef.current) {
         textareaRef.current.focus();
-        textareaRef.current.selectionStart = startPos + tag.length;
-        textareaRef.current.selectionEnd = startPos + tag.length;
+        const newCursorPos = startPos + tag.length;
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
       }
     }, 10);
   };

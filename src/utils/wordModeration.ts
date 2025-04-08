@@ -1,3 +1,4 @@
+
 // Export the addWord and getRecentWords functions if they're not already exported
 
 /**
@@ -114,19 +115,22 @@ export const addWordToDatabase = (
     // Check if word already exists
     const existingIndex = database.findIndex((entry: any) => entry.word === word);
     
+    // Convert Template objects to template strings with sentiment markers
+    const templateStrings = templateObjectsToStrings(safeTemplates);
+    
     if (existingIndex >= 0) {
       database[existingIndex] = {
         ...database[existingIndex],
         polarity,
         score,
-        templates: safeTemplates
+        templates: templateStrings
       };
     } else {
       database.push({
         word,
         polarity,
         score,
-        templates: safeTemplates
+        templates: templateStrings
       });
     }
     
@@ -161,22 +165,22 @@ export const updateWordPolarity = (
     
     const existingIndex = database.findIndex((entry: any) => entry.word === word);
     
-    // Ensure templates is an array if provided
-    const safeTemplates = templates && Array.isArray(templates) ? templates : undefined;
+    // Ensure templates is an array if provided and convert to strings
+    const templateStrings = templates ? templateObjectsToStrings(templates) : undefined;
     
     if (existingIndex >= 0) {
       database[existingIndex] = {
         ...database[existingIndex],
         polarity,
         score,
-        ...(safeTemplates && { templates: safeTemplates })
+        ...(templateStrings && { templates: templateStrings })
       };
     } else {
       database.push({
         word,
         polarity,
         score,
-        ...(safeTemplates && { templates: safeTemplates })
+        ...(templateStrings && { templates: templateStrings })
       });
     }
     
