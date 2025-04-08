@@ -1,405 +1,222 @@
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge"; 
-import { RefreshCw, PlusCircle, Smile, Meh, Frown } from "lucide-react";
-import { getWordPolarity, wordPolarityDatabase } from "@/utils/sentenceAnalysis";
-import { extractSentimentFromTemplate } from "@/utils/sentimentConsistency";
-import { cn } from "@/lib/utils";
-import { isTemplateUsed, markTemplateAsUsed } from "@/utils/templateTracker";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { ArrowRight, Sparkles, Search, X, History } from "lucide-react";
+import { getWordSentiment } from "@/utils/sentimentAnalysis";
+import { filterWordsByCategory } from "@/utils/wordCategorization";
+import { addWord, getRecentWords } from "@/utils/wordModeration";
+import { promptForContributorName } from "@/utils/contributorManager";
+import { saveMotivationalSentence } from "@/utils/motivationSentenceManager";
 
 interface WordSuggestionsProps {
-  existingWords?: string[];
-  onSelectWord: (word: string, template?: string) => void;
-  disableAutoRefresh?: boolean;
-  showMultipleTemplates?: boolean;
+  onWordSelect: (word: string) => void;
+  selectedWords?: string[];
 }
 
-interface WordTemplateOption {
-  word: string;
-  polarity: 'positive' | 'neutral' | 'negative';
-  template?: string;
-  displayText: string;
-  sentiment?: 'positive' | 'neutral' | 'negative'; // Template sentiment
-}
-
-const WordSuggestions = ({
-  existingWords = [],
-  onSelectWord,
-  disableAutoRefresh = false,
-  showMultipleTemplates = true,
-}: WordSuggestionsProps) => {
-  const [suggestedWords, setSuggestedWords] = useState<Array<{
-    word: string;
-    polarity: 'positive' | 'neutral' | 'negative';
-    templates?: string[];
-  }>>([]);
-  const [wordTemplateOptions, setWordTemplateOptions] = useState<WordTemplateOption[]>([]);
-  const [selectedOption, setSelectedOption] = useState<string>("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [globalUsedWords, setGlobalUsedWords] = useState<string[]>([]);
-  const [usedWordTemplates, setUsedWordTemplates] = useState<Set<string>>(new Set());
-
-  const loadUsedWordsAndTemplates = () => {
-    try {
-      const storedSentences = localStorage.getItem('motivation-sentences');
-      if (storedSentences) {
-        const sentences = JSON.parse(storedSentences);
-        
-        const allUsedWords = sentences.map((item: any) => item.word || "");
-        setGlobalUsedWords(allUsedWords.filter(Boolean));
-        
-        const usedCombinations = new Set<string>();
-        sentences.forEach((item: any) => {
-          if (item.word && item.sentence) {
-            usedCombinations.add(`${item.word}_${item.sentence}`);
-          }
-          if (item.word && item.template) {
-            markTemplateAsUsed(item.word, item.template);
-          }
-        });
-        setUsedWordTemplates(usedCombinations);
-      }
-    } catch (e) {
-      console.error("Error loading used words and templates:", e);
-      setGlobalUsedWords([]);
-      setUsedWordTemplates(new Set());
-    }
-  };
-
-  const generateSuggestions = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      let wordDatabase = [];
-      try {
-        const storedData = localStorage.getItem("word-polarity-database");
-        if (storedData) {
-          wordDatabase = JSON.parse(storedData);
-        } else {
-          wordDatabase = wordPolarityDatabase;
-        }
-      } catch (e) {
-        console.error("Error loading word database:", e);
-        wordDatabase = wordPolarityDatabase;
-      }
-      
-      const filteredWords = wordDatabase.filter((wordEntry: any) => {
-        if (!wordEntry.templates || wordEntry.templates.length === 0) {
-          return false;
-        }
-        
-        const hasUnusedTemplates = wordEntry.templates.some((template: string) => {
-          return !isTemplateUsed(wordEntry.word, template);
-        });
-        
-        return hasUnusedTemplates;
-      });
-      
-      const shuffled = [...filteredWords].sort(() => 0.5 - Math.random());
-      const selected = shuffled.slice(0, 6);
-      
-      setSuggestedWords(selected);
-      setSelectedOption("");
-      generateWordTemplateOptions(selected);
-      setIsRefreshing(false);
-    }, 500);
-  };
-
-  const generateWordTemplateOptions = (words: Array<{
-    word: string;
-    polarity: 'positive' | 'neutral' | 'negative';
-    templates?: string[];
-  }>) => {
-    const options: WordTemplateOption[] = [];
-
-    words.forEach(wordItem => {
-      if (wordItem.templates && wordItem.templates.length > 0 && showMultipleTemplates) {
-        wordItem.templates.forEach(template => {
-          if (isTemplateUsed(wordItem.word, template)) {
-            return;
-          }
-          
-          const { sentiment } = extractSentimentFromTemplate(template);
-          
-          const templatePreview = template
-            .replace(new RegExp(`\\$\\{${wordItem.word}\\}`, 'g'), wordItem.word)
-            .replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '')
-            .substring(0, 35) + (template.length > 35 ? '...' : '');
-          
-          options.push({
-            word: wordItem.word,
-            polarity: wordItem.polarity,
-            template: template,
-            displayText: `${wordItem.word} - ${templatePreview}`,
-            sentiment: sentiment
-          });
-        });
-      } else if (!showMultipleTemplates) {
-        options.push({
-          word: wordItem.word,
-          polarity: wordItem.polarity,
-          displayText: wordItem.word
-        });
-      }
-    });
-
-    setWordTemplateOptions(options);
-    setIsRefreshing(false);
-  };
-
-  useEffect(() => {
-    loadUsedWordsAndTemplates();
-    
-    const handleMotivationalSentenceGenerated = () => {
-      loadUsedWordsAndTemplates();
-    };
-    
-    window.addEventListener('motivationalSentenceGenerated', handleMotivationalSentenceGenerated);
-    window.addEventListener('motivation-billboard-updated', loadUsedWordsAndTemplates);
-    window.addEventListener('template-usage-updated', loadUsedWordsAndTemplates);
-    
-    return () => {
-      window.removeEventListener('motivationalSentenceGenerated', handleMotivationalSentenceGenerated);
-      window.removeEventListener('motivation-billboard-updated', loadUsedWordsAndTemplates);
-      window.removeEventListener('template-usage-updated', loadUsedWordsAndTemplates);
-    };
-  }, []);
+const WordSuggestions = ({ onWordSelect, selectedWords = [] }: WordSuggestionsProps) => {
+  const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("positive");
+  const [recentWords, setRecentWords] = useState<string[]>([]);
   
+  // คำแนะนำตามประเภท
+  const positiveWords = ["สุข", "รัก", "หวัง", "ยิ้ม", "กล้า", "ฝัน", "ชนะ", "ศรัทธา", "ขอบคุณ", "เมตตา"];
+  const neutralWords = ["คิด", "เวลา", "เริ่ม", "ยอมรับ", "เข้าใจ", "เรียนรู้", "ปรับตัว", "สมดุล", "ทางออก"];
+  const negativeWords = ["เศร้า", "เหนื่อย", "ยาก", "กลัว", "สับสน", "ผิดหวัง", "เจ็บปวด", "ล้มเหลว"];
+  
+  // ดึงคำล่าสุดเมื่อโหลดคอมโพเนนต์
   useEffect(() => {
-    generateSuggestions();
-    
-    if (!disableAutoRefresh) {
-      const refreshInterval = setInterval(generateSuggestions, 60000);
-      return () => clearInterval(refreshInterval);
-    }
-  }, [disableAutoRefresh, existingWords, globalUsedWords, usedWordTemplates]);
+    const words = getRecentWords();
+    setRecentWords(words);
+  }, []);
 
-  const handleOptionSelect = (optionId: string) => {
-    setSelectedOption(optionId);
+  // กรองคำตามหมวดหมู่ที่เลือก
+  const filteredWords = () => {
+    let words = [];
+    
+    switch (activeTab) {
+      case "positive":
+        words = positiveWords;
+        break;
+      case "neutral":
+        words = neutralWords;
+        break;
+      case "negative":
+        words = negativeWords;
+        break;
+      case "recent":
+        words = recentWords;
+        break;
+    }
+    
+    if (searchTerm) {
+      return words.filter(word => word.includes(searchTerm));
+    }
+    
+    return words;
   };
 
-  const handleSubmit = () => {
-    if (selectedOption) {
-      const selectedItem = wordTemplateOptions.find(
-        option => `${option.word}_${option.template || 'default'}` === selectedOption
-      );
+  // จัดการการคลิกที่คำ
+  const handleWordClick = (word: string) => {
+    // บันทึกชื่อผู้ใช้ (จะแสดง prompt ถ้ายังไม่ได้ตั้งชื่อ)
+    promptForContributorName();
+    
+    // เรียกฟังก์ชันจากคอมโพเนนต์แม่
+    onWordSelect(word);
+    
+    // บันทึกคำลงใน localStorage
+    addWord(word);
+    
+    // อัปเดตคำล่าสุด
+    setRecentWords(getRecentWords());
+    
+    toast({
+      title: "เลือกคำสำเร็จ",
+      description: `คุณได้เลือกคำว่า "${word}"`,
+    });
+    
+    // ดึงฟังก์ชันแสดงประโยคให้กำลังใจจาก window object (กำหนดโดย MotivationalSentence.tsx)
+    if ((window as any).showMotivationalSentence) {
+      (window as any).showMotivationalSentence(word);
       
-      if (selectedItem) {
-        let sentenceText = "";
-        if (selectedItem.template) {
-          sentenceText = selectedItem.template
-            .replace(new RegExp(`\\$\\{${selectedItem.word}\\}`, 'g'), selectedItem.word)
-            .replace(/\$\{บวก\}|\$\{กลาง\}|\$\{ลบ\}/g, '');
-            
-          // Mark this template as used
-          markTemplateAsUsed(selectedItem.word, selectedItem.template);
-        }
-        
-        // Standardize empty contributor as "ไม่ระบุชื่อ"
-        const contributor = localStorage.getItem('contributor-name');
-        const safeContributor = contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
-        
-        storeSentenceInDatabase(selectedItem.word, sentenceText, safeContributor, selectedItem.template);
-        
-        setUsedWordTemplates(prev => {
-          const newSet = new Set(prev);
-          newSet.add(`${selectedItem.word}_${selectedItem.template || 'default'}`);
-          return newSet;
-        });
-        
-        const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
-          detail: { 
-            sentence: sentenceText, 
-            word: selectedItem.word,
-            contributor: safeContributor,
-            template: selectedItem.template,
-            sentiment: selectedItem.sentiment
-          }
-        });
-        window.dispatchEvent(sentenceEvent);
-        
-        onSelectWord(selectedItem.word, selectedItem.template);
-        setSelectedOption("");
-        generateSuggestions();
-      }
+      // เราไม่ต้องบันทึกประโยคตรงนี้อีกแล้ว เพราะจะจัดการในฝั่งของ MotivationalSentence.tsx
     }
   };
 
-  const storeSentenceInDatabase = (word: string, sentence: string, contributor: string, template?: string) => {
-    if (!sentence) return;
-    
-    let sentiment;
-    if (template) {
-      const sentimentInfo = extractSentimentFromTemplate(template);
-      sentiment = sentimentInfo.sentiment;
+  // ฟังก์ชันสำหรับเพิ่มคำที่ค้นหา
+  const handleAddCustomWord = () => {
+    if (!searchTerm || searchTerm.trim().length === 0) {
+      toast({
+        title: "ไม่สามารถเพิ่มคำได้",
+        description: "กรุณาป้อนคำที่ต้องการเพิ่ม",
+        variant: "destructive",
+      });
+      return;
     }
     
-    // Ensure contributor is never empty
-    const safeContributor = contributor && contributor.trim() ? contributor.trim() : 'ไม่ระบุชื่อ';
+    const word = searchTerm.trim();
     
-    // Create a unique ID for this sentence
-    const uniqueId = `${word}-${sentence}-${safeContributor}-${Date.now()}`;
-    
-    const newEntry = {
-      sentence,
-      word,
-      contributor: safeContributor,
-      timestamp: new Date(),
-      template,
-      sentiment,
-      id: uniqueId
-    };
-    
-    let existingEntries = [];
-    try {
-      const stored = localStorage.getItem('motivation-sentences');
-      if (stored) {
-        existingEntries = JSON.parse(stored);
-        if (!Array.isArray(existingEntries)) {
-          existingEntries = [existingEntries];
-        }
-      }
-    } catch (error) {
-      console.error("Error parsing stored sentences:", error);
-      existingEntries = [];
+    if (word.length > 10) {
+      toast({
+        title: "ไม่สามารถเพิ่มคำได้",
+        description: "คำที่เพิ่มต้องมีความยาวไม่เกิน 10 ตัวอักษร",
+        variant: "destructive",
+      });
+      return;
     }
     
-    // Check for duplicates before adding - using a more stringent check
-    const isDuplicate = existingEntries.some(
-      (entry: any) => entry.word === word && 
-                     entry.sentence === sentence && 
-                     (entry.contributor || 'ไม่ระบุชื่อ') === safeContributor
-    );
+    // เรียกฟังก์ชันจากคอมโพเนนต์แม่
+    onWordSelect(word);
     
-    if (!isDuplicate) {
-      const updatedEntries = [newEntry, ...existingEntries];
-      localStorage.setItem('motivation-sentences', JSON.stringify(updatedEntries));
-      
-      window.dispatchEvent(new CustomEvent('motivation-billboard-updated'));
-      window.dispatchEvent(new CustomEvent('template-usage-updated'));
+    // บันทึกคำลงใน localStorage
+    addWord(word);
+    
+    // อัปเดตคำล่าสุด
+    setRecentWords(getRecentWords());
+    
+    // ล้างช่องค้นหา
+    setSearchTerm("");
+    
+    toast({
+      title: "เพิ่มคำสำเร็จ",
+      description: `คุณได้เพิ่มคำว่า "${word}"`,
+    });
+    
+    // ดึงฟังก์ชันแสดงประโยคให้กำลังใจจาก window object (กำหนดโดย MotivationalSentence.tsx)
+    if ((window as any).showMotivationalSentence) {
+      (window as any).showMotivationalSentence(word);
     }
   };
 
-  const getPolarityClass = (polarity: string) => {
-    switch (polarity) {
-      case 'positive':
-        return 'text-green-600 border-green-200';
-      case 'negative':
-        return 'text-red-600 border-red-200';
-      default:
-        return 'text-blue-600 border-blue-200';
-    }
-  };
-
-  const getPolarityText = (polarity: string) => {
-    switch (polarity) {
-      case 'positive':
-        return 'เชิงบวก';
-      case 'negative':
-        return 'เชิงลบ';
-      default:
-        return 'กลาง';
-    }
-  };
-
-  const getSentimentIcon = (sentiment?: 'positive' | 'neutral' | 'negative') => {
-    switch (sentiment) {
-      case 'positive':
-        return <Smile className="h-3 w-3 mr-1" />;
-      case 'negative':
-        return <Frown className="h-3 w-3 mr-1" />;
-      case 'neutral':
-        return <Meh className="h-3 w-3 mr-1" />;
-      default:
-        return null;
-    }
+  // ล้างคำค้นหา
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   return (
-    <Card className="w-full">
+    <Card>
       <CardContent className="p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-md font-medium">คำแนะนำ</h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={generateSuggestions}
-            disabled={isRefreshing}
-            className="gap-1"
-          >
-            <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="text-xs">สุ่มใหม่</span>
-          </Button>
-        </div>
-
-        {wordTemplateOptions.length > 0 ? (
-          <div className="space-y-4">
-            <RadioGroup
-              value={selectedOption}
-              onValueChange={handleOptionSelect}
-              className="space-y-2"
-            >
-              {wordTemplateOptions.map((option) => {
-                const optionId = `${option.word}_${option.template || 'default'}`;
-                const badgeVariant = option.sentiment === 'positive' ? 'success' : 
-                                    option.sentiment === 'negative' ? 'destructive' : 'secondary';
-                
-                return (
-                  <div 
-                    key={optionId}
-                    className={`flex items-center space-x-2 p-2 rounded-md border ${
-                      selectedOption === optionId 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-gray-200 hover:border-primary/50'
-                    } transition-all duration-300`}
-                  >
-                    <RadioGroupItem value={optionId} id={optionId} />
-                    <Label 
-                      htmlFor={optionId} 
-                      className="flex flex-1 justify-between items-center cursor-pointer"
-                    >
-                      <span className="font-medium">
-                        {option.displayText}
-                      </span>
-                      <div className="flex gap-1">
-                        {option.sentiment && (
-                          <Badge variant={badgeVariant} className="flex items-center text-xs">
-                            {getSentimentIcon(option.sentiment)}
-                            {option.sentiment === 'positive' ? 'บวก' : 
-                             option.sentiment === 'negative' ? 'ลบ' : 'กลาง'}
-                          </Badge>
-                        )}
-                        <span className={`text-xs px-2 py-1 rounded-full border ${getPolarityClass(option.polarity)}`}>
-                          {getPolarityText(option.polarity)}
-                        </span>
-                      </div>
-                    </Label>
-                  </div>
-                );
-              })}
-            </RadioGroup>
-            
-            <Button 
-              onClick={handleSubmit} 
-              disabled={!selectedOption}
-              className="w-full mt-4 gap-2"
-            >
-              <PlusCircle className="h-4 w-4" />
-              ใช้คำนี้
-            </Button>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="h-5 w-5 text-orange-500" />
+            <h3 className="text-lg font-medium">คำแนะนำ</h3>
           </div>
-        ) : (
-          <div className="text-center p-4 text-muted-foreground">
-            {isRefreshing ? (
-              <div className="animate-pulse">กำลังโหลดคำแนะนำ...</div>
-            ) : (
-              <div>ไม่พบคำแนะนำที่ยังไม่ถูกใช้ กรุณากดปุ่ม "สุ่มใหม่"</div>
+          
+          <div className="flex relative">
+            <div className="relative w-full">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="ค้นหาหรือเพิ่มคำใหม่..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 pr-8"
+              />
+              {searchTerm && (
+                <button 
+                  onClick={clearSearch}
+                  className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            
+            {searchTerm && (
+              <Button 
+                onClick={handleAddCustomWord}
+                className="ml-2"
+                size="sm"
+              >
+                เพิ่ม
+              </Button>
             )}
           </div>
-        )}
+          
+          <Tabs defaultValue="positive" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid grid-cols-4 mb-2">
+              <TabsTrigger value="positive">เชิงบวก</TabsTrigger>
+              <TabsTrigger value="neutral">กลาง</TabsTrigger>
+              <TabsTrigger value="negative">เชิงลบ</TabsTrigger>
+              <TabsTrigger value="recent" className="flex items-center gap-1">
+                <History className="h-3.5 w-3.5" />
+                <span>ล่าสุด</span>
+              </TabsTrigger>
+            </TabsList>
+            
+            {["positive", "neutral", "negative", "recent"].map((tab) => (
+              <TabsContent key={tab} value={tab} className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {filteredWords().map((word) => (
+                    <Button
+                      key={word}
+                      variant="outline"
+                      size="sm"
+                      className={`flex items-center ${
+                        selectedWords.includes(word) ? "bg-primary/10 border-primary/30" : ""
+                      }`}
+                      onClick={() => handleWordClick(word)}
+                    >
+                      {word}
+                      <ArrowRight className="ml-1 h-3 w-3" />
+                    </Button>
+                  ))}
+                  
+                  {filteredWords().length === 0 && (
+                    <div className="w-full text-center py-2 text-muted-foreground">
+                      {tab === "recent" ? "ไม่มีคำที่ใช้ล่าสุด" : `ไม่พบคำที่ตรงกับ "${searchTerm}"`}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </div>
       </CardContent>
     </Card>
   );

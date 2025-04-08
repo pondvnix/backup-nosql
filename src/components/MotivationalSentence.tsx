@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Smile, Meh, Frown } from "lucide-react";
 import { extractSentimentFromTemplate, analyzeSentimentFromSentence } from "@/utils/sentimentConsistency";
 import { isTemplateUsed, markTemplateAsUsed, getAvailableTemplatesForWord } from "@/utils/templateTracker";
+import { saveMotivationalSentence, getMotivationalSentences } from "@/utils/motivationSentenceManager";
+import { getContributorName } from "@/utils/contributorManager";
 
 interface MotivationalSentenceProps {
   selectedWords: string[];
@@ -264,23 +266,33 @@ const MotivationalSentence = ({
       setDisplaySentence(sentence);
       setShowSentence(true);
       
-      // Get contributor name from localStorage or use provided value
-      let contributorName = localStorage.getItem('contributor-name') || contributor || '';
-      contributorName = contributorName.trim() ? contributorName.trim() : 'ไม่ระบุชื่อ';
+      // ดึงชื่อผู้ร่วมสร้างจากระบบจัดการผู้ร่วมสร้าง
+      const contributorName = contributor || getContributorName();
       
       // Generate a unique ID for this sentence that includes timestamp
-      const timestamp = Date.now();
-      const uniqueId = `${word}-${sentence}-${contributorName}-${timestamp}`;
+      const timestamp = new Date().toISOString();
+      
+      // สร้างข้อมูลประโยคให้กำลังใจ
+      const motivationalSentence = {
+        word,
+        sentence,
+        contributor: contributorName,
+        template: actualTemplate,
+        sentiment: sentimentType,
+        timestamp
+      };
+      
+      // บันทึกลงใน localStorage
+      saveMotivationalSentence(motivationalSentence);
       
       // Dispatch event so other components can listen - include contributor and sentiment info
       const sentenceEvent = new CustomEvent('motivationalSentenceGenerated', {
         detail: { 
-          sentence: sentence, 
+          sentence, 
           word,
           contributor: contributorName,
           template: actualTemplate,
           sentiment: sentimentType,
-          id: uniqueId,
           timestamp
         }
       });

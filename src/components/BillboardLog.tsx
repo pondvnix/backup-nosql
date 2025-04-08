@@ -6,17 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Smile, Meh, Frown, FilePlus } from "lucide-react";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
-
-interface MotivationalSentence {
-  word: string;
-  sentence: string;
-  contributor?: string;
-  timestamp: Date | string | number;
-  template?: string;
-  sentiment?: 'positive' | 'neutral' | 'negative';
-  score?: number;
-  id?: string;
-}
+import { getMotivationalSentences, MotivationalSentence } from "@/utils/motivationSentenceManager";
 
 const BillboardLog = () => {
   const [sentences, setSentences] = useState<MotivationalSentence[]>([]);
@@ -24,56 +14,21 @@ const BillboardLog = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const sentencesPerPage = 10;
   
-  // ปรับปรุงฟังก์ชันให้ใช้ useCallback เพื่อไม่ต้องสร้างฟังก์ชันใหม่ทุกครั้งที่ render
+  // โหลดข้อมูลประโยคให้กำลังใจด้วย useCallback
   const loadSentences = useCallback(() => {
     try {
-      const stored = localStorage.getItem('motivation-sentences');
-      if (stored) {
-        const parsedSentences = JSON.parse(stored);
-        
-        // ใช้ uniqueIds เพื่อตรวจสอบข้อมูลซ้ำอย่างมีประสิทธิภาพ
-        const uniqueSentences = removeDuplicateSentences(parsedSentences);
-        const sortedSentences = uniqueSentences.sort((a, b) => {
-          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-          return timeB - timeA;
-        });
-        
-        setSentences(sortedSentences);
-      }
+      const loadedSentences = getMotivationalSentences();
+      const sortedSentences = [...loadedSentences].sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        return timeB - timeA;
+      });
+      
+      setSentences(sortedSentences);
     } catch (error) {
       console.error("Error loading sentences:", error);
     }
   }, []);
-  
-  // ปรับปรุงฟังก์ชันเพื่อตรวจสอบและกำจัดข้อมูลซ้ำ
-  const removeDuplicateSentences = (sentences: MotivationalSentence[]): MotivationalSentence[] => {
-    const uniqueEntries = new Map<string, MotivationalSentence>();
-    
-    sentences.forEach(sentence => {
-      // ใช้ id ที่มีอยู่หรือสร้างขึ้นใหม่จากองค์ประกอบหลัก
-      const id = sentence.id || `${sentence.word}-${sentence.sentence}-${sentence.contributor || 'unknown'}-${new Date(sentence.timestamp).getTime()}`;
-      
-      // ตรวจสอบและรับรองชื่อผู้ร่วมสร้าง
-      const contributor = sentence.contributor && sentence.contributor.trim() ? 
-        sentence.contributor.trim() : 'ไม่ระบุชื่อ';
-      
-      // ถ้ายังไม่มี ID นี้ในแมพหรือเป็นข้อมูลที่ใหม่กว่า
-      if (!uniqueEntries.has(id) || 
-          new Date(sentence.timestamp).getTime() > new Date(uniqueEntries.get(id)!.timestamp).getTime()) {
-        
-        const updatedSentence = {
-          ...sentence,
-          contributor,
-          id: id
-        };
-        
-        uniqueEntries.set(id, updatedSentence);
-      }
-    });
-    
-    return Array.from(uniqueEntries.values());
-  };
   
   useEffect(() => {
     loadSentences();
@@ -95,6 +50,7 @@ const BillboardLog = () => {
     };
   }, [loadSentences]);
   
+  // ลบเครื่องหมาย sentiment ออกจากข้อความ
   const cleanText = (text: string): string => {
     return text
       .replace(/\$\{บวก\}/g, '')
@@ -102,6 +58,7 @@ const BillboardLog = () => {
       .replace(/\$\{ลบ\}/g, '');
   };
   
+  // ไฮไลต์คำในประโยค
   const highlightWord = (sentence: string, word: string): React.ReactNode => {
     if (!sentence || !word) return cleanText(sentence);
     
@@ -121,6 +78,7 @@ const BillboardLog = () => {
     });
   };
   
+  // แสดงไอคอนตาม sentiment
   const getSentimentIcon = (sentiment?: 'positive' | 'neutral' | 'negative') => {
     switch (sentiment) {
       case 'positive':
@@ -132,6 +90,7 @@ const BillboardLog = () => {
     }
   };
   
+  // กำหนดสีของ Badge ตาม sentiment
   const getBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative') => {
     switch (sentiment) {
       case 'positive':
@@ -143,6 +102,7 @@ const BillboardLog = () => {
     }
   };
   
+  // แปลงชื่อ sentiment เป็นภาษาไทย
   const getSentimentText = (sentiment?: 'positive' | 'neutral' | 'negative'): string => {
     switch (sentiment) {
       case 'positive':
@@ -154,17 +114,20 @@ const BillboardLog = () => {
     }
   };
   
+  // กรองประโยคตามคำค้นหา
   const filteredSentences = sentences.filter(sentence => 
     sentence.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
     sentence.sentence.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (sentence.contributor && sentence.contributor.toLowerCase().includes(searchTerm.toLowerCase()))
   );
   
+  // คำนวณหน้าปัจจุบัน
   const indexOfLastSentence = currentPage * sentencesPerPage;
   const indexOfFirstSentence = indexOfLastSentence - sentencesPerPage;
   const currentSentences = filteredSentences.slice(indexOfFirstSentence, indexOfLastSentence);
   const totalPages = Math.ceil(filteredSentences.length / sentencesPerPage);
   
+  // สร้างตัวเลขหน้าสำหรับ pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxPagesToShow = 5;
