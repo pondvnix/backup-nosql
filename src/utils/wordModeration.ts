@@ -105,10 +105,8 @@ export const addWordToDatabase = (
     return;
   }
   
-  if (!templates || !Array.isArray(templates)) {
-    templates = [];
-    console.warn("Invalid templates array for word:", word);
-  }
+  // Ensure templates is an array
+  const safeTemplates = Array.isArray(templates) ? templates : [];
   
   try {
     const storedData = localStorage.getItem("word-polarity-database");
@@ -122,14 +120,14 @@ export const addWordToDatabase = (
         ...database[existingIndex],
         polarity,
         score,
-        templates
+        templates: safeTemplates
       };
     } else {
       database.push({
         word,
         polarity,
         score,
-        templates
+        templates: safeTemplates
       });
     }
     
@@ -164,19 +162,22 @@ export const updateWordPolarity = (
     
     const existingIndex = database.findIndex((entry: any) => entry.word === word);
     
+    // Ensure templates is an array if provided
+    const safeTemplates = templates && Array.isArray(templates) ? templates : undefined;
+    
     if (existingIndex >= 0) {
       database[existingIndex] = {
         ...database[existingIndex],
         polarity,
         score,
-        ...(templates && { templates })
+        ...(safeTemplates && { templates: safeTemplates })
       };
     } else {
       database.push({
         word,
         polarity,
         score,
-        ...(templates && { templates })
+        ...(safeTemplates && { templates: safeTemplates })
       });
     }
     
@@ -221,7 +222,11 @@ export const hasDuplicateTemplates = (templates: Template[]): boolean => {
     return false;
   }
   
-  const templateTexts = templates.map(t => t.template);
+  // Filter out invalid templates and extract valid template texts
+  const templateTexts = templates
+    .filter(t => t && typeof t === 'object' && typeof t.template === 'string')
+    .map(t => t.template);
+    
   return new Set(templateTexts).size !== templateTexts.length;
 };
 
@@ -270,63 +275,77 @@ export const parseTemplates = (templateText: string): Template[] => {
  * @param templates Array of template objects
  * @returns Array of template strings
  */
-export const templateObjectsToStrings = (templates: Template[]): string[] => {
+export const templateObjectsToStrings = (templates: Template[] | undefined): string[] => {
+  // Handle null/undefined and non-array cases
   if (!templates || !Array.isArray(templates)) {
     return [];
   }
   
-  return templates.map(template => {
-    if (!template || typeof template !== 'object') {
-      console.warn("Invalid template object:", template);
-      return "${กลาง}";
-    }
-    
-    const sentimentPrefix = 
-      template.sentiment === 'positive' ? '${บวก}' :
-      template.sentiment === 'negative' ? '${ลบ}' :
-      '${กลาง}';
+  // Filter out invalid templates
+  return templates
+    .filter(template => template && typeof template === 'object')
+    .map(template => {
+      // Default sentiment if not valid
+      let sentimentPrefix = '${กลาง}'; 
       
-    return `${sentimentPrefix}${template.template || ''}`;
-  });
+      // Validate sentiment value
+      if (template.sentiment === 'positive') {
+        sentimentPrefix = '${บวก}';
+      } else if (template.sentiment === 'negative') {
+        sentimentPrefix = '${ลบ}';
+      }
+      
+      // Ensure template.template is a string
+      const templateText = typeof template.template === 'string' ? template.template : '';
+      
+      return `${sentimentPrefix}${templateText}`;
+    });
 };
 
 /**
  * Convert template strings to template objects
- * @param templateStrings Array of template strings
+ * @param templateStrings Array of template strings or single string
  * @returns Array of template objects
  */
-export const stringToTemplateObjects = (templateStrings: string[]): Template[] => {
-  // Ensure templateStrings is an array and handle null/undefined cases
-  if (!templateStrings) {
-    console.warn("Invalid template strings array:", templateStrings);
+export const stringToTemplateObjects = (templateStrings: string[] | string | null | undefined): Template[] => {
+  // Handle null/undefined cases
+  if (templateStrings === null || templateStrings === undefined) {
+    console.warn("Received null or undefined template strings");
     return [];
   }
   
-  // Convert to array if it's not already an array
-  const stringsArray = Array.isArray(templateStrings) ? templateStrings : [templateStrings];
+  // Convert string to array if it's a single string
+  let stringsArray: string[];
   
-  return stringsArray.map(str => {
-    // Handle non-string values
-    if (typeof str !== 'string') {
-      console.warn("Invalid template string item:", str);
-      return { template: "", sentiment: 'neutral' };
-    }
-    
-    let sentiment: TemplateSentiment = 'neutral';
-    let template = str;
-    
-    if (str.includes('${บวก}')) {
-      sentiment = 'positive';
-      template = str.replace('${บวก}', '');
-    } else if (str.includes('${กลาง}')) {
-      sentiment = 'neutral';
-      template = str.replace('${กลาง}', '');
-    } else if (str.includes('${ลบ}')) {
-      sentiment = 'negative';
-      template = str.replace('${ลบ}', '');
-    }
-    
-    return { template, sentiment };
-  });
+  if (typeof templateStrings === 'string') {
+    stringsArray = [templateStrings]; 
+  } else if (Array.isArray(templateStrings)) {
+    stringsArray = templateStrings;
+  } else {
+    console.warn("Invalid template strings type:", typeof templateStrings);
+    return [];
+  }
+  
+  // Map strings to template objects with proper validation
+  return stringsArray
+    .filter(str => typeof str === 'string') // Filter out non-string items
+    .map(str => {
+      // Default values
+      let sentiment: TemplateSentiment = 'neutral';
+      let template = str;
+      
+      // Check for sentiment markers
+      if (str.includes('${บวก}')) {
+        sentiment = 'positive';
+        template = str.replace('${บวก}', '');
+      } else if (str.includes('${กลาง}')) {
+        sentiment = 'neutral';
+        template = str.replace('${กลาง}', '');
+      } else if (str.includes('${ลบ}')) {
+        sentiment = 'negative';
+        template = str.replace('${ลบ}', '');
+      }
+      
+      return { template, sentiment };
+    });
 };
-
