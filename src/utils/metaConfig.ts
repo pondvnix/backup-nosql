@@ -69,42 +69,18 @@ export const updateMetaTitleAndDescription = (config: MetaConfig): void => {
 };
 
 export const getEncodedMetaInfo = () => {
-  // Safely encode and decode Unicode strings for base64
-  const encodeData = (data: string) => {
-    // First encode the string as UTF-8, then convert to base64
-    try {
-      return btoa(encodeURIComponent(data).replace(/%([0-9A-F]{2})/g, (_, p1) => {
-        return String.fromCharCode(parseInt(p1, 16));
-      }));
-    } catch (e) {
-      console.error('Encoding error:', e);
-      return btoa('encoding_error');
-    }
-  };
-
-  // Safely decode base64 to Unicode strings
-  const decodeData = (encoded: string) => {
-    try {
-      return decodeURIComponent(Array.prototype.map.call(atob(encoded), (c) => {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-    } catch (e) {
-      console.error('Decoding error:', e);
-      return 'Error decoding data';
-    }
-  };
-
+  // Use these hardcoded values directly without encoding/decoding
   const metaInfo = {
-    title: encodeData('&#34;คำ&#34; ลังใจ'),
-    description: encodeData('ร่วมสร้างประโยคกำลังใจที่ยาวที่สุด โดยเพิ่มคำของคุณต่อท้ายคำอื่นๆ เพื่อส่งต่อกำลังใจให้กับผู้ป่วยและบุคลากรทางการแพทย์'),
-    author: encodeData('ผลิตภัณฑ์ดอยคำ'),
-    twitterHandle: encodeData('@doikham_th'),
-    imageUrl: encodeData('/og-image.jpg'),
-    siteUrl: encodeData('https://preview--retro-terminal-blocks.lovable.app')
+    title: '"คำ" ลังใจ',
+    description: 'ร่วมสร้างประโยคกำลังใจที่ยาวที่สุด โดยเพิ่มคำของคุณต่อท้ายคำอื่นๆ เพื่อส่งต่อกำลังใจให้กับผู้ป่วยและบุคลากรทางการแพทย์',
+    author: 'ผลิตภัณฑ์ดอยคำ',
+    twitterHandle: '@doikham_th',
+    imageUrl: '/og-image.jpg',
+    siteUrl: 'https://preview--retro-terminal-blocks.lovable.app'
   };
 
   return {
-    getDecodedValue: (key: keyof typeof metaInfo) => decodeData(metaInfo[key])
+    getDecodedValue: (key: keyof typeof metaInfo) => metaInfo[key]
   };
 };
 
