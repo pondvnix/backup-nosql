@@ -296,13 +296,19 @@ export const templateObjectsToStrings = (templates: Template[]): string[] => {
  * @returns Array of template objects
  */
 export const stringToTemplateObjects = (templateStrings: string[]): Template[] => {
-  if (!templateStrings || !Array.isArray(templateStrings)) {
+  // Ensure templateStrings is an array and handle null/undefined cases
+  if (!templateStrings) {
+    console.warn("Invalid template strings array:", templateStrings);
     return [];
   }
   
-  return templateStrings.map(str => {
+  // Convert to array if it's not already an array
+  const stringsArray = Array.isArray(templateStrings) ? templateStrings : [templateStrings];
+  
+  return stringsArray.map(str => {
+    // Handle non-string values
     if (typeof str !== 'string') {
-      console.warn("Invalid template string:", str);
+      console.warn("Invalid template string item:", str);
       return { template: "", sentiment: 'neutral' };
     }
     
@@ -323,3 +329,4 @@ export const stringToTemplateObjects = (templateStrings: string[]): Template[] =
     return { template, sentiment };
   });
 };
+
