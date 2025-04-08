@@ -1,4 +1,3 @@
-
 // ฟังก์ชันตรวจสอบว่า template ได้ถูกใช้ไปแล้วหรือยัง
 export const isTemplateUsed = (word: string, template: string): boolean => {
   // ดึงข้อมูลการใช้ template จาก localStorage
@@ -82,4 +81,20 @@ export const getAvailableTemplatesForWord = (word: string, templates: string[]):
   
   // กรอง template ที่ยังไม่ถูกใช้
   return templates.filter(template => !isTemplateUsed(word, template));
+};
+
+// ฟังก์ชันดึง template ที่เคยถูกใช้สำหรับคำที่ระบุ
+export const getUsedTemplates = (): Record<string, string[]> => {
+  const storedData = localStorage.getItem('used-templates');
+  
+  if (storedData) {
+    try {
+      return JSON.parse(storedData);
+    } catch (error) {
+      console.error('Error parsing used templates:', error);
+      return {};
+    }
+  }
+  
+  return {};
 };
