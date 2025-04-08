@@ -1,8 +1,13 @@
-
 // Function to extract sentiment from a template string
-export const extractSentimentFromTemplate = (template: string): { sentiment: 'positive' | 'neutral' | 'negative'; text: string } => {
+export const extractSentimentFromTemplate = (template: string | undefined): { sentiment: 'positive' | 'neutral' | 'negative'; text: string } => {
   let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
-  let text = template;
+  let text = '';
+  
+  if (!template || typeof template !== 'string') {
+    return { sentiment, text };
+  }
+  
+  text = template;
 
   // Check for sentiment prefixes and remove them
   if (template.includes('${บวก}')) {
@@ -22,7 +27,7 @@ export const extractSentimentFromTemplate = (template: string): { sentiment: 'po
 // Function to analyze sentiment from a sentence
 export const analyzeSentimentFromSentence = (sentence: string, template?: string): { sentiment: 'positive' | 'neutral' | 'negative'; score: number } => {
   // If a template is provided, use it to determine sentiment
-  if (template) {
+  if (template && typeof template === 'string') {
     if (template.includes('${บวก}')) {
       return { sentiment: 'positive', score: 1 };
     } else if (template.includes('${ลบ}')) {
@@ -39,18 +44,20 @@ export const analyzeSentimentFromSentence = (sentence: string, template?: string
   // Count positive and negative words in the sentence
   let positiveCount = 0;
   let negativeCount = 0;
+  
+  if (typeof sentence === 'string') {
+    positiveWords.forEach(word => {
+      if (sentence.toLowerCase().includes(word.toLowerCase())) {
+        positiveCount++;
+      }
+    });
 
-  positiveWords.forEach(word => {
-    if (sentence.toLowerCase().includes(word.toLowerCase())) {
-      positiveCount++;
-    }
-  });
-
-  negativeWords.forEach(word => {
-    if (sentence.toLowerCase().includes(word.toLowerCase())) {
-      negativeCount++;
-    }
-  });
+    negativeWords.forEach(word => {
+      if (sentence.toLowerCase().includes(word.toLowerCase())) {
+        negativeCount++;
+      }
+    });
+  }
 
   // Calculate sentiment score
   const score = positiveCount - negativeCount;
@@ -65,8 +72,6 @@ export const analyzeSentimentFromSentence = (sentence: string, template?: string
 
   return { sentiment, score };
 };
-
-// Add the missing functions that are being imported in WordPolarityLog.tsx
 
 // Get sentiment badge variant based on sentiment
 export const getSentimentBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative'): 'success' | 'secondary' | 'destructive' => {

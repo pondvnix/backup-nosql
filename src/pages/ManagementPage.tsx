@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -80,13 +79,11 @@ const ManagementPage = () => {
 
   const addWord = () => {
     if (word.trim()) {
-      // Create a default template with positive sentiment
       const defaultTemplate: Template = {
         template: `${word.trim()} คือสิ่งสำคัญในชีวิต`,
         sentiment: 'positive'
       };
       
-      // Add word with default template
       addWordToDatabase(word.trim(), 'positive', 1, [defaultTemplate]);
       
       setWord("");
@@ -118,7 +115,12 @@ const ManagementPage = () => {
     setTemplateErrorMessage("");
     
     if (word.templates && word.templates.length > 0) {
-      const templates = stringToTemplateObjects(word.templates);
+      const templates = stringToTemplateObjects(
+        Array.isArray(word.templates) ? 
+          word.templates.filter(t => typeof t === 'string') : 
+          []
+      );
+      
       const templateLines = templates.map(t => {
         const sentimentPrefix = 
           t.sentiment === 'positive' ? '${บวก}' :
@@ -153,14 +155,13 @@ const ManagementPage = () => {
       return;
     }
     
-    // Use the first template's sentiment for the word polarity
     const firstTemplateSentiment = templates.length > 0 ? templates[0].sentiment : 'positive';
     const score = firstTemplateSentiment === 'positive' ? 1 : 
                  firstTemplateSentiment === 'negative' ? -1 : 0;
     
     updateWordPolarity(
       currentEditWord.word,
-      firstTemplateSentiment, // Use template sentiment for word polarity
+      firstTemplateSentiment,
       score,
       templates
     );
@@ -292,14 +293,18 @@ const ManagementPage = () => {
     }, 0);
   };
 
-  const getSentimentInfo = (template: string): { text: string, sentiment: TemplateSentiment } => {
-    if (template.startsWith('${บวก}')) {
+  const getSentimentInfo = (template: string | undefined): { text: string, sentiment: TemplateSentiment } => {
+    if (!template || typeof template !== 'string') {
+      return { text: '', sentiment: 'neutral' };
+    }
+    
+    if (template.includes('${บวก}')) {
       return { text: template.replace('${บวก}', ''), sentiment: 'positive' };
     }
-    if (template.startsWith('${กลาง}')) {
+    if (template.includes('${กลาง}')) {
       return { text: template.replace('${กลาง}', ''), sentiment: 'neutral' };
     }
-    if (template.startsWith('${ลบ}')) {
+    if (template.includes('${ลบ}')) {
       return { text: template.replace('${ลบ}', ''), sentiment: 'negative' };
     }
     return { text: template, sentiment: 'positive' };
