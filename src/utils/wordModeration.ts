@@ -15,7 +15,7 @@ export interface WordEntry {
   templates: string[];
   polarity?: number;
   isCustom?: boolean;
-  sentiment?: 'positive' | 'neutral' | 'negative'; // Add sentiment property
+  sentiment?: 'positive' | 'neutral' | 'negative';
 }
 
 // ฟังก์ชันอัปเดตสถิติการใช้คำของผู้ร่วมสร้าง

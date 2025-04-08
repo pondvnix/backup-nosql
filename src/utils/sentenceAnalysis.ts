@@ -1,147 +1,202 @@
+// Type definitions for sentiment analysis
+export interface SentimentAnalysisResult {
+  overallSentiment: 'positive' | 'neutral' | 'negative';
+  score: number;
+  wordBreakdown: {
+    word: string;
+    sentiment: 'positive' | 'neutral' | 'negative';
+    score: number;
+  }[];
+}
 
-import { analyzeSentimentFromSentence } from "./sentimentConsistency";
-
-// ฐานข้อมูลตัวอย่างเริ่มต้น (จะไม่ใช้ข้อมูลความรู้สึกของคำแล้ว)
+// Word polarity database - words with their sentiment values
 export const wordPolarityDatabase = [
-  { word: "รัก", templates: ["${บวก}${รัก}ทำให้โลกหมุนไป", "${บวก}${รัก}คือพลังที่ยิ่งใหญ่", "${บวก}เมื่อมี${รัก}ทุกอย่างก็ดูสดใส"] },
-  { word: "สุข", templates: ["${บวก}ความ${สุข}อยู่รอบตัวเรา", "${บวก}${สุข}เล็กๆ น้อยๆ ทำให้ชีวิตมีความหมาย"] },
-  { word: "สู้", templates: ["${บวก}${สู้}ไปด้วยกัน เราจะผ่านมันไปได้", "${บวก}${สู้}ต่อไป อย่ายอมแพ้"] },
-  { word: "หวัง", templates: ["${บวก}ความ${หวัง}ทำให้เรามีกำลังใจ", "${กลาง}${หวัง}แล้วทำ ฝันจะเป็นจริง"] },
-  { word: "เหนื่อย", templates: ["${กลาง}${เหนื่อย}วันนี้ เพื่อสบายในวันหน้า", "${กลาง}เมื่อ${เหนื่อย}ได้พัก เมื่อพักแล้วลุยต่อ"] },
-  { word: "ล้ม", templates: ["${กลาง}${ล้ม}แล้วลุกขึ้นใหม่", "${กลาง}การ${ล้ม}คือบทเรียน ไม่ใช่ความล้มเหลว"] },
-  { word: "เสียใจ", templates: ["${ลบ}ความ${เสียใจ}จะผ่านไป พรุ่งนี้ต้องดีกว่า", "${ลบ}แม้จะ${เสียใจ} แต่อย่าท้อแท้"] },
-  { word: "กลัว", templates: ["${ลบ}ความ${กลัว}เป็นเพียงอุปสรรคที่เราสร้างขึ้นเอง", "${ลบ}อย่าให้ความ${กลัว}หยุดคุณไว้"] },
-  { word: "ผิดหวัง", templates: ["${ลบ}ความ${ผิดหวัง}จะทำให้เราเข้มแข็งขึ้น", "${ลบ}${ผิดหวัง}วันนี้ เพื่อเรียนรู้และเติบโตในวันหน้า"] },
+  { word: "กำลังใจ", sentiment: "positive", score: 0.8 },
+  { word: "ความหวัง", sentiment: "positive", score: 0.7 },
+  { word: "ความฝัน", sentiment: "positive", score: 0.6 },
+  { word: "ความสุข", sentiment: "positive", score: 0.9 },
+  { word: "ความรัก", sentiment: "positive", score: 0.8 },
+  { word: "พลัง", sentiment: "positive", score: 0.7 },
+  { word: "ศรัทธา", sentiment: "positive", score: 0.6 },
+  { word: "ความเชื่อ", sentiment: "positive", score: 0.5 },
+  { word: "ความเพียร", sentiment: "positive", score: 0.7 },
+  { word: "ความอดทน", sentiment: "positive", score: 0.6 },
+  { word: "ความสำเร็จ", sentiment: "positive", score: 0.8 },
+  { word: "ความดี", sentiment: "positive", score: 0.7 },
+  { word: "ความจริง", sentiment: "neutral", score: 0.0 },
+  { word: "ความกล้า", sentiment: "positive", score: 0.6 },
+  { word: "มิตรภาพ", sentiment: "positive", score: 0.7 },
+  { word: "ครอบครัว", sentiment: "positive", score: 0.8 },
+  { word: "ความสามัคคี", sentiment: "positive", score: 0.7 },
+  { word: "สติปัญญา", sentiment: "positive", score: 0.6 },
+  { word: "สุขภาพ", sentiment: "positive", score: 0.7 },
+  { word: "การเรียนรู้", sentiment: "positive", score: 0.6 },
+  { word: "การเติบโต", sentiment: "positive", score: 0.6 },
+  { word: "ความเข้มแข็ง", sentiment: "positive", score: 0.7 },
+  { word: "ความมุ่งมั่น", sentiment: "positive", score: 0.7 },
+  { word: "ความตั้งใจ", sentiment: "positive", score: 0.6 },
+  { word: "การให้อภัย", sentiment: "positive", score: 0.7 },
+  { word: "ความเศร้า", sentiment: "negative", score: -0.7 },
+  { word: "ความผิดหวัง", sentiment: "negative", score: -0.6 },
+  { word: "ความเจ็บปวด", sentiment: "negative", score: -0.8 },
+  { word: "ความกลัว", sentiment: "negative", score: -0.7 },
+  { word: "ความโกรธ", sentiment: "negative", score: -0.8 },
+  { word: "ความเหงา", sentiment: "negative", score: -0.6 },
+  { word: "ความเหนื่อย", sentiment: "negative", score: -0.5 },
+  { word: "ความท้อแท้", sentiment: "negative", score: -0.7 },
+  { word: "ความสิ้นหวัง", sentiment: "negative", score: -0.9 },
+  { word: "ความล้มเหลว", sentiment: "negative", score: -0.8 }
 ];
 
-// ฟังก์ชั่นสำหรับดึงความรู้สึกของคำจากฐานข้อมูล (อัพเดทให้ใช้ความรู้สึกจากแม่แบบแทน)
-export const getWordPolarity = (word: string): { polarity: 'positive' | 'neutral' | 'negative', score: number } => {
-  let database = [];
+// Function to analyze the sentiment of a sentence or array of words
+export const analyzeSentence = (input: string | string[]): SentimentAnalysisResult => {
+  // Convert input to array of words if it's a string
+  const words = typeof input === 'string' 
+    ? input.split(/\s+/).filter(word => word.length > 0) 
+    : input;
   
-  try {
-    const storedData = localStorage.getItem("word-polarity-database");
-    if (storedData) {
-      database = JSON.parse(storedData);
-    } else {
-      database = wordPolarityDatabase;
+  // Initialize result
+  const result: SentimentAnalysisResult = {
+    overallSentiment: 'neutral',
+    score: 0,
+    wordBreakdown: []
+  };
+  
+  // If no words, return neutral result
+  if (!words || words.length === 0) {
+    return result;
+  }
+  
+  let totalScore = 0;
+  
+  // Analyze each word
+  words.forEach(word => {
+    // Find word in database
+    const wordEntry = wordPolarityDatabase.find(entry => entry.word === word);
+    
+    let wordSentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
+    let wordScore = 0;
+    
+    if (wordEntry) {
+      wordSentiment = wordEntry.sentiment;
+      wordScore = wordEntry.score;
     }
-  } catch (e) {
-    console.error("Error parsing stored word database:", e);
-    database = wordPolarityDatabase;
+    
+    // Add to breakdown
+    result.wordBreakdown.push({
+      word,
+      sentiment: wordSentiment,
+      score: wordScore
+    });
+    
+    // Add to total score
+    totalScore += wordScore;
+  });
+  
+  // Calculate average score
+  const averageScore = totalScore / words.length;
+  result.score = averageScore;
+  
+  // Determine overall sentiment
+  if (averageScore > 0.1) {
+    result.overallSentiment = 'positive';
+  } else if (averageScore < -0.1) {
+    result.overallSentiment = 'negative';
+  } else {
+    result.overallSentiment = 'neutral';
   }
   
-  // ค้นหาคำในฐานข้อมูล
-  const wordEntry = database.find((entry: any) => entry.word === word);
-  
-  if (wordEntry && wordEntry.templates && wordEntry.templates.length > 0) {
-    // ใช้แม่แบบแรกเพื่อวิเคราะห์ความรู้สึก
-    const { sentiment } = analyzeSentimentFromSentence("", wordEntry.templates[0]);
-    return {
-      polarity: sentiment,
-      score: sentiment === 'positive' ? 1 : sentiment === 'negative' ? -1 : 0
-    };
-  }
-  
-  // ค่าเริ่มต้น หากไม่พบคำในฐานข้อมูล
-  return { polarity: 'neutral', score: 0 };
+  return result;
 };
 
-// Function to analyze a sentence for sentiment
-export const analyzeSentence = (sentence: string | string[]): { 
-  polarity: 'positive' | 'neutral' | 'negative'; 
-  score: number;
-  breakdown: {
-    positive: number;
-    neutral: number;
-    negative: number;
-  };
-  emotionFlow: {
-    quality: 'excellent' | 'good' | 'poor';
-    consistency: boolean;
-  };
-  confidence: number;
-  needsModeration: boolean;
-  suggestion: string;
-} => {
-  // Convert array of words to a single string if needed
-  const sentenceText = Array.isArray(sentence) ? sentence.join(' ') : sentence;
+// Function to get sentiment color based on sentiment value
+export const getSentimentColor = (sentiment: 'positive' | 'neutral' | 'negative'): string => {
+  switch (sentiment) {
+    case 'positive':
+      return 'text-green-600';
+    case 'negative':
+      return 'text-red-600';
+    default:
+      return 'text-gray-600';
+  }
+};
+
+// Function to get sentiment background color based on sentiment value
+export const getSentimentBgColor = (sentiment: 'positive' | 'neutral' | 'negative'): string => {
+  switch (sentiment) {
+    case 'positive':
+      return 'bg-green-100';
+    case 'negative':
+      return 'bg-red-100';
+    default:
+      return 'bg-gray-100';
+  }
+};
+
+// Function to get sentiment border color based on sentiment value
+export const getSentimentBorderColor = (sentiment: 'positive' | 'neutral' | 'negative'): string => {
+  switch (sentiment) {
+    case 'positive':
+      return 'border-green-300';
+    case 'negative':
+      return 'border-red-300';
+    default:
+      return 'border-gray-300';
+  }
+};
+
+// Function to get Thai sentiment label
+export const getSentimentLabel = (sentiment: 'positive' | 'neutral' | 'negative'): string => {
+  switch (sentiment) {
+    case 'positive':
+      return 'เชิงบวก';
+    case 'negative':
+      return 'เชิงลบ';
+    default:
+      return 'เป็นกลาง';
+  }
+};
+
+// Function to generate a template for a word based on its sentiment
+export const generateTemplateForWord = (word: string): string => {
+  const wordEntry = wordPolarityDatabase.find(entry => entry.word === word);
+  const sentiment = wordEntry?.sentiment || 'neutral';
   
-  const result = analyzeSentimentFromSentence(sentenceText);
+  // Templates based on sentiment
+  const positiveTemplates = [
+    `${word}ทำให้ชีวิตมีความหมายมากขึ้น`,
+    `${word}เป็นสิ่งที่ทำให้เรามีความสุข`,
+    `${word}ช่วยให้เราผ่านพ้นอุปสรรคไปได้`,
+    `${word}คือสิ่งที่ทำให้เราเติบโตขึ้น`,
+    `${word}เป็นพลังที่ทำให้เราก้าวต่อไป`
+  ];
   
-  // Count positive, neutral, and negative words
-  let positiveCount = 0;
-  let neutralCount = 0;
-  let negativeCount = 0;
+  const neutralTemplates = [
+    `${word}เป็นส่วนหนึ่งของชีวิต`,
+    `${word}ทำให้เราได้เรียนรู้`,
+    `${word}เป็นสิ่งที่เราต้องเข้าใจ`,
+    `${word}ทำให้เรารู้จักตัวเองมากขึ้น`,
+    `${word}เป็นประสบการณ์ที่มีค่า`
+  ];
   
-  // If sentence is an array of words, analyze each word
-  if (Array.isArray(sentence)) {
-    sentence.forEach(word => {
-      const wordPolarity = getWordPolarity(word);
-      if (wordPolarity.polarity === 'positive') positiveCount++;
-      else if (wordPolarity.polarity === 'negative') negativeCount++;
-      else neutralCount++;
-    });
+  const negativeTemplates = [
+    `แม้จะมี${word}แต่เราก็ต้องสู้ต่อไป`,
+    `${word}ทำให้เราเข้มแข็งขึ้น`,
+    `${word}เป็นบทเรียนที่มีค่า`,
+    `${word}จะผ่านไปเสมอ อย่ายอมแพ้`,
+    `${word}ไม่ได้อยู่กับเราตลอดไป`
+  ];
+  
+  // Select random template based on sentiment
+  let templates;
+  if (sentiment === 'positive') {
+    templates = positiveTemplates;
+  } else if (sentiment === 'negative') {
+    templates = negativeTemplates;
   } else {
-    // For a single string, estimate based on the overall sentiment
-    const words = sentence.split(/\s+/).filter(word => word.length > 0);
-    const totalWords = words.length || 1;
-    
-    if (result.sentiment === 'positive') {
-      positiveCount = Math.ceil(totalWords * 0.7);
-      neutralCount = totalWords - positiveCount - 1;
-      negativeCount = 1; // At least one for balance
-    } else if (result.sentiment === 'negative') {
-      negativeCount = Math.ceil(totalWords * 0.7);
-      neutralCount = totalWords - negativeCount - 1;
-      positiveCount = 1; // At least one for balance
-    } else {
-      neutralCount = Math.ceil(totalWords * 0.7);
-      positiveCount = Math.floor((totalWords - neutralCount) / 2);
-      negativeCount = totalWords - neutralCount - positiveCount;
-    }
+    templates = neutralTemplates;
   }
   
-  // Determine quality of emotion flow
-  let quality: 'excellent' | 'good' | 'poor' = 'good';
-  if (positiveCount > negativeCount * 2) {
-    quality = 'excellent';
-  } else if (negativeCount > positiveCount) {
-    quality = 'poor';
-  }
-  
-  // Determine if there's a consistency in sentiment
-  const consistency = Math.abs(positiveCount - negativeCount) > neutralCount;
-  
-  // Calculate confidence based on clarity of sentiment
-  const totalWords = positiveCount + neutralCount + negativeCount || 1;
-  const dominantSentiment = Math.max(positiveCount, neutralCount, negativeCount);
-  const confidence = dominantSentiment / totalWords;
-  
-  // Determine if moderation is needed
-  const needsModeration = negativeCount > totalWords * 0.5;
-  
-  // Generate a suggestion based on analysis
-  let suggestion = "ประโยคมีความสมดุลดี ทั้งแง่บวกและลบ";
-  if (quality === 'excellent') {
-    suggestion = "ประโยคมีพลังบวกสูง เหมาะแก่การสร้างกำลังใจ";
-  } else if (quality === 'poor') {
-    suggestion = "ควรเพิ่มคำที่มีความหมายเชิงบวกมากขึ้น";
-  }
-  
-  return {
-    polarity: result.sentiment,
-    score: result.score,
-    breakdown: {
-      positive: positiveCount,
-      neutral: neutralCount,
-      negative: negativeCount
-    },
-    emotionFlow: {
-      quality,
-      consistency
-    },
-    confidence,
-    needsModeration,
-    suggestion
-  };
+  const randomIndex = Math.floor(Math.random() * templates.length);
+  return templates[randomIndex];
 };

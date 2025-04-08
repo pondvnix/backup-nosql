@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -24,7 +23,6 @@ const Index = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { toast } = useToast();
 
-  // Ensure meta information is set
   useEffect(() => {
     updateMetaTitleAndDescription({
       title: 'คำลังใจ - แพลตฟอร์มสร้างกำลังใจด้วยภาษาไทย',
@@ -46,7 +44,6 @@ const Index = () => {
     setSuggestedWords(wordList);
   }, []);
 
-  // Load contributor name from local storage
   useEffect(() => {
     const savedContributor = getContributorName();
     if (savedContributor) {
@@ -54,12 +51,10 @@ const Index = () => {
     }
   }, []);
 
-  // Load suggested words
   useEffect(() => {
     loadSuggestedWords();
   }, [loadSuggestedWords]);
 
-  // Save contributor name when changed
   useEffect(() => {
     if (contributor) {
       setContributorName(contributor);
@@ -76,7 +71,6 @@ const Index = () => {
       return;
     }
 
-    // Add to database
     const success = saveWordContribution(inputWord, contributor || "ไม่ระบุชื่อ");
 
     if (success) {
@@ -85,11 +79,9 @@ const Index = () => {
         description: `คำว่า "${inputWord}" ถูกบันทึกเรียบร้อยแล้ว`,
       });
 
-      // Add to selected words
       if (!selectedWords.includes(inputWord)) {
         setSelectedWords([...selectedWords, inputWord]);
         
-        // Select the word and generate a sentence
         setTimeout(() => {
           if (typeof window !== "undefined" && (window as any).showMotivationalSentence) {
             (window as any).showMotivationalSentence(inputWord, contributor);
@@ -97,13 +89,10 @@ const Index = () => {
         }, 300);
       }
 
-      // Reset input
       setInputWord("");
       
-      // Refresh suggested words
       loadSuggestedWords();
       
-      // Trigger refresh in other components
       setRefreshTrigger(prev => prev + 1);
     } else {
       toast({
@@ -132,7 +121,6 @@ const Index = () => {
   };
 
   const getSentimentBadge = (word: string) => {
-    // Try to find the sentiment from the database
     const wordEntry = wordPolarityDatabase.find(entry => entry.word === word);
     const sentiment = wordEntry?.sentiment || "neutral";
     
@@ -163,7 +151,6 @@ const Index = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        {/* ส่วนหัวข้อหลัก */}
         <section className="text-center">
           <h1 className="text-4xl font-bold mb-2">
             <span className="text-primary">"คำ"</span>ลังใจ
@@ -173,7 +160,6 @@ const Index = () => {
           </p>
         </section>
 
-        {/* แสดงข้อความให้กำลังใจ */}
         <section>
           <MotivationalSentence 
             selectedWords={selectedWords} 
@@ -182,14 +168,12 @@ const Index = () => {
           />
         </section>
 
-        {/* กล่องเลือกคำและป้อนคำใหม่ */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* ส่วนป้อนคำใหม่ */}
           <Card className="md:col-span-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PlusCircle className="h-5 w-5 text-primary" />
-                เพิ่มคำใหม่
+                เ��ิ่มคำใหม่
               </CardTitle>
               <CardDescription>
                 เพิ่มคำที่คุณต้องการจะใช้ในประโยคให้กำลังใจ
@@ -219,7 +203,6 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* กล่องดอยคำ */}
               <div className="mt-6 bg-white rounded-lg border border-orange-200 p-4 shadow-sm">
                 <div className="flex items-center gap-4">
                   <div className="relative flex-shrink-0 w-20 h-20 overflow-hidden rounded-md border border-orange-100">
@@ -244,7 +227,6 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          {/* ส่วนแสดงคำแนะนำ */}
           <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -285,7 +267,6 @@ const Index = () => {
           </Card>
         </section>
 
-        {/* ประโยคกำลังใจล่าสุด และ สถิติ แบบเต็มจอ */}
         <section className="space-y-8 w-full">
           <div className="w-full">
             <Card className="w-full">
@@ -304,7 +285,6 @@ const Index = () => {
             </Card>
           </div>
           
-          {/* ส่วนปุ่มดูเพิ่มเติม */}
           <div className="flex justify-center">
             <Button 
               variant="outline" 
