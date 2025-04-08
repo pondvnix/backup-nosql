@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -283,7 +284,7 @@ const WordForm = ({
         <TabsContent value="suggestions" className="mt-4 animate-fade-in">
           {contributor.trim() ? (
             <WordSuggestions
-              onWordSelect={(word) => handleSelectWord(word)}
+              onWordSelect={(word, template) => handleSelectSuggestion(word, template)}
               selectedWords={existingWords}
               disableAutoRefresh={disableSuggestionRefresh}
               showMultipleTemplates={showMultipleTemplates}

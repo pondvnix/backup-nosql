@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
 interface WordSuggestionsProps {
-  onWordSelect: (word: string) => void;
+  onWordSelect: (word: string, template?: string) => void;
   selectedWords?: string[];
   disableAutoRefresh?: boolean;
   showMultipleTemplates?: boolean;
