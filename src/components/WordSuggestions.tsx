@@ -1,253 +1,308 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Filter, RefreshCw, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRight, Sparkles, Search, X } from "lucide-react";
-import { getWordSentiment } from "@/utils/sentimentAnalysis";
-import { filterWordsByCategory } from "@/utils/wordCategorization";
-import { addWord, getRecentWords } from "@/utils/wordModeration";
-import { getContributorName } from "@/utils/contributorManager";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
+import { getAvailableTemplatesForWord } from "@/utils/templateTracker";
+import { getContributorName, updateContributorStats } from "@/utils/wordModeration";
 
-interface WordEntry {
+// กำหนดชนิดข้อมูลของคำที่แนะนำ
+interface WordSuggestion {
   word: string;
-  templates?: string[];
-  polarity?: string;
+  templates: string[];
 }
 
 interface WordSuggestionsProps {
-  onWordSelect: (word: string, template?: string) => void;
+  onWordSelect: (word: string) => void;
   selectedWords?: string[];
-  disableAutoRefresh?: boolean;
-  showMultipleTemplates?: boolean;
 }
 
-const WordSuggestions = ({ 
-  onWordSelect, 
-  selectedWords = [], 
-  disableAutoRefresh = false,
-  showMultipleTemplates = false 
-}: WordSuggestionsProps) => {
+const WordSuggestions = ({ onWordSelect, selectedWords = [] }: WordSuggestionsProps) => {
+  // สร้าง state สำหรับเก็บรายการคำที่แนะนำ
+  const [suggestions, setSuggestions] = useState<WordSuggestion[]>([]);
+  // สร้าง state สำหรับเก็บรายการคำที่แนะนำที่กรองแล้ว
+  const [filteredSuggestions, setFilteredSuggestions] = useState<WordSuggestion[]>([]);
+  // สร้าง state สำหรับตัวกรอง
+  const [filter, setFilter] = useState<string>("all");
+  // สร้าง state สำหรับตรวจสอบว่าคำถูกใช้หมดแล้วหรือยัง
+  const [allWordsUsed, setAllWordsUsed] = useState<boolean>(false);
+  // นำเข้า toast
   const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("suggested");
-  const [recentWords, setRecentWords] = useState<string[]>([]);
-  const [databaseWords, setDatabaseWords] = useState<WordEntry[]>([]);
-  
-  // ดึงคำล่าสุดเมื่อโหลดคอมโพเนนต์
+
+  // โหลดคำแนะนำเมื่อ component ถูกโหลด
   useEffect(() => {
-    const words = getRecentWords();
-    setRecentWords(words);
-    
-    // ดึงคำจากฐานข้อมูล
-    loadDatabaseWords();
-    
-    // ตั้ง event listener สำหรับการอัปเดตฐานข้อมูล
-    const handleDatabaseUpdate = () => {
-      loadDatabaseWords();
-    };
-    
-    window.addEventListener('word-database-updated', handleDatabaseUpdate);
-    
-    return () => {
-      window.removeEventListener('word-database-updated', handleDatabaseUpdate);
-    };
+    loadWordSuggestions();
   }, []);
 
-  // โหลดข้อมูลคำจาก localStorage
-  const loadDatabaseWords = () => {
+  // กรองคำแนะนำเมื่อ filter หรือ suggestions เปลี่ยนแปลง
+  useEffect(() => {
+    filterSuggestions();
+  }, [filter, suggestions, selectedWords]);
+
+  // โหลดคำแนะนำจาก localStorage หรือใช้คำเริ่มต้น
+  const loadWordSuggestions = () => {
     try {
-      const storedData = localStorage.getItem("word-polarity-database");
-      if (storedData) {
-        const parsedData = JSON.parse(storedData);
-        setDatabaseWords(parsedData);
+      // ลองโหลดคำแนะนำจาก localStorage
+      const stored = localStorage.getItem("word-suggestions");
+      let wordSuggestions: WordSuggestion[] = [];
+
+      if (stored) {
+        // แปลงข้อมูลจาก JSON string เป็น object
+        const parsed = JSON.parse(stored);
+        
+        // ตรวจสอบว่าข้อมูลเป็น array หรือไม่
+        if (Array.isArray(parsed)) {
+          wordSuggestions = parsed.map(item => {
+            // ถ้าเป็น object แต่ไม่มี templates ให้เพิ่ม templates เป็น array ว่าง
+            if (typeof item === 'object' && item !== null) {
+              return {
+                word: item.word || '',
+                templates: Array.isArray(item.templates) ? item.templates : []
+              };
+            }
+            // ถ้าเป็น string ให้สร้าง object ใหม่
+            if (typeof item === 'string') {
+              return {
+                word: item,
+                templates: []
+              };
+            }
+            return {
+              word: '',
+              templates: []
+            };
+          }).filter(item => item.word !== ''); // กรองรายการที่ไม่มีคำออก
+        } else if (typeof parsed === 'object' && parsed !== null) {
+          // ถ้าเป็น object ให้แปลงเป็น array
+          wordSuggestions = Object.keys(parsed).map(key => ({
+            word: key,
+            templates: Array.isArray(parsed[key]) ? parsed[key] : []
+          }));
+        }
       }
-    } catch (e) {
-      console.error("Error loading word database:", e);
-    }
-  };
 
-  // กรองคำตามหมวดหมู่ที่เลือก
-  const filteredWords = () => {
-    if (selectedCategory === "custom") {
-      return [];
-    }
-    
-    // ใช้คำจากฐานข้อมูลแทนค่าคงที่
-    const words = databaseWords.map(entry => entry.word);
-    
-    if (searchTerm) {
-      return words.filter(word => typeof word === 'string' && word.includes(searchTerm));
-    }
-    
-    return words;
-  };
+      // ถ้าไม่มีคำแนะนำในคลัง ให้ใช้คำเริ่มต้น
+      if (wordSuggestions.length === 0) {
+        wordSuggestions = [
+          { word: "ความพยายาม", templates: ["${บวก}${ความพยายาม}คือกุญแจสู่ความสำเร็จ", "${บวก}อย่าละทิ้ง${ความพยายาม}แม้จะเจออุปสรรค"] },
+          { word: "กำลังใจ", templates: ["${บวก}${กำลังใจ}คือสิ่งสำคัญในยามท้อแท้", "${กลาง}${กำลังใจ}จากคนรอบข้างมีค่ามากเพียงใด"] },
+          { word: "อดทน", templates: ["${บวก}${อดทน}ไว้ ผลลัพธ์จะคุ้มค่าเสมอ", "${กลาง}การ${อดทน}คือคุณสมบัติของคนเก่ง"] },
+          { word: "มิตรภาพ", templates: ["${บวก}${มิตรภาพ}แท้จริงคือสิ่งล้ำค่า", "${กลาง}${มิตรภาพ}ที่ดีต้องผ่านการทดสอบ"] },
+          { word: "เติบโต", templates: ["${บวก}การ${เติบโต}ทางความคิดสำคัญกว่าอายุ", "${กลาง}การ${เติบโต}มาพร้อมกับความรับผิดชอบเสมอ"] },
+          { word: "ความสุข", templates: ["${บวก}${ความสุข}เกิดจากใจที่พอเพียง", "${บวก}${ความสุข}คือสิ่งที่เราเลือกได้"] },
+          { word: "ความฝัน", templates: ["${บวก}ไล่ตาม${ความฝัน}ด้วยความมุ่งมั่น", "${กลาง}${ความฝัน}จะเป็นจริงได้ต้องมีแผน"] },
+          { word: "อุปสรรค", templates: ["${กลาง}${อุปสรรค}คือบทเรียนที่มีค่า", "${ลบ}${อุปสรรค}จะผ่านไปเสมอหากไม่ยอมแพ้"] },
+          { word: "ความล้มเหลว", templates: ["${กลาง}${ความล้มเหลว}คือครูที่ดีที่สุด", "${ลบ}${ความล้มเหลว}เป็นเพียงจุดเริ่มต้นของความสำเร็จ"] },
+          { word: "ขอบคุณ", templates: ["${บวก}การพูด${ขอบคุณ}สร้างพลังบวกให้ชีวิต", "${บวก}${ขอบคุณ}ทุกสิ่งที่เกิดขึ้นในชีวิต"] }
+        ];
+        
+        // บันทึกคำเริ่มต้นลงใน localStorage
+        localStorage.setItem("word-suggestions", JSON.stringify(wordSuggestions));
+      }
 
-  // จัดการการคลิกที่คำ
-  const handleWordClick = (word: string) => {
-    // ใช้ชื่อผู้ใช้ที่มีอยู่แล้วโดยไม่ต้องแสดง popup
-    const contributorName = getContributorName();
-    
-    // เรียกฟังก์ชันจากคอมโพเนนต์แม่
-    onWordSelect(word);
-    
-    // บันทึกคำลงใน localStorage
-    addWord(word);
-    
-    // อัปเดตคำล่าสุด
-    setRecentWords(getRecentWords());
-    
-    toast({
-      title: "เลือกคำสำเร็จ",
-      description: `คุณได้เลือกคำว่า "${word}"`,
-    });
-    
-    // ดึงฟังก์ชันแสดงประโยคให้กำลังใจจาก window object (กำหนดโดย MotivationalSentence.tsx)
-    if ((window as any).showMotivationalSentence) {
-      (window as any).showMotivationalSentence(word);
-    }
-  };
-
-  // ฟังก์ชันสำหรับเพิ่มคำที่ค้นหา
-  const handleAddCustomWord = () => {
-    if (!searchTerm || searchTerm.trim().length === 0) {
+      // อัปเดต state
+      setSuggestions(wordSuggestions);
+    } catch (error) {
+      console.error("เกิดข้อผิดพลาดในการโหลดคำแนะนำ:", error);
+      // แสดงข้อความแจ้งเตือน
       toast({
-        title: "ไม่สามารถเพิ่มคำได้",
-        description: "กรุณาป้อนคำที่ต้องการเพิ่ม",
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถโหลดคำแนะนำได้ กรุณาลองใหม่อีกครั้ง",
         variant: "destructive",
       });
-      return;
-    }
-    
-    const word = searchTerm.trim();
-    
-    if (word.length > 10) {
-      toast({
-        title: "ไม่สามารถเพิ่มคำได้",
-        description: "คำที่เพิ่มต้องมีความยาวไม่เกิน 10 ตัวอักษร",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // เรียกฟังก์ชันจากคอมโพเนนต์แม่
-    onWordSelect(word);
-    
-    // บันทึกคำลงใน localStorage
-    addWord(word);
-    
-    // อัปเดตคำล่าสุด
-    setRecentWords(getRecentWords());
-    
-    // ล้างช่องค้นหา
-    setSearchTerm("");
-    
-    toast({
-      title: "เพิ่มคำสำเร็จ",
-      description: `คุณได้เพิ่มคำว่า "${word}"`,
-    });
-    
-    // ดึงฟังก์ชันแสดงประโยคให้กำลังใจจาก window object (กำหนดโดย MotivationalSentence.tsx)
-    if ((window as any).showMotivationalSentence) {
-      (window as any).showMotivationalSentence(word);
     }
   };
 
-  // ล้างคำค้นหา
-  const clearSearch = () => {
-    setSearchTerm("");
+  // กรองคำแนะนำตาม filter
+  const filterSuggestions = () => {
+    // หากไม่มีคำแนะนำให้กำหนดเป็น array ว่าง
+    if (!Array.isArray(suggestions)) {
+      setFilteredSuggestions([]);
+      setAllWordsUsed(true);
+      return;
+    }
+
+    // กรองคำที่ถูกเลือกแล้วออก
+    let filtered = suggestions.filter(
+      (suggestion) => !selectedWords.includes(suggestion.word)
+    );
+
+    // กรองคำตาม filter
+    if (filter !== "all") {
+      filtered = filtered.filter((suggestion) => {
+        // ตรวจสอบว่ามี templates หรือไม่
+        if (!suggestion.templates || suggestion.templates.length === 0) {
+          return false;
+        }
+
+        // กรองตามประเภทความรู้สึก
+        return suggestion.templates.some((template) => {
+          if (filter === "positive") {
+            return template.includes("${บวก}");
+          } else if (filter === "neutral") {
+            return template.includes("${กลาง}");
+          } else if (filter === "negative") {
+            return template.includes("${ลบ}");
+          }
+          return false;
+        });
+      });
+    }
+
+    // ตรวจสอบว่าคำถูกใช้หมดแล้วหรือยัง
+    if (filtered.length === 0 && suggestions.length > 0) {
+      setAllWordsUsed(true);
+    } else {
+      setAllWordsUsed(false);
+    }
+
+    // อัปเดต state
+    setFilteredSuggestions(filtered);
+  };
+
+  // ฟังก์ชันเมื่อเลือกคำ
+  const handleSelectWord = (word: string, templates: string[]) => {
+    // บันทึกสถิติผู้ร่วมสร้าง
+    updateContributorStats(getContributorName());
+
+    // ตรวจสอบว่ามี templates หรือไม่
+    if (!templates || templates.length === 0) {
+      // ถ้าไม่มี templates ให้ใช้ onWordSelect ปกติ
+      onWordSelect(word);
+      
+      // แสดงข้อความแจ้งเตือน
+      toast({
+        title: "เพิ่มคำแล้ว",
+        description: `เพิ่มคำ "${word}" แล้ว`,
+      });
+    } else {
+      // สุ่มเลือก template หนึ่งจาก templates ที่ยังไม่ถูกใช้
+      const availableTemplates = getAvailableTemplatesForWord(word, templates);
+      
+      if (availableTemplates.length > 0) {
+        // สุ่มเลือก template
+        const randomTemplate = availableTemplates[Math.floor(Math.random() * availableTemplates.length)];
+        
+        // ตรวจสอบว่ามีฟังก์ชัน showMotivationalSentence หรือไม่
+        if (typeof (window as any).showMotivationalSentence === 'function') {
+          // เรียกใช้ฟังก์ชันแสดงประโยคจาก MotivationalSentence component
+          (window as any).showMotivationalSentence(word, getContributorName(), randomTemplate);
+        } else {
+          // ถ้าไม่มีฟังก์ชัน showMotivationalSentence ให้ใช้ onWordSelect ปกติ
+          onWordSelect(word);
+          
+          // แสดงข้อความแจ้งเตือน
+          toast({
+            title: "เพิ่มคำแล้ว",
+            description: `เพิ่มคำ "${word}" แล้ว`,
+          });
+        }
+      } else {
+        // ถ้าไม่มี template ที่ยังไม่ถูกใช้ ให้ใช้ onWordSelect ปกติ
+        onWordSelect(word);
+        
+        // แสดงข้อความแจ้งเตือน
+        toast({
+          title: "เพิ่มคำแล้ว",
+          description: `เพิ่มคำ "${word}" แล้ว (ไม่มีแม่แบบประโยคที่ยังไม่ถูกใช้)`,
+        });
+      }
+    }
+  };
+
+  // รีเฟรชคำแนะนำ
+  const handleRefresh = () => {
+    loadWordSuggestions();
+    
+    // แสดงข้อความแจ้งเตือน
+    toast({
+      title: "รีเฟรชคำแนะนำแล้ว",
+      description: "รายการคำแนะนำถูกรีเฟรชแล้ว",
+    });
   };
 
   return (
-    <Card>
+    <Card className="mb-4">
       <CardContent className="p-4">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-5 w-5 text-orange-500" />
-            <h3 className="text-lg font-medium">คำแนะนำ</h3>
-          </div>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">คำแนะนำ</h3>
           
-          <RadioGroup 
-            value={selectedCategory}
-            onValueChange={setSelectedCategory}
-            className="flex items-center gap-4 mb-3"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="suggested" id="suggested" />
-              <Label htmlFor="suggested">แนะนำคำ</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="custom" id="custom" />
-              <Label htmlFor="custom">พิมพ์เอง</Label>
-            </div>
-          </RadioGroup>
-          
-          <div className="flex relative">
-            <div className="relative w-full">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={selectedCategory === "custom" ? "พิมพ์คำของคุณ..." : "ค้นหาคำ..."}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 pr-8"
-              />
-              {searchTerm && (
-                <button 
-                  onClick={clearSearch}
-                  className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+          <div className="flex gap-2">
+            <div className="flex">
+              <Button
+                variant={filter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter("all")}
+                className="rounded-r-none border-r-0"
+              >
+                ทั้งหมด
+              </Button>
+              <Button
+                variant={filter === "positive" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter("positive")}
+                className="rounded-none border-r-0 border-l-0"
+              >
+                บวก
+              </Button>
+              <Button
+                variant={filter === "neutral" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter("neutral")}
+                className="rounded-none border-r-0 border-l-0"
+              >
+                กลาง
+              </Button>
+              <Button
+                variant={filter === "negative" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter("negative")}
+                className="rounded-l-none border-l-0"
+              >
+                ลบ
+              </Button>
             </div>
             
-            {selectedCategory === "custom" && (
-              <Button 
-                onClick={handleAddCustomWord}
-                className="ml-2"
-                size="sm"
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleRefresh}
+              title="รีเฟรชคำแนะนำ"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        
+        {allWordsUsed ? (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>คำในคลังถูกใช้หมดแล้ว</AlertTitle>
+            <AlertDescription>
+              คำทั้งหมดในคลังถูกใช้แล้ว โปรดแจ้งผู้ดูแลระบบเพื่อเพิ่มคำใหม่
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {filteredSuggestions.map((suggestion) => (
+              <Badge
+                key={suggestion.word}
+                variant="outline"
+                className="px-3 py-1 cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
+                onClick={() => handleSelectWord(suggestion.word, suggestion.templates)}
               >
-                เพิ่ม
-              </Button>
+                {suggestion.word}
+              </Badge>
+            ))}
+            
+            {filteredSuggestions.length === 0 && !allWordsUsed && (
+              <p className="text-muted-foreground">ไม่พบคำแนะนำที่ตรงกับตัวกรอง</p>
             )}
           </div>
-          
-          {selectedCategory === "suggested" && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {filteredWords().map((word) => (
-                  <Button
-                    key={word}
-                    variant="outline"
-                    size="sm"
-                    className={`flex items-center ${
-                      selectedWords.includes(word) ? "bg-primary/10 border-primary/30" : ""
-                    }`}
-                    onClick={() => handleWordClick(word)}
-                  >
-                    {word}
-                    <ArrowRight className="ml-1 h-3 w-3" />
-                  </Button>
-                ))}
-                
-                {filteredWords().length === 0 && searchTerm && (
-                  <div className="w-full text-center py-2 text-muted-foreground">
-                    {`ไม่พบคำที่ตรงกับ "${searchTerm}"`}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          {selectedCategory === "custom" && (
-            <div className="py-2 text-muted-foreground text-center">
-              พิมพ์คำของคุณและกดปุ่ม "เพิ่ม" เพื่อใช้คำนี้
-            </div>
-          )}
-        </div>
+        )}
       </CardContent>
     </Card>
   );

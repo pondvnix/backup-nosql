@@ -1,77 +1,85 @@
 
-// Helper to track which word-template combinations have been used
-// This prevents the same template from being shown multiple times
-
-interface UsedTemplate {
-  word: string;
-  template: string;
-  timestamp: number;
-}
-
-// Get all used word-template combinations
-export const getUsedTemplates = (): UsedTemplate[] => {
-  try {
-    const stored = localStorage.getItem('used-templates');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.error("Error loading used templates:", error);
-  }
-  return [];
-};
-
-// Check if a word-template combination has been used
+// ฟังก์ชันตรวจสอบว่า template ได้ถูกใช้ไปแล้วหรือยัง
 export const isTemplateUsed = (word: string, template: string): boolean => {
-  const usedTemplates = getUsedTemplates();
-  return usedTemplates.some(item => 
-    item.word.toLowerCase() === word.toLowerCase() && 
-    item.template === template
-  );
-};
-
-// Mark a word-template combination as used
-export const markTemplateAsUsed = (word: string, template: string): void => {
+  // ดึงข้อมูลการใช้ template จาก localStorage
+  const storedData = localStorage.getItem('used-templates');
+  if (!storedData) return false;
+  
   try {
-    const usedTemplates = getUsedTemplates();
+    const usedTemplates = JSON.parse(storedData);
     
-    // Check if this combination already exists
-    const exists = usedTemplates.some(item => 
-      item.word.toLowerCase() === word.toLowerCase() && 
-      item.template === template
-    );
-    
-    if (!exists) {
-      usedTemplates.push({
-        word,
-        template,
-        timestamp: Date.now()
-      });
-      
-      localStorage.setItem('used-templates', JSON.stringify(usedTemplates));
-      
-      // Dispatch event to notify components
-      const event = new CustomEvent('template-usage-updated');
-      window.dispatchEvent(event);
+    // ตรวจสอบว่ามีข้อมูลการใช้ template สำหรับคำนี้หรือไม่
+    if (usedTemplates[word]) {
+      return usedTemplates[word].includes(template);
     }
+    
+    return false;
   } catch (error) {
-    console.error("Error marking template as used:", error);
+    console.error('Error checking used templates:', error);
+    return false;
   }
 };
 
-// Get all used templates for a specific word
-export const getUsedTemplatesForWord = (word: string): string[] => {
-  const usedTemplates = getUsedTemplates();
-  return usedTemplates
-    .filter(item => item.word.toLowerCase() === word.toLowerCase())
-    .map(item => item.template);
+// ฟังก์ชันบันทึกการใช้ template
+export const markTemplateAsUsed = (word: string, template: string): void => {
+  // ดึงข้อมูลการใช้ template จาก localStorage
+  const storedData = localStorage.getItem('used-templates');
+  let usedTemplates: Record<string, string[]> = {};
+  
+  // ถ้ามีข้อมูลเดิม ให้แปลงเป็น object
+  if (storedData) {
+    try {
+      usedTemplates = JSON.parse(storedData);
+    } catch (error) {
+      console.error('Error parsing used templates:', error);
+    }
+  }
+  
+  // ถ้ายังไม่มีข้อมูลการใช้ template สำหรับคำนี้ ให้สร้างใหม่
+  if (!usedTemplates[word]) {
+    usedTemplates[word] = [];
+  }
+  
+  // เพิ่ม template ที่ใช้แล้วเข้าไปในรายการ
+  if (!usedTemplates[word].includes(template)) {
+    usedTemplates[word].push(template);
+  }
+  
+  // บันทึกข้อมูลลงใน localStorage
+  localStorage.setItem('used-templates', JSON.stringify(usedTemplates));
 };
 
-// Get all available templates for a word
-export const getAvailableTemplatesForWord = (
-  word: string, 
-  allTemplates: string[]
-): string[] => {
-  const usedTemplates = getUsedTemplatesForWord(word);
-  return allTemplates.filter(template => !usedTemplates.includes(template));
+// ฟังก์ชันรีเซ็ตการใช้ template ทั้งหมด
+export const resetUsedTemplates = (): void => {
+  localStorage.removeItem('used-templates');
+};
+
+// ฟังก์ชันรีเซ็ตการใช้ template สำหรับคำที่ระบุ
+export const resetUsedTemplatesForWord = (word: string): void => {
+  // ดึงข้อมูลการใช้ template จาก localStorage
+  const storedData = localStorage.getItem('used-templates');
+  if (!storedData) return;
+  
+  try {
+    const usedTemplates = JSON.parse(storedData);
+    
+    // ลบข้อมูลการใช้ template สำหรับคำที่ระบุ
+    delete usedTemplates[word];
+    
+    // บันทึกข้อมูลลงใน localStorage
+    localStorage.setItem('used-templates', JSON.stringify(usedTemplates));
+  } catch (error) {
+    console.error('Error resetting used templates for word:', error);
+  }
+};
+
+// ฟังก์ชันดึง template ที่ยังไม่ถูกใช้สำหรับคำที่ระบุ
+export const getAvailableTemplatesForWord = (word: string, templates: string[]): string[] => {
+  // กรณีไม่มี templates
+  if (!templates || !Array.isArray(templates) || templates.length === 0) {
+    return [];
+  }
+  
+  // กรอง template ที่ยังไม่ถูกใช้
+  return templates.filter(template => !isTemplateUsed(word, template));
 };

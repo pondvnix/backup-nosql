@@ -1,201 +1,177 @@
 
-import { useState, useEffect, useCallback } from "react";
-import { Container } from "@/components/ui/container";
-import { Card, CardContent } from "@/components/ui/card";
-import MobileFooter from "@/components/MobileFooter";
-import Header from "@/components/Header";
-import WordForm from "@/components/WordForm";
-import MotivationalSentence from "@/components/MotivationalSentence";
-import TomatoBox from "@/components/TomatoBox";
+import { useState, useEffect } from "react";
+import Layout from "@/components/Layout";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import SentenceAnalysis from "@/components/SentenceAnalysis";
-import Leaderboard from "@/components/Leaderboard";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import { analyzeSentence } from "@/utils/sentenceAnalysis";
-import { standardizeContributorName } from "@/utils/wordModeration";
+import { Smile, EyeIcon, UsersIcon } from "lucide-react";
+import { getContributorName, setContributorName } from "@/utils/contributorManager";
+import MotivationalSentence from "@/components/MotivationalSentence";
+import WordSuggestions from "@/components/WordSuggestions";
+import { saveMotivationalSentence } from "@/utils/motivationSentenceManager";
 
 const Index = () => {
+  const [name, setName] = useState<string>("");
+  const [isNameSet, setIsNameSet] = useState<boolean>(false);
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentWord, setCurrentWord] = useState("");
-  const [currentContributor, setCurrentContributor] = useState("");
-  const [currentSentence, setCurrentSentence] = useState("");
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { toast } = useToast();
 
-  // ปรับปรุงให้ใช้ useCallback สำหรับฟังก์ชันที่ถูกใช้ใน dependencies
-  const handleSentenceGenerated = useCallback((event: CustomEvent) => {
-    if (event.detail) {
-      const { word, sentence, contributor } = event.detail;
-      
-      if (word && !selectedWords.includes(word)) {
-        setSelectedWords(prev => [...prev, word]);
-      }
-      
-      if (sentence) {
-        setCurrentSentence(sentence);
-      }
-      
-      if (word) {
-        setCurrentWord(word);
-      }
-      
-      // ปรับปรุงการจัดการ contributor เพื่อให้มั่นใจว่าจะถูกส่งไปอย่างถูกต้อง
-      if (contributor) {
-        // ใช้การทำให้ชื่อเป็นมาตรฐานและบันทึกลงใน localStorage เพื่อความต่อเนื่อง
-        const safeContributor = standardizeContributorName(contributor);
-        setCurrentContributor(safeContributor);
-        localStorage.setItem('contributor-name', safeContributor);
-      }
-    }
-  }, [selectedWords]);
-  
-  // Listen for motivational sentence events with useCallback
+  // โหลดชื่อผู้ร่วมสร้างเมื่อ component ถูกโหลด
   useEffect(() => {
-    window.addEventListener('motivationalSentenceGenerated', handleSentenceGenerated as EventListener);
-    
-    return () => {
-      window.removeEventListener('motivationalSentenceGenerated', handleSentenceGenerated as EventListener);
-    };
-  }, [handleSentenceGenerated]);
-
-  // Update analysis when selected words change
-  useEffect(() => {
-    if (selectedWords.length > 0) {
-      // Pass the array of words directly to analyzeSentence
-      const result = analyzeSentence(selectedWords);
-      setAnalysisResult(result);
+    const storedName = getContributorName();
+    if (storedName && storedName !== 'ไม่ระบุชื่อ') {
+      setName(storedName);
+      setIsNameSet(true);
     }
-  }, [selectedWords]);
+  }, []);
 
-  const handleAddWord = (word: string, contributor: string, template?: string) => {
-    setIsLoading(true);
-    
-    try {
-      // Add word to selected words list if not already present
-      if (!selectedWords.includes(word)) {
-        setSelectedWords(prev => [...prev, word]);
-      }
-      
-      // Standardize contributor name และบันทึกลงใน localStorage
-      const safeContributor = standardizeContributorName(contributor);
-      localStorage.setItem('contributor-name', safeContributor);
-      
-      // Update current word and contributor
-      setCurrentWord(word);
-      setCurrentContributor(safeContributor);
-      
-      // Trigger refresh for components that depend on word updates
-      // ใช้ debounce โดยการทำ timeout เพื่อไม่ให้ trigger event บ่อยเกินไป
-      const timeoutId = setTimeout(() => {
-        setRefreshTrigger(prev => prev + 1);
-      }, 300);
-      
+  // จัดการเมื่อผู้ใช้บันทึกชื่อ
+  const handleSetName = () => {
+    if (!name.trim()) {
       toast({
-        title: "เพิ่มคำสำเร็จ",
-        description: `เพิ่มคำ "${word}" เรียบร้อยแล้ว`,
-      });
-      
-      // สร้าง event เพื่อแจ้งเตือนคอมโพเนนต์อื่นๆ
-      if (template) {
-        const event = new CustomEvent('motivationalSentenceGenerated', {
-          detail: {
-            word,
-            contributor: safeContributor,
-            template
-          }
-        });
-        window.dispatchEvent(event);
-      }
-      
-      // ล้าง timeout เมื่อคอมโพเนนต์ถูกทำลาย
-      return () => clearTimeout(timeoutId);
-    } catch (error) {
-      console.error("Error adding word:", error);
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถเพิ่มคำได้ในขณะนี้",
+        title: "กรุณาระบุชื่อ",
+        description: "โปรดระบุชื่อของคุณก่อนดำเนินการต่อ",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
+      return;
+    }
+
+    // บันทึกชื่อลงใน localStorage
+    setContributorName(name);
+    setIsNameSet(true);
+
+    toast({
+      title: "บันทึกชื่อเรียบร้อย",
+      description: `ยินดีต้อนรับคุณ ${name} สู่ระบบประโยคให้กำลังใจ`,
+    });
+  };
+
+  // จัดการเมื่อผู้ใช้เลือกคำ
+  const handleWordSelect = (word: string) => {
+    if (!selectedWords.includes(word)) {
+      setSelectedWords([...selectedWords, word]);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16 md:pb-0">
-      <Header />
-      
-      <Container className="py-8">
-        <div className="space-y-6">
-          <Alert variant="destructive" className="bg-amber-50 border-amber-200">
-            <AlertCircle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-700">
-              การเพิ่มคำใหม่เข้าสู่ระบบสามารถทำได้ในหน้า "จัดการคำลังใจ" เท่านั้น กรุณาเลือกจากคำที่มีอยู่แล้วในระบบ
-            </AlertDescription>
-          </Alert>
-
-          <Card className="hover:shadow-md transition-all duration-300">
-            <CardContent className="p-6">
-              <h2 className="text-2xl font-bold mb-4 text-center font-mitr">
-                ร่วมสร้างประโยคกำลังใจด้วยกัน
-              </h2>
-              <p className="text-center text-muted-foreground mb-4">
-                เลือกหนึ่งคำเพื่อต่อเติมประโยคกำลังใจให้ยาวที่สุด
-              </p>
-              <WordForm 
-                onAddWord={handleAddWord} 
-                isLoading={isLoading} 
-                existingWords={selectedWords}
-                showMultipleTemplates={true}
-              />
+    <Layout>
+      <div className="container mx-auto max-w-6xl space-y-6">
+        {!isNameSet ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center">ระบบประโยคให้กำลังใจ</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <UsersIcon className="h-5 w-5" />
+                  <label htmlFor="name" className="text-lg font-medium">
+                    ชื่อผู้ร่วมสร้างประโยคให้กำลังใจ
+                  </label>
+                </div>
+                <Input 
+                  id="name" 
+                  placeholder="ระบุชื่อของคุณ" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground">
+                  ชื่อของคุณจะถูกแสดงเมื่อประโยคให้กำลังใจของคุณปรากฏในระบบ
+                </p>
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={handleSetName}
+                disabled={!name.trim()}
+              >
+                <Smile className="h-4 w-4 mr-2" />
+                เริ่มสร้างประโยคให้กำลังใจ
+              </Button>
             </CardContent>
           </Card>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-6">
-              <h3 className="text-xl font-semibold">ประโยคกำลังใจปัจจุบัน</h3>
-              
-              <MotivationalSentence 
-                selectedWords={selectedWords} 
-                shouldDisplay={currentSentence !== ""}
-                currentSentence={currentSentence}
-              />
-              
-              {currentWord && (
-                <div className="space-y-4 animate-fade-in">
-                  <h3 className="text-xl font-semibold">คำล่าสุดของคุณ</h3>
-                  <TomatoBox 
-                    word={currentWord} 
-                    contributor={currentContributor} 
-                    sentence={currentSentence}
-                    selectedWords={selectedWords}
-                  />
-                </div>
-              )}
-              
-              <div className="space-y-6">
-                <h3 className="text-xl font-semibold">วิเคราะห์พลังบวก</h3>
-                <SentenceAnalysis 
-                  words={selectedWords} 
-                  analysisResult={analysisResult} 
-                />
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Smile className="h-5 w-5 text-primary" />
+                      <span>ยินดีต้อนรับคุณ {name}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="mb-4">
+                      เลือกคำจากรายการด้านล่างเพื่อสร้างประโยคให้กำลังใจที่มีคำเหล่านั้น
+                    </p>
+                    
+                    {/* คำที่เลือกแล้ว */}
+                    {selectedWords.length > 0 && (
+                      <div className="mb-4">
+                        <h3 className="text-sm font-medium mb-2">คำที่เลือกแล้ว:</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedWords.map((word, index) => (
+                            <div key={index} className="px-3 py-1 bg-primary/10 rounded-full text-primary">
+                              {word}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* แสดงประโยคให้กำลังใจ */}
+                    <MotivationalSentence selectedWords={selectedWords} />
+                    
+                    {/* แสดงคำแนะนำ */}
+                    <WordSuggestions onWordSelect={handleWordSelect} selectedWords={selectedWords} />
+                  </CardContent>
+                </Card>
+              </div>
+              <div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <EyeIcon className="h-5 w-5" />
+                      <span>คำแนะนำการใช้งาน</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-3 bg-secondary rounded-md">
+                      <h3 className="font-medium mb-2">วิธีการสร้างประโยคให้กำลังใจ</h3>
+                      <ol className="space-y-2 list-decimal ml-5">
+                        <li>เลือกคำจากรายการ "คำแนะนำ" ด้านล่าง</li>
+                        <li>คลิกที่คำที่ต้องการใช้</li>
+                        <li>ระบบจะสร้างประโยคให้กำลังใจที่มีคำนั้น</li>
+                        <li>ประโยคจะถูกบันทึกและแสดงในส่วน "ประโยคให้กำลังใจ"</li>
+                      </ol>
+                    </div>
+                    
+                    <div className="p-3 bg-primary/10 rounded-md">
+                      <h3 className="font-medium mb-2">ประเภทความรู้สึก</h3>
+                      <ul className="space-y-2">
+                        <li className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                          <span>เชิงบวก - ประโยคที่ให้ความรู้สึกดี (2 คะแนน)</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                          <span>กลาง - ประโยคที่เป็นกลาง (1 คะแนน)</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                          <span>เชิงลบ - ประโยคที่ท้าทาย (-1 คะแนน)</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
-            
-            <div className="space-y-6">
-              <div className="w-full">
-                <Leaderboard refreshTrigger={refreshTrigger} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </Container>
-      
-      <MobileFooter />
-    </div>
+          </>
+        )}
+      </div>
+    </Layout>
   );
 };
 

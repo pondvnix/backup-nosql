@@ -181,6 +181,20 @@ const MoodReport = ({ sentences }: MoodReportProps) => {
         return 'กลาง';
     }
   };
+  
+  // Get mood score based on polarity
+  const getMoodScore = (polarity: string | undefined): number => {
+    switch (polarity) {
+      case 'positive':
+        return 2;  // ความรู้สึกเชิงบวก = 2 คะแนน
+      case 'neutral':
+        return 1;  // ความรู้สึกกลาง = 1 คะแนน
+      case 'negative':
+        return -1; // ความรู้สึกเชิงลบ = -1 คะแนน
+      default:
+        return 0;
+    }
+  };
 
   // Calculate polarity distribution for the pie chart
   const polarityData = useMemo(() => [
@@ -470,6 +484,7 @@ const MoodReport = ({ sentences }: MoodReportProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead>ความรู้สึก</TableHead>
+                <TableHead>คะแนน</TableHead>
                 <TableHead>คำ</TableHead>
                 <TableHead>ประโยคกำลังใจ</TableHead>
                 <TableHead>ผู้ให้กำลังใจ</TableHead>
@@ -481,6 +496,9 @@ const MoodReport = ({ sentences }: MoodReportProps) => {
                 <TableRow key={index}>
                   <TableCell>
                     {getMoodIcon(sentence.polarity || 'neutral')}
+                  </TableCell>
+                  <TableCell>
+                    {getMoodScore(sentence.polarity)}
                   </TableCell>
                   <TableCell className="font-medium text-primary">
                     {sentence.word}

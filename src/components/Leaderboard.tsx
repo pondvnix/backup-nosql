@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getContributorStats } from "@/utils/wordModeration";
@@ -83,12 +84,28 @@ const analyzeSentencesByTemplate = (sentences: MotivationalSentence[]): Motivati
     if (sentence.template) {
       const analysis = analyzeSentimentFromSentence("", sentence.template);
       polarity = analysis.sentiment;
-      score = analysis.score;
+      
+      // กำหนดคะแนนตามเกณฑ์ใหม่
+      if (polarity === 'positive') {
+        score = 2;
+      } else if (polarity === 'neutral') {
+        score = 1;
+      } else {
+        score = -1;
+      }
     } 
     else {
       const analysis = analyzeSentimentFromSentence(sentence.sentence);
       polarity = analysis.sentiment;
-      score = analysis.score;
+      
+      // กำหนดคะแนนตามเกณฑ์ใหม่
+      if (polarity === 'positive') {
+        score = 2;
+      } else if (polarity === 'neutral') {
+        score = 1;
+      } else {
+        score = -1;
+      }
     }
     
     return {
@@ -126,18 +143,18 @@ const highlightWord = (sentence: string, word: string): React.ReactNode => {
 };
 
 const getSentimentIcon = (item: MotivationalSentence) => {
-  const score = item.score !== undefined ? item.score : 0;
+  const polarity = item.polarity || 'neutral';
   
-  if (score > 0) return <Smile className="h-4 w-4 text-green-500" />;
-  if (score < 0) return <Frown className="h-4 w-4 text-red-500" />;
+  if (polarity === 'positive') return <Smile className="h-4 w-4 text-green-500" />;
+  if (polarity === 'negative') return <Frown className="h-4 w-4 text-red-500" />;
   return <Meh className="h-4 w-4 text-blue-500" />;
 };
 
 const getBadgeVariant = (item: MotivationalSentence) => {
-  const score = item.score !== undefined ? item.score : 0;
+  const polarity = item.polarity || 'neutral';
   
-  if (score > 0) return 'success';
-  if (score < 0) return 'destructive';
+  if (polarity === 'positive') return 'success';
+  if (polarity === 'negative') return 'destructive';
   return 'secondary';
 };
 
@@ -169,10 +186,10 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     let longestSentence = { text: '', length: 0, contributor: '' };
     
     sentences.forEach(sentence => {
-      const score = sentence.score !== undefined ? sentence.score : 0;
+      const polarity = sentence.polarity || 'neutral';
       
-      if (score > 0) positiveSentences++;
-      else if (score < 0) negativeSentences++;
+      if (polarity === 'positive') positiveSentences++;
+      else if (polarity === 'negative') negativeSentences++;
       else neutralSentences++;
       
       const cleanedSentence = cleanText(sentence.sentence);
@@ -267,10 +284,10 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
     removeDuplicateSentences(motivationalSentences).slice(-5).reverse() : [];
 
   const getPolarityText = (item: MotivationalSentence): string => {
-    const score = item.score !== undefined ? item.score : 0;
+    const polarity = item.polarity || 'neutral';
     
-    if (score > 0) return 'เชิงบวก';
-    if (score < 0) return 'เชิงลบ';
+    if (polarity === 'positive') return 'เชิงบวก';
+    if (polarity === 'negative') return 'เชิงลบ';
     return 'กลาง';
   };
 
@@ -390,7 +407,9 @@ const Leaderboard = ({ contributors: propContributors, refreshTrigger, allSenten
                       </div>
                     </TableCell>
                     <TableCell>
-                      {item.score !== undefined ? item.score : 0}
+                      {item.score !== undefined ? item.score : 
+                       item.polarity === 'positive' ? 2 : 
+                       item.polarity === 'neutral' ? 1 : -1}
                     </TableCell>
                     <TableCell className="font-medium">
                       {item.contributor || 'ไม่ระบุชื่อ'}

@@ -1,96 +1,67 @@
 
-// Function to extract sentiment from a template string
-export const extractSentimentFromTemplate = (template: string | undefined): { sentiment: 'positive' | 'neutral' | 'negative'; text: string } => {
-  let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
-  let text = '';
-  
-  if (!template || typeof template !== 'string') {
-    return { sentiment, text };
+// ฟังก์ชันวิเคราะห์ sentiment จากประโยค
+export const analyzeSentimentFromSentence = (
+  sentence: string,
+  template?: string
+): { sentiment: 'positive' | 'neutral' | 'negative'; score: number } => {
+  // ถ้ามี template ให้วิเคราะห์จาก template ก่อน
+  if (template) {
+    const { sentiment } = extractSentimentFromTemplate(template);
+    
+    // กำหนดคะแนนตามเกณฑ์
+    let score: number;
+    switch (sentiment) {
+      case 'positive':
+        score = 2;  // ความรู้สึกเชิงบวก = 2 คะแนน
+        break;
+      case 'neutral':
+        score = 1;  // ความรู้สึกกลาง = 1 คะแนน
+        break;
+      case 'negative':
+        score = -1; // ความรู้สึกเชิงลบ = -1 คะแนน
+        break;
+      default:
+        score = 0;
+    }
+    
+    return { sentiment, score };
   }
   
-  text = template;
+  // วิเคราะห์จากประโยคโดยตรง
+  if (sentence.includes('${บวก}')) {
+    return { sentiment: 'positive', score: 2 };
+  } else if (sentence.includes('${ลบ}')) {
+    return { sentiment: 'negative', score: -1 };
+  } else if (sentence.includes('${กลาง}')) {
+    return { sentiment: 'neutral', score: 1 };
+  }
+  
+  // ถ้าไม่มีตัวบ่งชี้ใด ๆ ให้เป็น neutral
+  return { sentiment: 'neutral', score: 1 };
+};
 
-  // Check for sentiment prefixes and remove them
+// ฟังก์ชันดึง sentiment จาก template
+export const extractSentimentFromTemplate = (
+  template: string
+): { sentiment: 'positive' | 'neutral' | 'negative'; text: string } => {
+  let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
+  let text = template;
+  
   if (template.includes('${บวก}')) {
     sentiment = 'positive';
-    text = template.replace('${บวก}', '');
-  } else if (template.includes('${กลาง}')) {
-    sentiment = 'neutral';
-    text = template.replace('${กลาง}', '');
+    text = template.replace(/\$\{บวก\}/g, '');
   } else if (template.includes('${ลบ}')) {
     sentiment = 'negative';
-    text = template.replace('${ลบ}', '');
+    text = template.replace(/\$\{ลบ\}/g, '');
+  } else if (template.includes('${กลาง}')) {
+    sentiment = 'neutral';
+    text = template.replace(/\$\{กลาง\}/g, '');
   }
-
+  
   return { sentiment, text };
 };
 
-// Function to analyze sentiment from a sentence
-export const analyzeSentimentFromSentence = (sentence: string | undefined, template?: string | undefined): { sentiment: 'positive' | 'neutral' | 'negative'; score: number } => {
-  // If a template is provided, use it to determine sentiment
-  if (template && typeof template === 'string') {
-    if (template.includes('${บวก}')) {
-      return { sentiment: 'positive', score: 1 };
-    } else if (template.includes('${ลบ}')) {
-      return { sentiment: 'negative', score: -1 };
-    } else if (template.includes('${กลาง}')) {
-      return { sentiment: 'neutral', score: 0 };
-    }
-  }
-  
-  // Ensure sentence is a valid string before analysis
-  const validSentence = typeof sentence === 'string' ? sentence : '';
-  
-  // Simple sentiment analysis for the sentence if no template or template doesn't have sentiment markers
-  const positiveWords = ['ดี', 'สุข', 'รัก', 'ชอบ', 'ยิ้ม', 'สวย', 'เยี่ยม', 'ประสบความสำเร็จ', 'พลัง', 'กำลังใจ'];
-  const negativeWords = ['แย่', 'เศร้า', 'เจ็บ', 'เสียใจ', 'กลัว', 'โกรธ', 'ล้มเหลว', 'ยาก', 'ปัญหา', 'ยาก'];
-
-  // Count positive and negative words in the sentence
-  let positiveCount = 0;
-  let negativeCount = 0;
-
-  // Only process if sentence is a string
-  if (typeof validSentence === 'string') {
-    positiveWords.forEach(word => {
-      if (validSentence.toLowerCase().includes(word.toLowerCase())) {
-        positiveCount++;
-      }
-    });
-
-    negativeWords.forEach(word => {
-      if (validSentence.toLowerCase().includes(word.toLowerCase())) {
-        negativeCount++;
-      }
-    });
-  }
-
-  // Calculate sentiment score
-  const score = positiveCount - negativeCount;
-
-  // Determine sentiment based on score
-  let sentiment: 'positive' | 'neutral' | 'negative' = 'neutral';
-  if (score > 0) {
-    sentiment = 'positive';
-  } else if (score < 0) {
-    sentiment = 'negative';
-  }
-
-  return { sentiment, score };
-};
-
-// Get sentiment badge variant based on sentiment
-export const getSentimentBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative'): 'success' | 'secondary' | 'destructive' => {
-  switch (sentiment) {
-    case 'positive':
-      return 'success';
-    case 'negative':
-      return 'destructive';
-    default:
-      return 'secondary';
-  }
-};
-
-// Get polarity text based on sentiment
+// ฟังก์ชันแปลง sentiment เป็นคำไทย
 export const getPolarityText = (sentiment?: 'positive' | 'neutral' | 'negative'): string => {
   switch (sentiment) {
     case 'positive':
@@ -99,5 +70,17 @@ export const getPolarityText = (sentiment?: 'positive' | 'neutral' | 'negative')
       return 'เชิงลบ';
     default:
       return 'กลาง';
+  }
+};
+
+// ฟังก์ชันแปลง sentiment เป็น badge variant
+export const getSentimentBadgeVariant = (sentiment?: 'positive' | 'neutral' | 'negative'): string => {
+  switch (sentiment) {
+    case 'positive':
+      return 'success';
+    case 'negative':
+      return 'destructive';
+    default:
+      return 'secondary';
   }
 };
