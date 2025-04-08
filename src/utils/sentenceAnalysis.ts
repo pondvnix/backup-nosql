@@ -1,3 +1,4 @@
+
 // Type definitions for sentiment analysis
 export interface SentimentAnalysisResult {
   overallSentiment: 'positive' | 'neutral' | 'negative';
@@ -78,7 +79,7 @@ export const analyzeSentence = (input: string | string[]): SentimentAnalysisResu
     let wordScore = 0;
     
     if (wordEntry) {
-      wordSentiment = wordEntry.sentiment;
+      wordSentiment = wordEntry.sentiment as 'positive' | 'neutral' | 'negative';
       wordScore = wordEntry.score;
     }
     
@@ -199,4 +200,16 @@ export const generateTemplateForWord = (word: string): string => {
   
   const randomIndex = Math.floor(Math.random() * templates.length);
   return templates[randomIndex];
+};
+
+// Add the getWordPolarity function that was missing
+export const getWordPolarity = (word: string): { sentiment: 'positive' | 'neutral' | 'negative', score: number } | undefined => {
+  const wordEntry = wordPolarityDatabase.find(entry => entry.word === word);
+  if (wordEntry) {
+    return {
+      sentiment: wordEntry.sentiment as 'positive' | 'neutral' | 'negative',
+      score: wordEntry.score
+    };
+  }
+  return undefined;
 };

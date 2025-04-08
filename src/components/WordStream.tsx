@@ -15,6 +15,7 @@ import TomatoBox from "@/components/TomatoBox";
 import SentenceAnalysis from "@/components/SentenceAnalysis";
 import Leaderboard from "@/components/Leaderboard";
 import { analyzeSentence } from "@/utils/sentenceAnalysis";
+import { areAllWordsUsed } from "@/utils/wordModeration";
 
 interface Word {
   text: string;
@@ -57,6 +58,7 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
   const [motivationalSentence, setMotivationalSentence] = useState<string>("");
   const [shouldDisplaySentence, setShouldDisplaySentence] = useState<boolean>(false);
   const [allSentences, setAllSentences] = useState<MotivationalSentenceEntry[]>([]);
+  const [areAllWordsInDbUsed, setAreAllWordsInDbUsed] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
   const handleNewWord = (word: string) => {
@@ -103,6 +105,9 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
       const wordTexts = words.map(word => word.text);
       const result = analyzeSentence(wordTexts);
       setAnalysisResult(result);
+      
+      // Check if all words in the database have been used
+      setAreAllWordsInDbUsed(areAllWordsUsed(wordTexts));
     }
   }, [words]);
 
@@ -257,7 +262,16 @@ const WordStream = ({ onAddWord }: WordStreamProps) => {
   const wordTexts = Array.isArray(words) ? words.map(word => word.text) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sarabun">
+      {areAllWordsInDbUsed && (
+        <Alert variant="destructive" className="bg-red-50 border-red-200">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-700">
+            คำทั้งหมดในคลังถูกใช้แล้ว โปรดแจ้งผู้ดูแลระบบเพื่อเพิ่มคำใหม่
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <Alert variant="destructive" className="bg-amber-50 border-amber-200">
         <AlertCircle className="h-4 w-4 text-amber-600" />
         <AlertDescription className="text-amber-700">

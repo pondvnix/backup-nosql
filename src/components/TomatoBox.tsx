@@ -73,7 +73,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sarabun">
       {/* Hidden div that will be converted to image */}
       <div id="tomato-box-content" className="bg-white p-6 rounded-lg shadow-lg max-w-lg mx-auto" style={{ display: "block" }}>
         <div className="relative border-4 border-red-600 p-6 rounded-lg bg-gradient-to-r from-red-50 to-orange-50">
@@ -89,7 +89,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
               </div>
             </div>
             <div className="text-xs text-red-600 bg-red-50 border border-red-200 px-2 py-1 rounded">
-              กล่องน้ำมะเขือเทศ
+              กล่องคำลังใจ
             </div>
           </div>
           
@@ -107,7 +107,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
             
             <div className="w-2/3">
               <div className="bg-white py-3 px-4 rounded-lg shadow-inner border border-red-100">
-                <h2 className="text-xl font-semibold text-red-800 mb-1">น้ำมะเขือเทศเข้มข้น</h2>
+                <h2 className="text-xl font-semibold text-red-800 mb-1">กล่องคำลังใจ</h2>
                 <p className="text-orange-500 font-medium text-lg mb-2">"{word}"</p>
                 <div className="text-xs text-gray-500 mt-1 flex justify-between">
                   <span>ขนาด 100%</span>
@@ -150,7 +150,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
           <div className="mt-4 pt-3 border-t border-red-200 flex justify-between items-center">
             <div className="text-xs text-red-700">
               <p>ผลิตโดย โครงการส่วนพระองค์ สวนจิตรลดา</p>
-              <p>กล่องน้ำมะเขือเทศดอยคำ - ข้อความให้กำลังใจ</p>
+              <p>กล่องคำลังใจ - ข้อความให้กำลังใจ</p>
             </div>
             <div className="text-xs text-red-600 bg-white px-2 py-1 rounded-full border border-red-200">
               กำลังใจ
@@ -163,11 +163,11 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
       {imageUrl && (
         <Card className="p-4 bg-gradient-to-br from-orange-50 to-red-50 border-orange-200">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-orange-800 mb-4">กล่องน้ำมะเขือเทศดอยคำของคุณ</h3>
+            <h3 className="text-lg font-semibold text-orange-800 mb-4">กล่องคำลังใจของคุณ</h3>
             <div className="bg-white p-2 rounded-lg shadow-md mb-4">
               <img
                 src={imageUrl}
-                alt="Tomato Box"
+                alt="Doikham Box"
                 className="max-w-full h-auto mx-auto rounded-lg"
               />
             </div>
@@ -176,7 +176,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
               {/* Download button */}
               <a
                 href={imageUrl}
-                download={`doikham_tomato_box_${word}_${contributor}.png`}
+                download={`doikham_box_${word}_${contributor}.png`}
                 className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 gap-2 animate-fade-in"
               >
                 <Download className="h-4 w-4" />
@@ -188,7 +188,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
                 platform="facebook" 
                 url={window.location.href} 
                 sectionId="tomato-box-section"
-                text={`กล่องน้ำมะเขือเทศดอยคำ: "${word}" โดย ${contributor}`}
+                text={`กล่องคำลังใจดอยคำ: "${word}" โดย ${contributor}`}
                 className="bg-blue-600 text-white hover:bg-blue-700 h-10 animate-fade-in"
               />
               
@@ -197,7 +197,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
                 platform="twitter" 
                 url={window.location.href} 
                 sectionId="tomato-box-section"
-                text={`กล่องน้ำมะเขือเทศดอยคำ: "${word}" โดย ${contributor}`}
+                text={`กล่องคำลังใจดอยคำ: "${word}" โดย ${contributor}`}
                 className="bg-black text-white hover:bg-gray-800 h-10 animate-fade-in"
               />
               
@@ -217,7 +217,7 @@ const TomatoBox = ({ word = "กำลังใจ", contributor = "ไม่ร
 
       {isGenerating && (
         <div className="text-center py-4 animate-pulse">
-          <p className="text-orange-600">กำลังสร้างกล่องน้ำมะเขือเทศ...</p>
+          <p className="text-orange-600">กำลังสร้างกล่องคำลังใจ...</p>
         </div>
       )}
     </div>

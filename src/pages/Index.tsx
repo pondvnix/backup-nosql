@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import Layout from "../components/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -5,14 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, ThumbsUp, PlusCircle, ArrowRight, Smile, Meh, Frown } from "lucide-react";
+import { Heart, ThumbsUp, PlusCircle, ArrowRight, Smile, Meh, Frown, AlertCircle } from "lucide-react";
 import { wordPolarityDatabase } from "@/utils/sentenceAnalysis";
-import { getRandomWord } from "@/utils/wordModeration";
+import { getRandomWord, saveWordContribution, areAllWordsUsed } from "@/utils/wordModeration";
 import MotivationalSentence from "@/components/MotivationalSentence";
 import MoodReport from "@/components/MoodReport";
-import { saveWordContribution } from "@/utils/wordModeration";
 import { getContributorName, setContributorName } from "@/utils/contributorManager";
-import { updateMetaTitleAndDescription } from "@/utils/metaConfig";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Index = () => {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
@@ -21,16 +21,16 @@ const Index = () => {
   const [contributor, setContributor] = useState("");
   const [displaySentence, setDisplaySentence] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [allWordsUsed, setAllWordsUsed] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    updateMetaTitleAndDescription({
-      title: 'คำลังใจ - แพลตฟอร์มสร้างกำลังใจด้วยภาษาไทย',
-      description: 'แพลตฟอร์มสำหรับแชร์ข้อความให้กำลังใจและสร้างแรงบันดาลใจด้วยภาษาไทย',
-      imageUrl: 'https://wpmart.co/wp-content/uploads/2024/09/cropped-Favicon_WP-1-192x192.png',
-      twitterHandle: '@wordstream',
-      siteUrl: window.location.origin
-    });
+    // Set meta title and description
+    document.title = 'คำลังใจ - แพลตฟอร์มสร้างกำลังใจด้วยภาษาไทย';
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute('content', 'แพลตฟอร์มสำหรับแชร์ข้อความให้กำลังใจและสร้างแรงบันดาลใจด้วยภาษาไทย');
+    }
   }, []);
 
   const loadSuggestedWords = useCallback(() => {
@@ -42,7 +42,10 @@ const Index = () => {
       }
     }
     setSuggestedWords(wordList);
-  }, []);
+    
+    // Check if all words have been used
+    setAllWordsUsed(areAllWordsUsed(selectedWords));
+  }, [selectedWords]);
 
   useEffect(() => {
     const savedContributor = getContributorName();
@@ -150,7 +153,7 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-8 font-sarabun">
         <section className="text-center">
           <h1 className="text-4xl font-bold mb-2">
             <span className="text-primary">"คำ"</span>ลังใจ
@@ -173,7 +176,7 @@ const Index = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PlusCircle className="h-5 w-5 text-primary" />
-                เ��ิ่มคำใหม่
+                เพิ่มคำใหม่
               </CardTitle>
               <CardDescription>
                 เพิ่มคำที่คุณต้องการจะใช้ในประโยคให้กำลังใจ
@@ -238,20 +241,29 @@ const Index = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {suggestedWords.map((word, index) => (
-                  <div key={`${word}-${index}`} className="relative">
-                    <Button
-                      variant="outline"
-                      className="w-full h-auto py-6 flex flex-col items-center justify-center gap-2 text-base hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors"
-                      onClick={() => handleSuggestedWordClick(word)}
-                    >
-                      <span className="text-[#F97316] font-semibold">{word}</span>
-                    </Button>
-                    {getSentimentBadge(word)}
-                  </div>
-                ))}
-              </div>
+              {allWordsUsed ? (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    คำทั้งหมดในคลังถูกใช้แล้ว โปรดแจ้งผู้ดูแลระบบเพื่อเพิ่มคำใหม่
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {suggestedWords.map((word, index) => (
+                    <div key={`${word}-${index}`} className="relative">
+                      <Button
+                        variant="outline"
+                        className="w-full h-auto py-6 flex flex-col items-center justify-center gap-2 text-base hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors"
+                        onClick={() => handleSuggestedWordClick(word)}
+                      >
+                        <span className="text-[#F97316] font-semibold">{word}</span>
+                      </Button>
+                      {getSentimentBadge(word)}
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div className="mt-4 flex justify-end">
                 <Button 
@@ -280,7 +292,7 @@ const Index = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <MoodReport limit={5} />
+                <MoodReport limit={5} refreshKey={refreshTrigger} />
               </CardContent>
             </Card>
           </div>

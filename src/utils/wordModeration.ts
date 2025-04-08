@@ -16,6 +16,7 @@ export interface WordEntry {
   polarity?: number;
   isCustom?: boolean;
   sentiment?: 'positive' | 'neutral' | 'negative';
+  score?: number;
 }
 
 // ฟังก์ชันอัปเดตสถิติการใช้คำของผู้ร่วมสร้าง
@@ -248,7 +249,9 @@ export const saveWordContribution = (word: string, contributor: string): boolean
       const newWordEntry: WordEntry = {
         word,
         templates: [`${word} เป็นสิ่งที่สำคัญในชีวิต`],
-        isCustom: true
+        isCustom: true,
+        sentiment: 'neutral',
+        score: 0
       };
       
       addWord(newWordEntry);
@@ -267,4 +270,27 @@ export const saveWordContribution = (word: string, contributor: string): boolean
     console.error("Error saving word contribution:", error);
     return false;
   }
+};
+
+// Function to check if all words in the database have been used
+export const areAllWordsUsed = (selectedWords: string[]): boolean => {
+  const wordEntries = getWordDatabase();
+  
+  // If database is empty, use default word list
+  if (wordEntries.length === 0) {
+    const defaultWords = [
+      "กำลังใจ", "ความหวัง", "ความฝัน", "ความสุข", "ความรัก", 
+      "พลัง", "ศรัทธา", "ความเชื่อ", "ความเพียร", "ความอดทน",
+      "ความสำเร็จ", "ความดี", "ความจริง", "ความกล้า", "มิตรภาพ",
+      "ครอบครัว", "ความสามัคคี", "สติปัญญา", "สุขภาพ", "การเรียนรู้",
+      "การเติบโต", "ความเข้มแข็ง", "ความมุ่งมั่น", "ความตั้งใจ", "การให้อภัย"
+    ];
+    return selectedWords.length >= defaultWords.length;
+  }
+  
+  // Check if all words from the database have been used
+  const availableWords = wordEntries.map(entry => entry.word);
+  const unusedWords = availableWords.filter(word => !selectedWords.includes(word));
+  
+  return unusedWords.length === 0;
 };
