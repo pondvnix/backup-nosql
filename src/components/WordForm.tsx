@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,7 +99,6 @@ const WordForm = ({
     e.preventDefault();
     
     const trimmedWord = word.trim();
-    // Standardize empty contributor as "ไม่ระบุชื่อ"
     const trimmedContributor = contributor.trim() || "ไม่ระบุชื่อ";
 
     const validation = validateWordInput(trimmedWord, trimmedContributor);
@@ -138,7 +136,7 @@ const WordForm = ({
         word: trimmedWord,
         sentence: sentence,
         template: template,
-        contributor: trimmedContributor, // Use standardized contributor name
+        contributor: trimmedContributor,
         timestamp: new Date(),
         polarity: wordEntry.polarity,
         score: wordEntry.score || (wordEntry.polarity === 'positive' ? 1 : wordEntry.polarity === 'negative' ? -1 : 0)
@@ -163,7 +161,7 @@ const WordForm = ({
         detail: { 
           sentence,
           word: trimmedWord,
-          contributor: trimmedContributor, // Use standardized contributor name
+          contributor: trimmedContributor,
           template,
           polarity: wordEntry.polarity,
           score: wordEntry.score || (wordEntry.polarity === 'positive' ? 1 : wordEntry.polarity === 'negative' ? -1 : 0)
@@ -187,7 +185,6 @@ const WordForm = ({
   };
 
   const handleSelectWord = (selectedWord: string, contributor: string, template?: string) => {
-    // Standardize empty contributor as "ไม่ระบุชื่อ"
     const trimmedContributor = contributor.trim() || "ไม่ระบุชื่อ";
     localStorage.setItem("contributor-name", trimmedContributor);
     
@@ -199,14 +196,13 @@ const WordForm = ({
       });
     }
     
-    // Get word entry from database to ensure we have correct polarity and score
     const wordEntry = wordDatabase.find(entry => entry.word === selectedWord);
     if (wordEntry && template) {
       const newSentenceEntry = {
         word: selectedWord,
         sentence: template.replace(new RegExp(`\\$\\{${selectedWord}\\}`, 'g'), selectedWord),
         template: template,
-        contributor: trimmedContributor, // Use standardized contributor name
+        contributor: trimmedContributor,
         timestamp: new Date(),
         polarity: wordEntry.polarity,
         score: wordEntry.score || (wordEntry.polarity === 'positive' ? 1 : wordEntry.polarity === 'negative' ? -1 : 0)
@@ -226,7 +222,6 @@ const WordForm = ({
   };
 
   const handleSelectSuggestion = (selectedWord: string, template?: string) => {
-    // Standardize empty contributor as "ไม่ระบุชื่อ"
     const contributorName = contributor.trim() || "ไม่ระบุชื่อ";
     localStorage.setItem("contributor-name", contributorName);
     
@@ -288,8 +283,8 @@ const WordForm = ({
         <TabsContent value="suggestions" className="mt-4 animate-fade-in">
           {contributor.trim() ? (
             <WordSuggestions
+              onWordSelect={(word) => handleSelectWord(word)}
               selectedWords={existingWords}
-              onWordSelect={handleSelectSuggestion}
               disableAutoRefresh={disableSuggestionRefresh}
               showMultipleTemplates={showMultipleTemplates}
             />

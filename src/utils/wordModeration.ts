@@ -32,33 +32,34 @@ export const standardizeContributorName = (contributor?: string): string => {
 // Implement the missing functions
 // Recent words handling functions
 export const addWord = (word: string): void => {
-  const recentWords = getRecentWords();
-  
-  // Add the word to the beginning of the array if it doesn't exist
-  if (!recentWords.includes(word)) {
-    recentWords.unshift(word);
+  try {
+    const recentWords = getRecentWords();
     
-    // Keep only the most recent 10 words
-    const limitedWords = recentWords.slice(0, 10);
-    
-    localStorage.setItem('recent-words', JSON.stringify(limitedWords));
-  } else {
-    // If the word exists, move it to the front
-    const filteredWords = recentWords.filter(w => w !== word);
-    filteredWords.unshift(word);
-    
-    localStorage.setItem('recent-words', JSON.stringify(filteredWords.slice(0, 10)));
+    // Add the word only if it's not already in the list
+    if (!recentWords.includes(word)) {
+      recentWords.unshift(word); // Add to the beginning of the array
+      
+      // Keep only the most recent 10 words
+      const trimmedWords = recentWords.slice(0, 10);
+      
+      localStorage.setItem('recent-words', JSON.stringify(trimmedWords));
+    }
+  } catch (error) {
+    console.error("Error adding word to recent words:", error);
   }
 };
 
 export const getRecentWords = (): string[] => {
   try {
     const storedWords = localStorage.getItem('recent-words');
-    return storedWords ? JSON.parse(storedWords) : [];
+    if (storedWords) {
+      return JSON.parse(storedWords);
+    }
   } catch (error) {
-    console.error("Error reading recent words from localStorage:", error);
-    return [];
+    console.error("Error retrieving recent words:", error);
   }
+  
+  return [];
 };
 
 // ฟังก์ชั่นตรวจสอบความถูกต้องของคำที่ป้อนเข้ามา

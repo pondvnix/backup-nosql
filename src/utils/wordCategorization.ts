@@ -1,6 +1,4 @@
 
-// Create the missing wordCategorization.ts file
-
 /**
  * Utility for categorizing words by sentiment
  */

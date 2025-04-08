@@ -2,17 +2,15 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRight, Sparkles, Search, X, History } from "lucide-react";
+import { ArrowRight, Sparkles, Search, X } from "lucide-react";
 import { getWordSentiment } from "@/utils/sentimentAnalysis";
 import { filterWordsByCategory } from "@/utils/wordCategorization";
 import { addWord, getRecentWords } from "@/utils/wordModeration";
 import { promptForContributorName } from "@/utils/contributorManager";
-import { saveMotivationalSentence } from "@/utils/motivationSentenceManager";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface WordSuggestionsProps {
   onWordSelect: (word: string) => void;
@@ -29,7 +27,7 @@ const WordSuggestions = ({
 }: WordSuggestionsProps) => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("positive");
+  const [selectedCategory, setSelectedCategory] = useState("suggested");
   const [recentWords, setRecentWords] = useState<string[]>([]);
   
   // คำแนะนำตามประเภท
@@ -45,22 +43,13 @@ const WordSuggestions = ({
 
   // กรองคำตามหมวดหมู่ที่เลือก
   const filteredWords = () => {
-    let words = [];
-    
-    switch (activeTab) {
-      case "positive":
-        words = positiveWords;
-        break;
-      case "neutral":
-        words = neutralWords;
-        break;
-      case "negative":
-        words = negativeWords;
-        break;
-      case "recent":
-        words = recentWords;
-        break;
+    if (selectedCategory === "custom") {
+      return [];
     }
+    
+    let words = [];
+    // เนื่องจากเราต้องการแสดงทั้ง positive, neutral และ negative ใน suggested
+    words = [...positiveWords, ...neutralWords, ...negativeWords];
     
     if (searchTerm) {
       return words.filter(word => word.includes(searchTerm));
@@ -91,8 +80,6 @@ const WordSuggestions = ({
     // ดึงฟังก์ชันแสดงประโยคให้กำลังใจจาก window object (กำหนดโดย MotivationalSentence.tsx)
     if ((window as any).showMotivationalSentence) {
       (window as any).showMotivationalSentence(word);
-      
-      // เราไม่ต้องบันทึกประโยคตรงนี้อีกแล้ว เพราะจะจัดการในฝั่งของ MotivationalSentence.tsx
     }
   };
 
@@ -155,11 +142,26 @@ const WordSuggestions = ({
             <h3 className="text-lg font-medium">คำแนะนำ</h3>
           </div>
           
+          <RadioGroup 
+            value={selectedCategory}
+            onValueChange={setSelectedCategory}
+            className="flex items-center gap-4 mb-3"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="suggested" id="suggested" />
+              <Label htmlFor="suggested">แนะนำคำ</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="custom" id="custom" />
+              <Label htmlFor="custom">พิมพ์เอง</Label>
+            </div>
+          </RadioGroup>
+          
           <div className="flex relative">
             <div className="relative w-full">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="ค้นหาหรือเพิ่มคำใหม่..."
+                placeholder={selectedCategory === "custom" ? "พิมพ์คำของคุณ..." : "ค้นหาคำ..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-8 pr-8"
@@ -174,7 +176,7 @@ const WordSuggestions = ({
               )}
             </div>
             
-            {searchTerm && (
+            {selectedCategory === "custom" && (
               <Button 
                 onClick={handleAddCustomWord}
                 className="ml-2"
@@ -185,44 +187,38 @@ const WordSuggestions = ({
             )}
           </div>
           
-          <Tabs defaultValue="positive" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-4 mb-2">
-              <TabsTrigger value="positive">เชิงบวก</TabsTrigger>
-              <TabsTrigger value="neutral">กลาง</TabsTrigger>
-              <TabsTrigger value="negative">เชิงลบ</TabsTrigger>
-              <TabsTrigger value="recent" className="flex items-center gap-1">
-                <History className="h-3.5 w-3.5" />
-                <span>ล่าสุด</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            {["positive", "neutral", "negative", "recent"].map((tab) => (
-              <TabsContent key={tab} value={tab} className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {filteredWords().map((word) => (
-                    <Button
-                      key={word}
-                      variant="outline"
-                      size="sm"
-                      className={`flex items-center ${
-                        selectedWords.includes(word) ? "bg-primary/10 border-primary/30" : ""
-                      }`}
-                      onClick={() => handleWordClick(word)}
-                    >
-                      {word}
-                      <ArrowRight className="ml-1 h-3 w-3" />
-                    </Button>
-                  ))}
-                  
-                  {filteredWords().length === 0 && (
-                    <div className="w-full text-center py-2 text-muted-foreground">
-                      {tab === "recent" ? "ไม่มีคำที่ใช้ล่าสุด" : `ไม่พบคำที่ตรงกับ "${searchTerm}"`}
-                    </div>
-                  )}
-                </div>
-              </TabsContent>
-            ))}
-          </Tabs>
+          {selectedCategory === "suggested" && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {filteredWords().map((word) => (
+                  <Button
+                    key={word}
+                    variant="outline"
+                    size="sm"
+                    className={`flex items-center ${
+                      selectedWords.includes(word) ? "bg-primary/10 border-primary/30" : ""
+                    }`}
+                    onClick={() => handleWordClick(word)}
+                  >
+                    {word}
+                    <ArrowRight className="ml-1 h-3 w-3" />
+                  </Button>
+                ))}
+                
+                {filteredWords().length === 0 && searchTerm && (
+                  <div className="w-full text-center py-2 text-muted-foreground">
+                    {`ไม่พบคำที่ตรงกับ "${searchTerm}"`}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {selectedCategory === "custom" && (
+            <div className="py-2 text-muted-foreground text-center">
+              พิมพ์คำของคุณและกดปุ่ม "เพิ่ม" เพื่อใช้คำนี้
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

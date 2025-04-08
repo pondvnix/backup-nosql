@@ -1,6 +1,4 @@
 
-// Create the missing sentimentAnalysis.ts file
-
 /**
  * A simple utility to analyze word sentiment
  */
