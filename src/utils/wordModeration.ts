@@ -197,6 +197,10 @@ export const deleteWord = (word: string): void => {
  * @returns Boolean indicating if there are duplicates
  */
 export const hasDuplicateTemplates = (templates: Template[]): boolean => {
+  if (!templates || !Array.isArray(templates)) {
+    return false;
+  }
+  
   const templateTexts = templates.map(t => t.template);
   return new Set(templateTexts).size !== templateTexts.length;
 };
@@ -207,27 +211,38 @@ export const hasDuplicateTemplates = (templates: Template[]): boolean => {
  * @returns Array of template objects
  */
 export const parseTemplates = (templateText: string): Template[] => {
-  // Split by commas or new lines
-  const templateStrings = templateText.split(/,|\n/).filter(t => t.trim().length > 0);
+  // Ensure templateText is a string
+  if (typeof templateText !== 'string') {
+    console.error("Invalid templateText:", templateText);
+    return [];
+  }
   
-  return templateStrings.map(str => {
-    const trimmed = str.trim();
-    let sentiment: TemplateSentiment = 'neutral';
-    let template = trimmed;
+  try {
+    // Split by commas or new lines
+    const templateStrings = templateText.split(/,|\n/).filter(t => t && typeof t === 'string' && t.trim().length > 0);
     
-    if (trimmed.startsWith('${บวก}')) {
-      sentiment = 'positive';
-      template = trimmed.replace('${บวก}', '');
-    } else if (trimmed.startsWith('${กลาง}')) {
-      sentiment = 'neutral';
-      template = trimmed.replace('${กลาง}', '');
-    } else if (trimmed.startsWith('${ลบ}')) {
-      sentiment = 'negative';
-      template = trimmed.replace('${ลบ}', '');
-    }
-    
-    return { template, sentiment };
-  });
+    return templateStrings.map(str => {
+      const trimmed = str.trim();
+      let sentiment: TemplateSentiment = 'neutral';
+      let template = trimmed;
+      
+      if (trimmed.includes('${บวก}')) {
+        sentiment = 'positive';
+        template = trimmed.replace('${บวก}', '');
+      } else if (trimmed.includes('${กลาง}')) {
+        sentiment = 'neutral';
+        template = trimmed.replace('${กลาง}', '');
+      } else if (trimmed.includes('${ลบ}')) {
+        sentiment = 'negative';
+        template = trimmed.replace('${ลบ}', '');
+      }
+      
+      return { template, sentiment };
+    });
+  } catch (error) {
+    console.error("Error parsing templates:", error);
+    return [];
+  }
 };
 
 /**
@@ -236,6 +251,10 @@ export const parseTemplates = (templateText: string): Template[] => {
  * @returns Array of template strings
  */
 export const templateObjectsToStrings = (templates: Template[]): string[] => {
+  if (!templates || !Array.isArray(templates)) {
+    return [];
+  }
+  
   return templates.map(template => {
     const sentimentPrefix = 
       template.sentiment === 'positive' ? '${บวก}' :
@@ -252,17 +271,26 @@ export const templateObjectsToStrings = (templates: Template[]): string[] => {
  * @returns Array of template objects
  */
 export const stringToTemplateObjects = (templateStrings: string[]): Template[] => {
+  if (!templateStrings || !Array.isArray(templateStrings)) {
+    return [];
+  }
+  
   return templateStrings.map(str => {
+    if (typeof str !== 'string') {
+      console.warn("Invalid template string:", str);
+      return { template: "", sentiment: 'neutral' };
+    }
+    
     let sentiment: TemplateSentiment = 'neutral';
     let template = str;
     
-    if (str.startsWith('${บวก}')) {
+    if (str.includes('${บวก}')) {
       sentiment = 'positive';
       template = str.replace('${บวก}', '');
-    } else if (str.startsWith('${กลาง}')) {
+    } else if (str.includes('${กลาง}')) {
       sentiment = 'neutral';
       template = str.replace('${กลาง}', '');
-    } else if (str.startsWith('${ลบ}')) {
+    } else if (str.includes('${ลบ}')) {
       sentiment = 'negative';
       template = str.replace('${ลบ}', '');
     }
