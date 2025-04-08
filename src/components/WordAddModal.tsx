@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { 
   Dialog, 
   DialogContent, 
@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-// Remove the invalid import from useToaster
 
 interface WordEntry {
   word: string;
@@ -21,37 +20,17 @@ interface WordEntry {
   isCustom?: boolean;
 }
 
-interface WordEditModalProps {
+interface WordAddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedWord: WordEntry) => void;
-  word: WordEntry | null;
+  onSave: (newWord: WordEntry) => void;
 }
 
-const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) => {
+const WordAddModal = ({ isOpen, onClose, onSave }: WordAddModalProps) => {
   const [wordText, setWordText] = useState("");
-  const [templates, setTemplates] = useState<string[]>([]);
   const [templateInput, setTemplateInput] = useState("");
+  const [templates, setTemplates] = useState<string[]>([]);
   const { toast } = useToast();
-
-  // Load word data when the modal opens or word changes
-  useEffect(() => {
-    if (word) {
-      setWordText(word.word || "");
-      
-      // Load templates from the word data
-      if (word.templates && Array.isArray(word.templates)) {
-        setTemplates([...word.templates]);
-      } else {
-        setTemplates([]);
-      }
-    } else {
-      setWordText("");
-      setTemplates([]);
-    }
-    // Reset the template input field
-    setTemplateInput("");
-  }, [word, isOpen]);
 
   const handleAddTemplate = () => {
     if (!templateInput.trim()) {
@@ -95,15 +74,15 @@ const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) =>
       return;
     }
     
-    // Prepare updated word data
-    const updatedWord: WordEntry = {
+    // Prepare new word data
+    const newWord: WordEntry = {
       word: wordText.trim(),
       templates: templates,
-      isCustom: word?.isCustom || true
+      isCustom: true
     };
     
     // Save changes
-    onSave(updatedWord);
+    onSave(newWord);
     
     // Clear form
     setWordText("");
@@ -111,9 +90,8 @@ const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) =>
     setTemplateInput("");
   };
 
-  // เพิ่มฟังก์ชันสำหรับปุ่มเพิ่มคำอัตโนมัติ
   const insertSpecialTag = (tag: string) => {
-    const textareaElement = document.getElementById("template-input") as HTMLTextAreaElement;
+    const textareaElement = document.getElementById("add-template-input") as HTMLTextAreaElement;
     const cursorPosition = textareaElement?.selectionStart || templateInput.length;
     const newText = 
       templateInput.substring(0, cursorPosition) + 
@@ -121,9 +99,9 @@ const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) =>
       templateInput.substring(cursorPosition);
     setTemplateInput(newText);
     
-    // Focus กลับไปที่ช่องข้อความ
+    // Focus back to the textarea
     setTimeout(() => {
-      const input = document.getElementById("template-input") as HTMLTextAreaElement;
+      const input = document.getElementById("add-template-input") as HTMLTextAreaElement;
       if (input) {
         input.focus();
         input.selectionStart = cursorPosition + tag.length;
@@ -136,9 +114,9 @@ const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) =>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>แก้ไขคำ</DialogTitle>
+          <DialogTitle>เพิ่มคำใหม่</DialogTitle>
           <DialogDescription>
-            แก้ไขคำและแม่แบบประโยคที่ใช้กับคำนี้
+            เพิ่มคำและแม่แบบประโยคที่ใช้กับคำนี้
           </DialogDescription>
         </DialogHeader>
 
@@ -191,7 +169,7 @@ const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) =>
             </div>
             <div className="flex gap-2">
               <Textarea 
-                id="template-input"
+                id="add-template-input"
                 value={templateInput} 
                 onChange={(e) => setTemplateInput(e.target.value)}
                 placeholder="พิมพ์แม่แบบประโยค เช่น '${บวก}การมี${คำ}ในชีวิตทำให้เรารู้สึกดีขึ้น'"
@@ -233,11 +211,11 @@ const WordEditModal = ({ isOpen, onClose, onSave, word }: WordEditModalProps) =>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
-          <Button onClick={handleSave}>บันทึกการเปลี่ยนแปลง</Button>
+          <Button onClick={handleSave}>บันทึก</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
 
-export default WordEditModal;
+export default WordAddModal;

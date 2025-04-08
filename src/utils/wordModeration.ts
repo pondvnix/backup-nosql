@@ -1,4 +1,3 @@
-
 // Export the addWord and getRecentWords functions if they're not already exported
 
 /**
@@ -360,4 +359,73 @@ export const stringToTemplateObjects = (templateStrings: string[] | string | nul
       
       return { template, sentiment };
     });
+};
+
+/**
+ * Get the complete word database from localStorage
+ * @returns Array of WordEntry objects
+ */
+export const getWordDatabase = (): WordEntry[] => {
+  try {
+    const storedData = localStorage.getItem("word-polarity-database");
+    return storedData ? JSON.parse(storedData) : [];
+  } catch (error) {
+    console.error("Error getting word database:", error);
+    return [];
+  }
+};
+
+/**
+ * Update the entire word database in localStorage
+ * @param database Array of WordEntry objects to save
+ */
+export const updateWordDatabase = (database: WordEntry[]): void => {
+  try {
+    localStorage.setItem("word-polarity-database", JSON.stringify(database));
+    window.dispatchEvent(new CustomEvent('word-database-updated'));
+  } catch (error) {
+    console.error("Error updating word database:", error);
+  }
+};
+
+/**
+ * Interface for word entries in the database
+ */
+export interface WordEntry {
+  word: string;
+  templates?: string[];
+  isCustom?: boolean;
+  polarity?: TemplateSentiment;
+  score?: number;
+}
+
+/**
+ * Analyze the sentiment of a word based on its templates
+ * @param word The word to analyze
+ * @returns Sentiment analysis result
+ */
+export const getSentimentAnalysis = (word: string): { sentiment: TemplateSentiment, score: number } => {
+  try {
+    const database = getWordDatabase();
+    const wordEntry = database.find(entry => entry.word === word);
+    
+    if (wordEntry && wordEntry.polarity && typeof wordEntry.score === 'number') {
+      return {
+        sentiment: wordEntry.polarity,
+        score: wordEntry.score
+      };
+    }
+    
+    // Default to neutral if word not found or missing sentiment data
+    return {
+      sentiment: 'neutral',
+      score: 0
+    };
+  } catch (error) {
+    console.error("Error analyzing sentiment:", error);
+    return {
+      sentiment: 'neutral',
+      score: 0
+    };
+  }
 };
