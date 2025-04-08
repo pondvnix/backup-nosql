@@ -15,6 +15,7 @@ import Leaderboard from "@/components/Leaderboard";
 import MoodReport from "@/components/MoodReport";
 import StatsDashboard from "@/components/StatsDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import WordSuggestions from "@/components/WordSuggestions";
 
 const Index = () => {
   const [name, setName] = useState<string>("");
@@ -126,7 +127,7 @@ const Index = () => {
         <div className="w-full space-y-12 pb-20">
           {/* Hero Section - สร้างประโยคให้กำลังใจ - Combined with WordStream */}
           <section className="w-full bg-gradient-to-b from-orange-50 to-white py-8">
-            <div className="w-full px-4 max-w-7xl mx-auto">
+            <div className="w-full px-4 mx-auto">
               <Card className="border-none shadow-lg bg-white/80 backdrop-blur overflow-hidden">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-primary">
@@ -147,6 +148,12 @@ const Index = () => {
                         <p className="text-lg">
                           เลือกคำจากรายการด้านล่างเพื่อสร้างประโยคให้กำลังใจที่มีคำเหล่านั้น
                         </p>
+                        
+                        {/* แสดง WordSuggestions */}
+                        <WordSuggestions 
+                          onWordSelect={handleWordSelect} 
+                          selectedWords={selectedWords}
+                        />
                         
                         {/* คำที่เลือกแล้ว */}
                         {selectedWords.length > 0 && (
@@ -215,14 +222,14 @@ const Index = () => {
           </section>
           
           {/* Section กล่องน้ำมะเขือเทศ */}
-          <section className="w-full bg-white py-10">
-            <div className="w-full px-4 max-w-7xl mx-auto">
+          <section id="tomato-box-section" className="w-full bg-white py-10">
+            <div className="w-full px-4 mx-auto">
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-primary mb-2">กล่องน้ำมะเขือเทศของคุณ</h2>
+                <h2 className="text-3xl font-bold text-red-700 mb-2">กล่องน้ำมะเขือเทศดอยคำ</h2>
                 <p className="text-lg max-w-2xl mx-auto">
                   ดาวน์โหลดและแชร์กล่องน้ำมะเขือเทศของคุณเพื่อบอกเล่าเรื่องราวกำลังใจ
                 </p>
-                <div className="w-20 h-1 bg-primary mx-auto mt-4 mb-6 rounded-full"></div>
+                <div className="w-20 h-1 bg-red-600 mx-auto mt-4 mb-6 rounded-full"></div>
               </div>
               
               <Card className="border-none shadow-xl overflow-hidden bg-white max-w-3xl mx-auto">
@@ -239,7 +246,7 @@ const Index = () => {
           
           {/* Section อันดับผู้ร่วมสร้างกำลังใจ */}
           <section className="w-full bg-gradient-to-b from-orange-50 to-white py-10">
-            <div className="w-full px-4 max-w-7xl mx-auto">
+            <div className="w-full px-4 mx-auto">
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-primary mb-2">อันดับผู้ร่วมสร้างกำลังใจ</h2>
                 <p className="text-lg max-w-2xl mx-auto">
@@ -258,7 +265,7 @@ const Index = () => {
           
           {/* Section สถิติและประโยคกำลังใจล่าสุด */}
           <section className="w-full bg-white py-10">
-            <div className="w-full px-4 max-w-7xl mx-auto">
+            <div className="w-full px-4 mx-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* ประโยคกำลังใจล่าสุด */}
                 <div>
