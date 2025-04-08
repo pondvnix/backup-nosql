@@ -285,6 +285,10 @@ export const templateObjectsToStrings = (templates: Template[] | undefined): str
   return templates
     .filter(template => template && typeof template === 'object')
     .map(template => {
+      if (!template || typeof template !== 'object') {
+        return '';
+      }
+      
       // Default sentiment if not valid
       let sentimentPrefix = '${กลาง}'; 
       
@@ -299,7 +303,8 @@ export const templateObjectsToStrings = (templates: Template[] | undefined): str
       const templateText = typeof template.template === 'string' ? template.template : '';
       
       return `${sentimentPrefix}${templateText}`;
-    });
+    })
+    .filter(str => str.length > 0); // Filter out empty strings
 };
 
 /**
@@ -315,12 +320,19 @@ export const stringToTemplateObjects = (templateStrings: string[] | string | nul
   }
   
   // Convert string to array if it's a single string
-  let stringsArray: string[];
+  let stringsArray: string[] = [];
   
   if (typeof templateStrings === 'string') {
-    stringsArray = [templateStrings]; 
+    stringsArray = [templateStrings];
   } else if (Array.isArray(templateStrings)) {
-    stringsArray = templateStrings;
+    // Filter out non-string values
+    stringsArray = templateStrings.filter(item => typeof item === 'string');
+    
+    // If after filtering we have nothing, return empty array
+    if (stringsArray.length === 0) {
+      console.warn("No valid strings found in template strings array:", templateStrings);
+      return [];
+    }
   } else {
     console.warn("Invalid template strings type:", typeof templateStrings);
     return [];
