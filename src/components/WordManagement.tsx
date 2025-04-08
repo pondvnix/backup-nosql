@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,11 +38,12 @@ const WordManagement = () => {
         if (dbFromStorage && Array.isArray(dbFromStorage) && dbFromStorage.length > 0) {
           database = dbFromStorage;
         } else {
-          // Map default database to WordEntry format with templates
           database = defaultWordDatabase.map(entry => ({
-            ...entry,
+            word: entry.word,
+            sentiment: entry.sentiment as "positive" | "neutral" | "negative",
+            score: entry.score,
             isCustom: false,
-            templates: [`${entry.word} เป็นสิ่งที่สำคัญในชีวิต`], // Add default template
+            templates: [`${entry.word} เป็นสิ่งที่สำคัญในชีวิต`],
           }));
         }
         
